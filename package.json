@@ -1,0 +1,31 @@
+{
+  "name": "rx2go-ai-qa",
+  "version": "0.12.14",
+  "private": true,
+  "description": "Rx2GO Smart QA: Codex + Microsoft Playwright MCP + deterministic Playwright + optional BrowserStack RCA",
+  "scripts": {
+    "install:browsers": "node -e \"console.log('Google Chrome is used; no Playwright Chromium install is required.')\"",
+    "test": "playwright test",
+    "test:smoke": "playwright test tests/smoke",
+    "test:tickets": "playwright test tests/tickets",
+    "test:hot": "cross-env TEST_ENV=HOT playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "report:html": "playwright show-report",
+    "report:jira": "tsx scripts/jira-report.ts",
+    "report:allure": "allure generate allure-results --clean -o allure-report",
+    "test:branch": "cross-env TEST_ENV=BRANCH playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "allure-playwright": "3.12.0",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.7",
+    "js-yaml": "^4.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "@playwright/mcp": "latest"
+  }
+}

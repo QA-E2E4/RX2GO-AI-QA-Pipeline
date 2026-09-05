@@ -1,0 +1,30 @@
+version: 2
+environments:
+  HOT:
+    base_url: https://hot.rx2go.ai
+    purpose: shared_test
+    default_for_automation: true
+    authentication:
+      gateway_required: false
+      application_login_required: true
+
+  ADM:
+    base_url: https://adm.rx2go.ai
+    purpose: controlled
+    default_for_automation: false
+    authentication:
+      gateway_required: true
+      application_login_required: true
+
+  BRANCH:
+    base_url: https://sergey-tester.rx2go.ai
+    login_url: https://sergey-tester.rx2go.ai/login
+    purpose: developer_branch
+    default_for_automation: false
+    authentication:
+      gateway_required: false
+      application_login_required: true
+    notes:
+      - Developer branch environment
+      - Uses the same application QA credentials as ADM
+      - Daily Telegram gateway password is not used

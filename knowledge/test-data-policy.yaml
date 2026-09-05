@@ -1,0 +1,17 @@
+version: 1
+rules:
+  existing_orders:
+    may_modify: false
+    reason: Existing orders must never be reused for destructive QA scenarios.
+
+  test_orders:
+    must_create_new: true
+    default_delivery_address: "940 SIMPSON ST, BRONX, NY 10459"
+
+  credentials:
+    may_store_in_repository: false
+    source: environment_variables_or_ci_secrets
+
+  mutating_tests:
+    default: false
+    enable_with: RUN_MUTATING_TESTS=true

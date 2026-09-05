@@ -1,0 +1,27 @@
+version: 1
+module: Tickets Queue
+route: /tickets/queue
+rules:
+  filters:
+    - My Tickets
+    - All Tickets
+
+  start_workout:
+    expected: ticket_is_automatically_taken_into_work
+
+  finish_action:
+    name: Finish & Next
+
+  resolved:
+    expected_status: Resolved
+
+  expiration:
+    acceptance_rule: ticket_with_expiration_N_must_not_return_to_queue_before_N_minutes
+    example_minutes: 60
+    recommended_automation:
+      quick_contract:
+        - verify_saved_value
+        - verify_backend_expiration_timestamp_when_endpoint_is_known
+      scheduled_long_e2e:
+        - check_not_in_queue_before_expiration
+        - check_returns_after_expiration

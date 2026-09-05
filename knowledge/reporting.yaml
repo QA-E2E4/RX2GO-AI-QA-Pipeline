@@ -1,0 +1,35 @@
+version: 2
+jira_report_required_fields:
+  - Task
+  - Module
+  - Environment
+  - Facility
+  - Date
+  - User
+  - Method
+  - Result
+  - ExecutedCases
+  - TestData
+  - Evidence
+optional_fields:
+  - FinalPlaywright
+  - ApiNetwork
+  - Console
+  - Screenshots
+  - FailureTriage
+  - QaComment
+statuses:
+  - PASS
+  - FAIL
+  - SKIP
+  - BLOCKED
+rules:
+  - Jira report must describe actually executed cases, not only planned checks.
+  - Each acceptance case must contain status and concrete observed evidence when Smart QA provides it.
+  - Fresh test-data IDs must be included when data was created.
+  - Live Smart QA result and final deterministic Playwright result must be distinguishable.
+  - Do not include credentials, tokens, cookies or auth headers.
+
+  - ProductResultAndAutomationResult
+  - A TEST_AUTOMATION_BUG must not be reported as a product FAIL when live Smart QA passed the acceptance criteria.
+  - Jira mutation permission must be read from the Jira Task checkbox, not the Quick Run checkbox.

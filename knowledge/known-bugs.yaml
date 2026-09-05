@@ -1,0 +1,7 @@
+# Known Rx2GO defects that should influence regression selection.
+# Example:
+# - id: SCRUM-0000
+#   module: Chat
+#   summary: Chat history is incomplete after Show Chat
+#   status: open
+[]

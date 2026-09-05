@@ -1,0 +1,47 @@
+authentication:
+  application:
+    login:
+      type: fixed_for_current_qa_account
+      runtime_variable: RX2GO_APP_LOGIN
+    password:
+      type: persistent_secret
+      storage_policy: never_commit_or_store_in_repo
+      runtime_variable: RX2GO_APP_PASSWORD
+
+  gateway:
+    login:
+      type: fixed
+      value: admin
+    password:
+      type: rotating_daily
+      source: telegram_bot
+      storage_policy: never_commit_or_store_in_repo
+      runtime_variable: RX2GO_DAILY_PASSWORD
+
+  flows_by_environment:
+    HOT:
+      stages:
+        - application
+    ADM:
+      stages:
+        - gateway
+        - application
+    BRANCH:
+      stages:
+        - application
+      note: No gateway / daily Telegram password on developer branch environment
+
+  session_policy:
+    reuse_within_test_run: true
+    reauthenticate_when_session_invalid: true
+
+  automation_policy:
+    local_runs:
+      mode: secure_runtime_secret_injection
+    unattended_ci:
+      ADM:
+        enabled: false
+        reason: ADM daily gateway credential source is not yet integrated securely
+      BRANCH:
+        enabled: possible_after_secret_store_setup
+        reason: branch environment does not require the rotating gateway password
