@@ -22,3 +22,15 @@
 - Removed duplicate Git startup sync implementation.
 - Kept the safe timer-based `Invoke-StartupKnowledgePull` synchronization.
 - Restored `[void]$form.ShowDialog()` so the GUI opens correctly.
+# Changelog
+
+## 0.12.40 — unreleased
+
+- Added the complete `fixtures`, `utils`, and `.github/workflows` source required by the Playwright configuration and tests.
+- Expanded launcher-managed Git synchronization to include fixtures, utilities, workflow files, and the npm lockfile.
+- Updated built-in GitHub addresses to `QA-E2E4/rx2go-ai-qa`.
+- Added reproducible npm scripts for TypeScript checking and Playwright test discovery.
+- Replaced the main README with an English, code-grounded project guide and added setup, architecture, usage, and troubleshooting documentation.
+- Changed GitHub Actions to static validation only; no live RX2GO credentials or environment are used by CI.
+- Added issue and pull-request templates.
+

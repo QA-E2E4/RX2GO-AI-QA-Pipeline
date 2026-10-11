@@ -1,4 +1,4 @@
-﻿# Rx2GO AI QA — графический запуск
+# Rx2GO AI QA — графический запуск
 
 Для обычной работы PowerShell-команды вводить не нужно.
 
@@ -80,7 +80,7 @@ Launcher намеренно **не извлекает cookies браузера, 
 
 В этой сборке уже задан репозиторий:
 
-`https://github.com/Gamazzz/rx2go-ai-qa`
+`https://github.com/QA-E2E4/rx2go-ai-qa`
 
 Если Git for Windows установлен, Launcher при старте сам инициализирует локальный Git (если нужно) и добавляет `origin`. Вводить URL вручную не требуется. После первых изменений нажми **Commit knowledge**, затем **Synchronize**. Первый push создаст ветку `main`, если удалённая ветка ещё пустая.
 
@@ -93,7 +93,7 @@ Launcher при старте делает `git pull --ff-only` только ес
 
 On every launcher start, Rx2GO AI QA now attempts a safe synchronization with:
 
-`https://github.com/Gamazzz/rx2go-ai-qa.git`
+`https://github.com/QA-E2E4/rx2go-ai-qa.git`
 
 Behavior:
 - clean working tree -> `git fetch` + `git pull --ff-only`;
@@ -773,7 +773,7 @@ v0.12.1 fixes both at the Playwright MCP server policy level without disabling t
 ## v0.12.12 — GitHub SSH, no browser authentication
 
 - GitHub browser OAuth is disabled in Launcher.
-- GitHub repository uses SSH origin: `git@github.com:Gamazzz/rx2go-ai-qa.git`.
+- GitHub repository uses SSH origin: `git@github.com:QA-E2E4/rx2go-ai-qa.git`.
 - Launcher checks `~/.ssh/id_ed25519` and can generate a local ed25519 key.
 - Added `Создать SSH key` and `Скопировать public key` buttons.
 - Launcher can start Windows `ssh-agent` when available and add the private key with `ssh-add`.
@@ -807,3 +807,512 @@ v0.12.1 fixes both at the Playwright MCP server policy level without disabling t
 - The first push creates the remote branch and upstream tracking in one step.
 - Fetch/pull comparison runs only when the remote branch already exists.
 - Existing SSH authentication and safe managed/unmanaged dirty-file behavior are preserved.
+
+
+## v0.12.15 — task-specific retrieval memory from GitHub + local repository
+
+- Added a deterministic `Knowledge Retrieval` stage before every Jira Smart QA run.
+- Before retrieval, Launcher performs a safe `git fetch` remote snapshot when possible.
+  It does not `pull`, merge, or modify the working tree.
+- Retrieval searches:
+  - prior `jira-cases`;
+  - regression `scenarios`;
+  - existing Playwright `tests`;
+  - `knowledge` files;
+  - `pages` and `api` helpers.
+- Historical knowledge/scenarios/Jira cases prefer the fetched GitHub snapshot.
+- Executable tests/helpers prefer the current local workspace so generated automation matches the running version.
+- Retrieval is task-specific using Jira text, QA Comment, Jira key, resolved module and acceptance criteria.
+- A preliminary retrieval is passed to Requirements Analyst.
+- After module resolution, retrieval is refined and passed to Playwright MCP QA, QA Reviewer and Failure Triage.
+- Prior TEST_AUTOMATION_BUG knowledge is explicitly used as a warning to avoid repeating old automation mistakes.
+- Memory never overrides current Jira requirements or live MCP evidence.
+- Up to 22 bounded snippets are passed to AI; retrieval artifacts are saved under `reports/knowledge-retrieval/<JIRA-KEY>`.
+- Jira readable report lists how many memory files were used and the top memory sources.
+
+
+## v0.12.16 — SCRUM-3403 date-format false-Fail prevention
+
+- Latest Jira comments can narrow an umbrella task to the current testing batch.
+- Analyst extracts the latest partial-scope comment before deciding current-run acceptance.
+- External Chrome uses `--lang=en-US`.
+- Native `input[type=date]` DOM value is treated as ISO data, not as formatted visible MM/DD/YYYY text.
+- A native date field cannot fail only because a non-US screenshot shows localized formatting.
+- Date tests use locale + element type/value + current screenshot evidence and prefer non-ambiguous `11/30/2028`.
+- Smart QA must not reuse entities marked with another Jira key.
+- Added a cross-Jira test-data guard.
+- Failure Triage treats wrong-locale native date assertions as automation/environment errors.
+- Added `knowledge/date-format-testing.yaml` for retrieval memory.
+
+
+## v0.12.17 — global Result Integrity Gate + editable imported Jira source
+
+### Global false-result prevention
+- Added `Result Integrity Gate` for every Smart QA Jira execution.
+- Smart QA must return a machine-readable integrity self-audit:
+  - live current-run evidence;
+  - current execution scope only;
+  - isolated/current-task test data;
+  - historical evidence not used as verdict;
+  - environment assumptions verified.
+- Overall PASS/FAIL is checked against individual acceptance-result statuses.
+- FAIL requires a concrete failed acceptance criterion with current-run evidence.
+- Ambiguous inferred FAIL evidence is rejected.
+- Test-data provenance is included in the MCP JSON contract.
+- Cross-Jira data contamination remains independently blocked.
+- A built-in integrity self-test runs before the real Smart QA pipeline and stops the run if the guard itself is broken.
+- Added `knowledge/test-result-integrity.yaml` for retrieval memory.
+
+### Editable imported Jira text
+- `Импортированное описание и комментарии Jira` is now editable.
+- Manual edits are visibly marked in the status label.
+- Smart QA / Knowledge Retrieval / Requirements Analyst use the edited imported text as the actual Jira source for the run.
+- Reloading Jira replaces manual edits with the current Jira content and resets the edited flag.
+- Jira-readable report records whether the imported Jira source was manually edited.
+
+
+## v0.12.18 — duplicate KnowledgeContext fix + SSH-only memory sync
+
+- Fixed PowerShell runtime error: `KnowledgeContext` was supplied twice to Requirements Analyst.
+- Requirements Analyst now receives exactly one preliminary retrieval context.
+- Playwright MCP QA again receives refined retrieval memory.
+- Default Git origin is SSH from the first repository initialization.
+- Existing Rx2GO HTTPS origin is silently migrated to SSH.
+- Startup Knowledge sync cannot invoke Git Credential Manager/browser OAuth.
+- Knowledge Retrieval cannot invoke Git Credential Manager/browser OAuth.
+- Remote retrieval uses existing SSH in BatchMode; if SSH is unavailable, the run continues with local Knowledge Base.
+- Added release audit for duplicated named arguments in multiline PowerShell calls.
+
+
+## v0.12.19 — automatic post-run Knowledge Base learning
+
+- Every completed Jira Smart QA run with live MCP evidence now triggers `Knowledge Auto-Learning`.
+- Existing `jira-cases/<JIRA>.md` saving remains; Auto-Learning adds distilled reusable project knowledge under `knowledge/learned/<module>/<JIRA>.json`.
+- A lightweight Codex Knowledge Curator extracts:
+  - stable product facts;
+  - navigation/UI facts;
+  - API/network contracts;
+  - stable test-data rules;
+  - automation lessons;
+  - regression candidates;
+  - advisory project-rule candidates.
+- Even if the Curator is unavailable, a deterministic verified acceptance snapshot is still saved.
+- Rerunning the same Jira key merges/deduplicates learned string facts rather than creating duplicate files.
+- Knowledge learning never changes the product PASS/FAIL result if the curator fails.
+- Secrets/session material and transient order/ticket/route IDs are filtered from learned knowledge.
+- Historical Retrieval Memory is reference/dedup context only; it cannot be promoted to a new fact without current-run evidence.
+- Learned files immediately participate in future Knowledge Retrieval because `knowledge/**` is already part of retrieval sources.
+- Knowledge tab displays the number of Auto-Learning files.
+- Jira-readable report records how much knowledge was automatically saved.
+- Auto-Learning writes Git-managed knowledge files automatically, but does NOT auto-commit or auto-push. Commit/Synchronize remain explicit to avoid unexpectedly pushing project code.
+
+
+## v0.12.20 — automatic Commit + Push after Jira testing
+
+- After every completed Jira Smart QA run:
+  `Auto-Learning -> Auto Commit -> Auto Push over SSH -> Jira readable report`.
+- Safe managed project changes are staged automatically, including generated tests,
+  knowledge files, Jira cases, helpers, scripts and Launcher/project code.
+- Commit message:
+  `Auto QA <JIRA-KEY> <PASS|FAIL> yyyy-MM-dd HH:mm`.
+- Existing unpushed local commits are also pushed on the next completed Jira run.
+- First push creates `origin/<branch>` and upstream automatically.
+- GitHub authentication remains SSH-only; browser OAuth is never used.
+- If remote is ahead and there are no unrelated dirty files, local commits are rebased automatically before push.
+- If unrelated local files are dirty while remote is ahead, auto-sync pauses instead of modifying/stashing those files.
+- Failed rebase is automatically aborted.
+- Failed push preserves the local commit.
+- Git failures never change the product PASS/FAIL verdict.
+- Jira report records Auto Git state, commit hash, sync result and warning.
+- Knowledge tab shows Auto Commit + Push = ON.
+
+
+## v0.12.21 — risk-based coverage + explicit Knowledge Base failures
+
+### Broader test design
+- Jira acceptance remains mandatory, but Smart QA no longer stops at the literal task text.
+- Added a pre-execution Smart Coverage Designer.
+- It designs high-value:
+  - positive;
+  - negative;
+  - boundary;
+  - regression;
+  - integration;
+  - UI/backend data consistency;
+  - reload/repeat/resilience cases.
+- Coverage uses Jira scope, Requirements Analyst risk ideas and Knowledge Retrieval.
+- MCP executes relevant P0/P1 negative/regression checks and returns `additionalResults`.
+- Additional impacted regression failures can affect overall Jira FAIL.
+- Advisory unrelated findings do not distort the Jira result.
+- Reviewer includes only additional checks actually proven by live MCP evidence in deterministic Playwright.
+- Jira report now has a separate section for negative/boundary/regression cases.
+
+### Knowledge Base visibility
+- If remote Knowledge Retrieval fails, the user gets a clear warning and testing continues with local memory.
+- If post-run knowledge cannot be stored locally, the user gets a clear warning.
+- If GitHub auto-push fails, the user gets a clear warning that local knowledge/commit is preserved.
+- Knowledge read/write failures never silently change the product PASS/FAIL verdict.
+- Added `knowledge/smart-test-coverage-policy.yaml`.
+
+
+## v0.12.22 — fixture recovery before BLOCKED + yellow insufficient-data state
+
+Built directly on v0.12.21.
+
+### Fixture recovery
+- Smart QA no longer accepts an immediate BLOCKED just because an existing selected entity has empty history / zero rows / unsuitable state.
+- When data mutation is enabled and the blocker is fixture/data related, Launcher automatically runs one `Playwright MCP fixture recovery` pass in the SAME authenticated Chrome.
+- Recovery must create fresh isolated current-Jira test data and re-run blocked acceptance checks.
+- For Activity History/audit requirements, creating an entity alone is insufficient: recovery must generate at least one safe QA-only history entry where a confirmed workflow exists.
+- Final BLOCKED is allowed only after a concrete fresh-fixture path was attempted and could not safely produce the needed state.
+- Initial blocked evidence is retained in `smart-mcp-initial-blocked.json`; recovery evidence is retained in `smart-mcp-fixture-recovery.json`.
+
+### BLOCKED UI semantics
+- BLOCKED is now a first-class agent state, not `FAIL/ошибка`.
+- Pipeline label: `недостаточно данных`.
+- Main result: `НЕДОСТАТОЧНО ДАННЫХ` in amber.
+- Jira report mark: `⚠ НЕДОСТАТОЧНО ДАННЫХ`.
+- A clickable amber result toast is shown with an Exclamation system sound.
+- BLOCKED does not count as a product FAIL.
+
+### Knowledge lifecycle
+- A terminal BLOCKED live run is finalized as a completed QA observation.
+- It is saved to the readable Jira report.
+- Auto-Learning runs for the blocked observation, so fixture/setup lessons are reusable.
+- Auto Commit + Push remains enabled; Git/Knowledge errors do not alter the product result.
+- Added `knowledge/fixture-recovery-policy.yaml`.
+
+
+## v0.12.23 — all test-data actions are always authorized
+
+Built on v0.12.22.
+
+- Mutation of clearly identified QA/test data is now a global always-on policy.
+- Jira Task and Quick Launch mutation controls are permanently checked and disabled.
+- Agents may create, edit, update, modify, save, submit, transition, assign/unassign,
+  link/unlink, remoderate, resolve/reopen, attach/detach, delete, recreate and cleanup
+  current-run QA fixtures whenever required by testing.
+- Fixture Recovery no longer depends on a mutation checkbox.
+- A data-related BLOCKED must first attempt all safe current-run QA mutations that can
+  reasonably produce the required state.
+- Generated deterministic Playwright tests may reproduce the proven fixture lifecycle,
+  including cleanup.
+- Safety boundary: never mutate an unmarked pre-existing business/customer entity.
+- Historical order/ticket/route IDs from Knowledge Retrieval remain reference-only.
+- Jira report explicitly states that test-data actions are always authorized.
+- Added `knowledge/test-data-mutation-policy.yaml`.
+
+
+## v0.12.24 — startup parser hotfix
+
+- Fixed the v0.12.23 startup ParseException at `Rx2GO-QA-Launcher.ps1:9324`.
+- The previous build accidentally emitted literal PowerShell characters `` `r`n `` between
+  `$jiraMutatingCheck.Checked = $true` and `$mutatingCheck.Checked = $true`.
+- They are now two normal PowerShell statements on separate physical lines.
+- Added a release-time lexical audit that rejects literal `` `r`n `` tokens when they occur
+  in executable PowerShell code outside strings/comments/here-strings.
+- All v0.12.23 behavior is preserved: test-data mutation is always ON, fixture recovery,
+  risk-based coverage, Knowledge Auto-Learning, Auto Commit + Push, Integrity Gate,
+  editable Jira source, and BLOCKED/insufficient-data handling.
+
+
+## v0.12.25 — Jira Queue with up to 3 isolated parallel Workers
+
+- Added a new responsive `Jira Queue` tab.
+- Queue accepts one or many Jira keys/URLs and remembers the environment per task.
+- Configurable concurrency: 1–3 Workers (default 3).
+- Queue controls: Add, Start, Pause, Resume, Retry, Stop Worker, Remove, priority Up/Down, Open logs.
+- Each task runs in a separate hidden Launcher Worker process with its own project runtime, reports and Chrome/CDP session.
+- The actual Chrome windows remain visible for QA; only the child Launcher shell is hidden/minimized.
+- Worker copies exclude `.git`, `node_modules`, reports, runtime state, `.env` and secrets; `node_modules` is shared via a junction after the parent Playwright preflight.
+- Worker Knowledge Retrieval uses the copied local snapshot and never runs Git/browser OAuth.
+- Finished worker outputs are merged back only from safe managed paths: `knowledge`, `jira-cases`, `scenarios`, `tests/generated`.
+- Learned JSON is merged/deduplicated so concurrent workers do not overwrite accumulated knowledge.
+- Git commit/push is serialized by the parent Launcher after each worker merge; workers never push directly.
+- New waiting Workers therefore start from the latest already-merged Knowledge Base.
+- Queue state is persisted under `%LOCALAPPDATA%\Rx2GO-AI-QA\queue`; interrupted runs return as `INTERRUPTED` and can be retried.
+- Parent Quick Run/Jira Run is disabled while the queue is active to avoid shared-state/Git conflicts.
+- Parent close prompts before terminating active queue Workers.
+- Queue Worker results are reported as PASS / FAIL / BLOCKED / ERROR / STOPPED.
+- Added worker heartbeat/status files so the main queue displays ANALYZING / TESTING / REVIEWING / PLAYWRIGHT / RCA phases.
+- Added a Queue engine self-test before use.
+- Queue UI uses only Dock/TableLayout/FlowLayout/DataGridView managed layout and is included in the existing UI layout-health scan.
+- Preserved v0.12.24 features: always-on test-data mutation, fixture recovery, risk-based coverage, editable Jira source, Result Integrity Gate, Auto-Learning, SSH Git and Auto Commit/Push.
+
+
+## v0.12.26 — Codex limit-safe Fixture Recovery in Jira Queue
+
+Built on v0.12.25.
+
+### Codex usage/rate limit
+- Codex non-zero exits are classified (`CODEX_USAGE_LIMIT`, `CODEX_TIMEOUT`, `CODEX_AUTH`, etc.).
+- If Fixture Recovery is interrupted by a Codex usage/rate/quota limit, the original live BLOCKED result is preserved.
+- The interrupted recovery is never converted to a red product FAIL or fake QA failure.
+- Single-task mode shows a clear Codex-limit warning.
+- Queue workers do not show hidden modal dialogs.
+- Parent Jira Queue detects the usage-limit reason, pauses new worker launches, and shows one clear warning.
+- Resume clears the queue circuit breaker after the limit recovers.
+
+### Fixture Recovery token/tool budget
+- Recovery prompt is compact: only current narrowed scope, blockers, blocked acceptance, test-data provenance, selected P0/P1 coverage and compact Knowledge snippets.
+- Recovery uses low reasoning effort and a shorter 540s wrapper timeout.
+- Recovery is explicitly restricted to `playwright/browser_*` browser work.
+- Browser plugin / node_repl / native-host / registry / unrelated MCP diagnostics are forbidden.
+
+### Autocomplete correctness
+- Recipient / Street Address / Facility / Client / Pharmacy and similar fields are treated as autocomplete controls.
+- `fill()` alone is not acceptance.
+- The agent must select the real suggestion and verify `Is required` / invalid state disappears before Add/Save.
+- This rule applies to both initial Smart QA and Fixture Recovery.
+
+### Preserved v0.12.25 functionality
+- Jira Queue with up to 3 isolated workers.
+- Worker Chrome/CDP isolation.
+- serialized Knowledge merge + Git sync.
+- Risk-based coverage, Fixture Recovery, Result Integrity Gate.
+- Editable Jira source.
+- Auto-Learning and Auto Commit + Push.
+- Test-data mutation always ON.
+
+
+## v0.12.27 — Windows PowerShell 5.1 Queue startup hotfix
+
+- Fixed the v0.12.26 startup crash in `Refresh-QueueGrid`.
+- `QueueItems` changed from `Generic.List[object]` to PowerShell-5.1-safe `ArrayList`.
+- ArrayList `.Add()` output is suppressed.
+- Queue status is null-safe.
+- Queue self-test now checks the collection behavior that caused the crash.
+- Self-test runs before the first Queue grid refresh.
+- Queue rendering has a fail-safe: Queue can disable itself without terminating the main Launcher.
+- All v0.12.26 queue/Codex/Fixture Recovery/Auto-Learning/Auto-Git functionality is preserved.
+
+
+## v0.12.28 — Knowledge/Git reliability + select assertion guard
+
+Built on v0.12.27.
+
+### Knowledge Base
+- Fixed Windows PowerShell 5.1 `Argument types do not match` in post-run learned knowledge.
+- Knowledge learning string collections and verified acceptance snapshots now use ArrayList.
+- Queue learned-knowledge merge uses the same PS5.1-safe collection strategy.
+- Added a runtime Knowledge Auto-Learning self-test before writing learned JSON.
+- Removed duplicate CuratorStatus assignment.
+
+### Git
+- `Invoke-Git` now starts async stdout/stderr reads before waiting, preventing redirected-pipe deadlocks.
+- Git wait keeps WinForms responsive.
+- Default Git timeout increased to 60s.
+- `git add` gets 120s.
+- Git argument collections use ArrayList.
+
+### Deterministic Playwright
+- Added a reviewer rule and static repair guard for HTML `<select>` assertions.
+- Visible labels such as Facility `New York` are asserted through selected-option text (`option:checked`) unless live evidence proves the internal option value equals the label.
+- Prevents the SCRUM-4075 false automation failure where DOM value was `2` but visible option was `New York`.
+
+### Jira report
+- Final readable report is re-rendered at the true end of the lifecycle after Playwright + RCA + Knowledge Auto-Learning + Git sync.
+- Prevents stale reports saying `ФИНАЛЬНЫЙ PLAYWRIGHT: ещё не завершён`.
+
+All v0.12.27 Jira Queue / isolated workers / Codex circuit breaker / Fixture Recovery / risk coverage / mutation-always-on functionality is preserved.
+
+
+## v0.12.29 — PowerShell parser hotfix for select assertion guard
+
+Built directly on v0.12.28.
+
+- Fixed startup ParseException in `Test-SmartSpecSelectAssertionSafety`.
+- Root cause: v0.12.28 used backslash escaping for a single quote inside a single-quoted PowerShell regex string. Windows PowerShell does not use backslash to escape `'`.
+- The guard now uses two parser-safe regexes:
+  - `toHaveValue('...')`
+  - `toHaveValue("...")`
+- The SCRUM-4075 select-label protection remains active: visible labels such as `New York` should be asserted through selected-option text unless the internal option value was proven by live evidence.
+- No Jira Queue, Fixture Recovery, Knowledge, Git, Auto-Learning, risk-coverage, mutation or UI-layout behavior was intentionally changed.
+
+
+## v0.12.30 — recover completed Smart QA result after Codex wrapper timeout
+
+Built on v0.12.29.
+
+- Fixed a race observed on SCRUM-4075: the Playwright MCP QA agent completed its live work and produced a valid final FAIL JSON, but the Codex/MCP wrapper did not exit before the 900-second timeout.
+- v0.12.29 checked the `-o` output only before terminating the timed-out process.
+- v0.12.30 performs a second recovery pass after `Kill()` / `WaitForExit()`, because Codex can flush the final output file while the wrapper is terminating.
+- Recovered output is accepted only when it is valid JSON, `status` is PASS/FAIL/BLOCKED, and `mcpUsed=true`.
+- Successful recovery continues the normal pipeline instead of marking Playwright MCP QA as an automation error.
+- Existing v0.12.29 select assertion guard, Knowledge Auto-Learning, async Git, Jira Queue, Fixture Recovery, risk coverage, Integrity Gate and mutation policy are preserved.
+
+
+## v0.12.31 — main Smart QA Codex usage-limit handling
+
+Built on v0.12.30.
+
+- Fixed SCRUM-4075 run where the main `02-playwright-mcp-qa` exited with Codex usage-limit error and the Launcher showed a red `MCP QA FAILED`.
+- `CODEX_USAGE_LIMIT` is now treated as an infrastructure interruption, not a product or automation FAIL.
+- Single-task UI shows amber `CODEX LIMIT — ПАУЗА` and a clear retry message.
+- No synthetic product PASS/FAIL is created when final Smart QA JSON is missing.
+- Incomplete usage-limit runs do not update post-run product Knowledge.
+- Queue Worker completes as BLOCKED with a CODEX_USAGE_LIMIT marker.
+- Jira Queue detects the marker and pauses new workers automatically.
+- Existing timeout final-JSON recovery from v0.12.30 remains unchanged.
+- Jira Queue, Fixture Recovery, select guard, Knowledge Auto-Learning, async Git, Integrity Gate and mutation-always-on are preserved.
+
+
+## v0.12.32 — Windows PowerShell 5.1 parser hotfix
+
+Built on v0.12.31.
+
+- Fixed Launcher startup ParseException in `Finalize-QueueWorkerItem`.
+- Root cause: an `if/else` statement was passed directly inside `-Details (...)`.
+- Windows PowerShell 5.1 does not support that expression form.
+- Conditional text is now calculated in `$codexLimitDetails` first and then passed as a normal argument.
+- Added a release gate that scans all PowerShell files for the same `-Parameter ( if (...) )` anti-pattern.
+- No functional behavior from v0.12.31 was intentionally changed.
+
+## v0.12.33 — Task Understanding Contract
+
+- Requirements Analyst separates Jira requirements, Jira comments, QA guidance, screenshots, project rules and Knowledge by authority.
+- Adds task goal, in/out scope, state-change model, forbidden side effects, AC1/AC2/... acceptance matrix, source trace, ambiguities and confidence.
+- Deterministic Understanding Gate blocks browser execution on weak/mixed requirements, confidence <70%, HIGH ambiguity or unresolved contradiction.
+- Existing Test Plan panel shows how the system understood the task; no layout controls were added.
+- Coverage Designer, Playwright MCP, Fixture Recovery and Reviewer are locked to the same contractId and acceptance IDs.
+- Result Integrity Gate rejects missing/unknown AC IDs, contract mismatch and unverified live context.
+- v0.12.32 Queue/Codex/Knowledge/Git/Fixture Recovery functionality is preserved.
+
+
+## v0.12.34 — Knowledge Explorer for HOT
+
+Added a dedicated Knowledge Explorer to the existing Knowledge tab.
+
+- Modes:
+  - Quick crawl — structure
+  - Deep crawl — UI + API + Network
+  - Selected module
+  - Workflow exploration
+  - Refresh stale knowledge
+- Priority modules: Orders, Scanner, Tickets Queue, Dispatcher, QAQC, Routes/Gigs, Copays, Chat.
+- Explorer reuses the same authenticated persistent Chrome and Playwright MCP.
+- Quick/deep/module/refresh are read-only.
+- Workflow mode may mutate only fresh isolated QA test data and never unmarked business/customer entities.
+- Structured output is stored under `knowledge/explorer/`.
+- Module knowledge is indexed in `knowledge/explorer/index.json`.
+- Observed facts are explicitly marked as non-requirement knowledge.
+- Secrets and personal customer/patient data are forbidden from Explorer output.
+- Explorer auto-commits only `knowledge/explorer` and pushes when GitHub SSH is ready.
+- Existing staged files outside Explorer block auto-commit to avoid mixing unrelated changes.
+- Stale refresh threshold defaults to 14 days.
+- The Knowledge tab uses managed TableLayoutPanel layout; no absolute final positioning was added.
+- Existing v0.12.33 Task Understanding Contract, Jira Queue, Fixture Recovery, Codex handling, Auto-Learning, async Git, Integrity Gate and mutation policy remain.
+
+
+## v0.12.35 — ADM baseline / HOT delta / BRANCH temporary knowledge
+
+Knowledge Explorer architecture was inverted to match the real Rx2GO deployment flow:
+
+`BRANCH -> HOT -> ADM`
+
+- ADM is now the primary/stable Knowledge baseline.
+- HOT Explorer automatically compares against ADM and stores a persistent `HOT_DELTA`.
+- BRANCH Explorer automatically compares against HOT and stores a local `BRANCH_TEMPORARY_DELTA`.
+- HOT PASS never modifies ADM baseline automatically.
+- ADM knowledge changes only when the behavior is re-observed on ADM.
+- Environment selector added to Knowledge Explorer: ADM / HOT / BRANCH.
+- Baseline is automatic:
+  - ADM -> none / primary baseline
+  - HOT -> ADM
+  - BRANCH -> HOT
+- Explorer JSON now includes `knowledgeLayer`, `baselineEnvironment`, `baselineAvailable`, `temporary`, and `baselineComparison`.
+- HOT/BRANCH cannot be marked COMPLETE without the required baseline comparison when baseline exists.
+- If baseline is missing, HOT/BRANCH exploration is PARTIAL instead of inventing a comparison.
+- v0.12.34 HOT-only Explorer files are migrated into `knowledge/explorer/hot/`.
+- BRANCH Explorer is local-only and is not auto-committed/pushed.
+- Knowledge retrieval is environment-aware:
+  - ADM agents receive ADM Explorer knowledge.
+  - HOT agents receive ADM baseline + HOT delta, with HOT boosted.
+  - BRANCH agents receive ADM + HOT + temporary BRANCH delta, with BRANCH boosted.
+- Explorer cannot run while Jira Smart QA or Jira Queue is active, avoiding shared-browser contamination.
+- Existing Task Understanding Contract remains authoritative: Explorer observations are advisory, never requirements.
+
+
+## v0.12.36 — clear Git sync + persistent GitHub SSH status
+
+- Added a persistent `GitHub SSH` status row to the Knowledge tab.
+- `Проверить GitHub SSH` now leaves a visible state: CHECKING / CONNECTED / KEY NOT FOUND / KEY NOT REGISTERED / AUTH FAILED / ERROR.
+- Successful SSH status includes GitHub user (when returned by GitHub), repository availability, and check time.
+- Added `Показать изменения` button with concrete managed/outside Git file paths.
+- Git status now distinguishes outside `tracked` vs `untracked` changes.
+- Remote-ahead synchronization no longer blocks only because untracked files exist.
+- `git pull --ff-only` is attempted with untracked files; Git itself safely refuses if a remote path would overwrite one.
+- Tracked changes outside Launcher-managed files still block Pull, and the blocking dialog lists the exact files.
+- Added runtime ignore rules for `*.log`, `package-lock.json`, and temporary `knowledge/explorer/branch/`.
+- Existing ADM baseline / HOT delta / BRANCH temporary Knowledge architecture is preserved.
+
+
+## v0.12.37 — Knowledge persistence status
+
+The Knowledge tab now answers the important question directly: **are the accumulated knowledge files really saved in GitHub?**
+
+- Added a prominent status inside the Git repository panel:
+  - `✅ ЗНАНИЯ СОХРАНЕНЫ В GITHUB`
+  - `🟡 ЕСТЬ ЛОКАЛЬНЫЕ ЗНАНИЯ — НЕ ОТПРАВЛЕНЫ`
+  - `🔄 СОХРАНЯЮ ЗНАНИЯ В GITHUB…`
+  - `❌ СОХРАНЕНИЕ ЗНАНИЙ НЕ ПОДТВЕРЖДЕНО`
+- Added one primary button: `СОХРАНИТЬ ЗНАНИЯ В GITHUB`.
+- The button performs the existing safe flow automatically: managed commit when needed → SSH sync → safe pull → push → independent final GitHub verification.
+- A local commit alone no longer looks like success.
+- A locally clean Git tree alone no longer looks like success.
+- Green `SAVED` is shown only after GitHub is reachable and `origin` contains every local managed commit.
+- Any new managed knowledge immediately changes the status back to yellow.
+- Automatic post-Jira Auto-Learning/Git and Knowledge Explorer runs also refresh this persistence status.
+- Old Commit and Git Sync remain as secondary technical tools.
+- ADM baseline / HOT delta / BRANCH temporary Knowledge architecture from v0.12.36 is preserved.
+
+
+## v0.12.38 — Knowledge Git divergence + layout repair
+
+- Fixed the Knowledge Git action panel layout:
+  - the primary `СОХРАНИТЬ ЗНАНИЯ В GITHUB` button spans the full action panel width;
+  - six technical Git actions are arranged as 2 columns × 3 rows;
+  - action area widened from 28% to 34%;
+  - shorter technical captions prevent clipping at common Windows resolutions.
+- Fixed `Diverging branches can't be fast-forwarded`.
+- Git synchronization now distinguishes:
+  - remote-only commits -> `pull --ff-only`;
+  - local-only commits -> push;
+  - local + remote commits -> safe `git rebase origin/<branch>` followed by push.
+- Rebase conflicts are never guessed/resolved automatically:
+  - conflict file names are collected;
+  - `git rebase --abort` restores the original local state;
+  - no force-push is used;
+  - the user receives a human-readable message that knowledge was not lost.
+- Knowledge `SAVED` verification now also requires the local branch not to be behind GitHub.
+
+
+## v0.12.39 — Full Project Knowledge Explorer
+
+Added `Полный проект — карта + все модули`.
+
+- Full Project no longer depends on the predefined 8-module list.
+- Stage 1: Project Mapper uses Playwright MCP to discover the actual accessible Rx2GO product navigation.
+- The live project map is saved as `knowledge/explorer/<environment>/project-map.json`.
+- Stage 2: Explorer sequentially studies every discovered product capability.
+- Dynamic modules get stable safe slugs and are stored under the normal environment module folder.
+- `knowledge/explorer/index.json` schema v3 now includes dynamic Project Mapper modules in addition to predefined priority modules.
+- Quick and Deep modes remain the fast 8-priority-module options.
+- Module and Workflow modes still use the explicit module selector.
+- The module selector is disabled automatically for Quick, Deep, Full Project and Refresh.
+- Full Project is read-only.
+- ADM remains primary baseline; HOT full project is delta vs ADM; BRANCH full project is temporary delta vs HOT.
+- Existing Git saved-state, safe divergence handling, Jira Queue, Task Understanding Contract and Smart QA flows are preserved.
+
+
+## v0.12.40 — ADM Knowledge Explorer authentication
+
+- Fixed Knowledge Explorer not starting on ADM when the daily Telegram password was only available on Quick Run.
+- Added `ADM код Telegram` directly to Knowledge Explorer.
+- Knowledge and Quick Run daily-password fields are synchronized in memory.
+- Explorer validates ADM first-factor data before browser bootstrap and focuses the missing field with a clear Russian message.
+- Browser bootstrap and live-context capture read the shared ADM daily-password value.
+- The daily password is never written to Knowledge/Git.
+- Full Project startup no longer logs `Модулей: 0`; it explicitly says Project Mapper will discover modules first.
+- Existing persistent authenticated ADM Chrome session reuse remains supported.
+

@@ -1,4 +1,4 @@
-﻿# Rx2GO QA Knowledge Repository
+# Rx2GO QA Knowledge Repository
 
 Git is the durable source of truth for portable QA knowledge.
 
@@ -26,4 +26,5 @@ If there are uncommitted local changes, synchronization deliberately stops inste
 
 ## Default GitHub repository
 
-This personal pilot build is preconfigured with `https://github.com/Gamazzz/rx2go-ai-qa`. If `origin` is missing, the Launcher adds it automatically. Existing non-empty `origin` values are not overwritten.
+This build is preconfigured with `git@github.com:QA-E2E4/rx2go-ai-qa.git`. If `origin` is missing, the Launcher adds it automatically. Existing repository history is preserved; synchronization does not force-push.
+
