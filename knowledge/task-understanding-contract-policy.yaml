@@ -1,0 +1,31 @@
+version: 1
+topic: task_understanding_contract
+scope: all Jira Smart QA runs
+source_authority:
+  product_requirements:
+    - Jira Description / Expected / Acceptance
+    - explicit Jira comments that clarify/narrow current iteration
+  execution_guidance:
+    - QA comment
+    - project rules
+  context_only:
+    - screenshots
+    - Knowledge Base / prior cases
+rules:
+  - Current/Actual behavior is never acceptance.
+  - QA comment never silently becomes a product requirement.
+  - Knowledge memory never becomes a current requirement.
+  - Screenshots never become a requirement without Jira support.
+  - Every acceptance criterion has a stable AC ID and source trace.
+  - Every AC defines precondition, action, expected result and evidence type.
+  - Latest explicit scope narrowing is applied before testing.
+  - High-impact unresolved ambiguity blocks browser execution.
+  - Main MCP must echo the exact contractId.
+  - Main MCP must return every AC exactly once with criterionId.
+  - Out-of-scope behavior cannot decide the current run.
+  - Required environment/module/facility/client/service context is verified live before verdict.
+  - Result Integrity Gate rejects contract mismatch or missing AC.
+ui:
+  - Existing Test Plan panel shows how the system understood the task.
+  - No new UI layout controls are added.
+

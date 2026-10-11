@@ -10,3 +10,4 @@ Implementation:
 - `utils/environment.ts::requiresGatewayAuthentication()` returns true only for ADM.
 - Launcher `Test-GatewayRequired` returns true only for ADM.
 - helper scripts request the daily password only for ADM.
+

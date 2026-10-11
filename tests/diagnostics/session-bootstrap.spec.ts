@@ -33,3 +33,4 @@ test('bootstrap one persistent authenticated Rx2GO browser session', async ({
 
   console.log('[BOOTSTRAP] Persistent authenticated Chrome is ready for MCP.');
 });
+

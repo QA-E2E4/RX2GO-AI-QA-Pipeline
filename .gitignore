@@ -26,3 +26,20 @@ storageState.json
 
 tests/generated/
 reports/jira/
+
+# Local launcher/runtime files
+*.log
+
+# BRANCH Explorer knowledge is intentionally local/temporary
+knowledge/explorer/branch/
+
+# Reproducible dependency installation keeps package-lock.json tracked.
+
+# Local credential exports and private key material
+*.credential.xml
+*.pem
+*.p12
+*.pfx
+*.key
+.codex/
+

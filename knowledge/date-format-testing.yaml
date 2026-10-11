@@ -1,0 +1,19 @@
+version: 1
+topic: US date format testing
+jira_reference: SCRUM-3403
+rules:
+  - Target format is MM/DD/YYYY.
+  - Latest Jira comments can narrow an umbrella audit to the current testing batch; that batch controls current-run PASS/FAIL.
+  - Native HTML input[type=date] has ISO DOM value YYYY-MM-DD and visible rendering can depend on browser/OS locale.
+  - Rx2GO QA browser must use en-US locale for native date presentation checks.
+  - Never fail a native date field solely from a screenshot captured under a non-US locale.
+  - Prefer a non-ambiguous date such as 11/30/2028 when proving month/day order.
+  - App-rendered non-native date text must visibly match MM/DD/YYYY.
+  - Historical audit screenshots are context, not current runtime evidence.
+  - Never reuse an order/ticket/entity marked with another Jira key.
+current_partial_scope_example:
+  - Order Detail / Activity History
+  - Gigs / Activity History Route
+  - Copays
+  - Scanner
+

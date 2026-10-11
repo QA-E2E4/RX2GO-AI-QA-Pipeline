@@ -1,0 +1,664 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Map",
+    "moduleSlug":  "map",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:15:02.1512837+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Map",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/map",
+                   "endUrl":  "https://adm.rx2go.ai/map",
+                   "pagePurpose":  "Displays delivery orders, delivery regions, hubs, and routing information geographically, with filters and route-planning controls.",
+                   "routes":  [
+                                  {
+                                      "name":  "Map",
+                                      "url":  "https://adm.rx2go.ai/map",
+                                      "howToOpen":  "Open the Main navigation link named Map, whose observed href is /map.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Facility selector",
+                                        "type":  "select",
+                                        "purpose":  "Selects the operating facility context.",
+                                        "locatorHints":  [
+                                                             "combobox containing the selected option Hawaii"
+                                                         ],
+                                        "notes":  "Hawaii was selected during observation."
+                                    },
+                                    {
+                                        "name":  "Service-area or hub selector",
+                                        "type":  "select",
+                                        "purpose":  "Selects a service area or facility hub within the current facility.",
+                                        "locatorHints":  [
+                                                             "combobox containing options Hawaii and Long Ilend"
+                                                         ],
+                                        "notes":  "Hawaii was selected. The page also stated that the Order Hubs filter was automatically set to Hawaii."
+                                    },
+                                    {
+                                        "name":  "Reset",
+                                        "type":  "link",
+                                        "purpose":  "Returns Map settings to the /map state.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027link\u0027, { name: \u0027Reset\u0027 })"
+                                                         ],
+                                        "notes":  "Observed href: /map."
+                                    },
+                                    {
+                                        "name":  "Auto-refresh",
+                                        "type":  "other",
+                                        "purpose":  "Controls automatic Map refresh behavior.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027checkbox\u0027, { name: \u0027Auto-refresh\u0027 })"
+                                                         ],
+                                        "notes":  "Checked on initial observation."
+                                    },
+                                    {
+                                        "name":  "Queue mode",
+                                        "type":  "other",
+                                        "purpose":  "Controls whether the Map operates in queue mode.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027checkbox\u0027, { name: \u0027Queue mode\u0027 })"
+                                                         ],
+                                        "notes":  "Checked on initial observation."
+                                    },
+                                    {
+                                        "name":  "Filter Client",
+                                        "type":  "select",
+                                        "purpose":  "Filters displayed delivery data by client.",
+                                        "locatorHints":  [
+                                                             "combobox adjacent to visible text Filter Client"
+                                                         ],
+                                        "notes":  "No client value was selected in the observed marker request."
+                                    },
+                                    {
+                                        "name":  "Filter Date",
+                                        "type":  "input",
+                                        "purpose":  "Filters Map delivery data by delivery date.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, { name: \u0027Select date\u0027 })"
+                                                         ],
+                                        "notes":  "Displayed 9/8/2026 during observation."
+                                    },
+                                    {
+                                        "name":  "Drivers",
+                                        "type":  "tab",
+                                        "purpose":  "Opens or collapses the drivers section.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027tab\u0027, { name: /Drivers/ })"
+                                                         ],
+                                        "notes":  "Observed collapsed."
+                                    },
+                                    {
+                                        "name":  "Regions",
+                                        "type":  "tab",
+                                        "purpose":  "Opens or collapses the delivery-regions section.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027tab\u0027, { name: /Regions/ })"
+                                                         ],
+                                        "notes":  "Observed expanded with region names, identifiers, order counts, statistics labels, and per-region action controls."
+                                    },
+                                    {
+                                        "name":  "Orders",
+                                        "type":  "tab",
+                                        "purpose":  "Opens or collapses the orders section.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027tab\u0027, { name: /Orders/ })"
+                                                         ],
+                                        "notes":  "Observed collapsed. The page displayed Ready for Delivery: (39)."
+                                    },
+                                    {
+                                        "name":  "Optimize Chosen",
+                                        "type":  "button",
+                                        "purpose":  "Offers route optimization for selected items.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: /Optimize Chosen/ })"
+                                                         ],
+                                        "notes":  "Disabled when the selection count was zero. It was not activated."
+                                    },
+                                    {
+                                        "name":  "Optimize Last 10",
+                                        "type":  "button",
+                                        "purpose":  "Offers optimization for the last ten applicable items.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Optimize Last 10\u0027 })"
+                                                         ],
+                                        "notes":  "Observed but not activated."
+                                    },
+                                    {
+                                        "name":  "Optimize All",
+                                        "type":  "button",
+                                        "purpose":  "Offers optimization for all currently applicable items.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: /Optimize All/ })"
+                                                         ],
+                                        "notes":  "Displayed a count of 15 and was not activated."
+                                    },
+                                    {
+                                        "name":  "Show/Hide",
+                                        "type":  "button",
+                                        "purpose":  "Controls visibility of the currently applicable set.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: /Show\\/Hide/ })"
+                                                         ],
+                                        "notes":  "Displayed a count of 15."
+                                    },
+                                    {
+                                        "name":  "Queue",
+                                        "type":  "button",
+                                        "purpose":  "Opens queue-related functionality.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: /Queue/ })"
+                                                         ],
+                                        "notes":  "Observed but not activated."
+                                    },
+                                    {
+                                        "name":  "Allow intersect regions",
+                                        "type":  "other",
+                                        "purpose":  "Controls whether regions may intersect.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027switch\u0027, { name: \u0027Allow intersect regions\u0027 })"
+                                                         ],
+                                        "notes":  "Observed in the region panel."
+                                    },
+                                    {
+                                        "name":  "Zoom in",
+                                        "type":  "button",
+                                        "purpose":  "Increases the map zoom level.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Zoom in\u0027 })"
+                                                         ],
+                                        "notes":  "Leaflet map control."
+                                    },
+                                    {
+                                        "name":  "Zoom out",
+                                        "type":  "button",
+                                        "purpose":  "Decreases the map zoom level.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Zoom out\u0027 })"
+                                                         ],
+                                        "notes":  "Leaflet map control."
+                                    },
+                                    {
+                                        "name":  "Full Screen",
+                                        "type":  "button",
+                                        "purpose":  "Offers a full-screen map view.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Full Screen\u0027 })"
+                                                         ],
+                                        "notes":  "Observed but not activated."
+                                    },
+                                    {
+                                        "name":  "Layers",
+                                        "type":  "link",
+                                        "purpose":  "Provides map-layer controls.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027link\u0027, { name: \u0027Layers\u0027 })"
+                                                         ],
+                                        "notes":  "Observed href \u0027#\u0027."
+                                    },
+                                    {
+                                        "name":  "Regions Logs",
+                                        "type":  "link",
+                                        "purpose":  "Opens region log information.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027link\u0027, { name: \u0027Regions Logs\u0027 })"
+                                                         ],
+                                        "notes":  "Observed but not activated."
+                                    },
+                                    {
+                                        "name":  "Route category buttons",
+                                        "type":  "button",
+                                        "purpose":  "Provide visible route or time-window categories on the map.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027MORNING TW\u0027 })",
+                                                             "getByRole(\u0027button\u0027, { name: \u0027REGULAR\u0027 })",
+                                                             "getByRole(\u0027button\u0027, { name: \u00273-9/5-9\u0027 })",
+                                                             "getByRole(\u0027button\u0027, { name: \u0027SAME DAY\u0027 })",
+                                                             "getByRole(\u0027button\u0027, { name: \u0027BLANK\u0027 })"
+                                                         ],
+                                        "notes":  "Observed without activation."
+                                    },
+                                    {
+                                        "name":  "Routes",
+                                        "type":  "other",
+                                        "purpose":  "Opens or collapses the route-generation panel.",
+                                        "locatorHints":  [
+                                                             "text Routes",
+                                                             "title Open or collapse the route generation panel"
+                                                         ],
+                                        "notes":  "Observed at the edge of the map."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Authenticated ADM application",
+                                          "action":  "Use the Main navigation link Map",
+                                          "to":  "Map page",
+                                          "evidence":  "The live navigation contained a Map link with href /map, and the route loaded with title Map | Rx2Go."
+                                      },
+                                      {
+                                          "from":  "Map page",
+                                          "action":  "View the expanded Regions tab",
+                                          "to":  "Region list and map overlays",
+                                          "evidence":  "The Regions tab was expanded and showed named regions with identifiers and order counts corresponding to map overlays."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullMaps.php?action=markersTest",
+                                               "trigger":  "Initial Map load and automatic refresh for the selected date, status, hub, and visible map bounds",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Returns geographically grouped delivery markers for the active Map filters and viewport.",
+                                               "importantFields":  [
+                                                                       "map_type",
+                                                                       "clientid",
+                                                                       "date_to_deliver",
+                                                                       "status",
+                                                                       "sub_status",
+                                                                       "type",
+                                                                       "hub",
+                                                                       "phHub",
+                                                                       "priority_mode",
+                                                                       "regular_same_address",
+                                                                       "bounds",
+                                                                       "size",
+                                                                       "markers",
+                                                                       "ico",
+                                                                       "sub_status",
+                                                                       "uid",
+                                                                       "lat",
+                                                                       "long",
+                                                                       "order_status",
+                                                                       "condition",
+                                                                       "is_priority",
+                                                                       "time_to_deliver",
+                                                                       "time_to_deliver_display",
+                                                                       "bgcolor",
+                                                                       "stroke_color"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullRegions.php?action=drawRegions",
+                                               "trigger":  "Initial Map load for delivery mode and the selected date",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Returns delivery-region definitions and their polygon paths for map rendering.",
+                                               "importantFields":  [
+                                                                       "map_type",
+                                                                       "clientid",
+                                                                       "date_to_deliver",
+                                                                       "created_from",
+                                                                       "created_to",
+                                                                       "priority_mode",
+                                                                       "regular_same_address",
+                                                                       "regionsTakesAllOrders",
+                                                                       "regions",
+                                                                       "name",
+                                                                       "color",
+                                                                       "uid",
+                                                                       "added",
+                                                                       "orders",
+                                                                       "route_name_id",
+                                                                       "route_name_i",
+                                                                       "settings",
+                                                                       "path",
+                                                                       "lat",
+                                                                       "lng",
+                                                                       "hub_id",
+                                                                       "hub_name",
+                                                                       "part",
+                                                                       "orders_id",
+                                                                       "hasStat",
+                                                                       "ordersUnicalCount"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullRegions.php?action=getRegions",
+                                               "trigger":  "Initial Map load and refresh",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Returns HTML used to populate the Regions panel.",
+                                               "importantFields":  [
+                                                                       "map_type",
+                                                                       "clientid",
+                                                                       "status",
+                                                                       "sub_status",
+                                                                       "date_to_deliver",
+                                                                       "type",
+                                                                       "hub",
+                                                                       "phHub",
+                                                                       "priority_mode",
+                                                                       "regular_same_address",
+                                                                       "regionsTakesAllOrders",
+                                                                       "html"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getAllByCurrentUser",
+                                               "trigger":  "Initial Map load",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Returns facility hubs available to the current user.",
+                                               "importantFields":  [
+                                                                       "hubs",
+                                                                       "uid",
+                                                                       "facility",
+                                                                       "title",
+                                                                       "lat",
+                                                                       "lng",
+                                                                       "status"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullOrderStatuses.php?action=getDefaultMapStatus",
+                                               "trigger":  "Initial Map load",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Obtains the default order status used by the Map.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullAiRoutes.php?action=status",
+                                               "trigger":  "Initial Map load",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Checks AI route-planning status.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullAiRoutes.php?action=latest",
+                                               "trigger":  "Map load or background route-planner refresh",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieves the latest AI route-planning state or result.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Facility",
+                                                              "Facility hub"
+                                                          ],
+                                             "relationship":  "The selected facility exposes one or more hubs, and the current hub is used to filter the Map.",
+                                             "evidence":  "Two context comboboxes were visible, the page stated \u0027Filtered by your hub: Hawaii\u0027, and the hub endpoint returned hubs associated with the current facility."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Facility hub",
+                                                              "Delivery region"
+                                                          ],
+                                             "relationship":  "Each observed delivery region belongs to a hub.",
+                                             "evidence":  "Region API objects contained hub_id and hub_name, while the UI displayed those regions under the selected Hawaii hub context."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Delivery region",
+                                                              "Order"
+                                                          ],
+                                             "relationship":  "Regions contain zero or more orders and expose both total and unique-order counts.",
+                                             "evidence":  "The Regions panel displayed numeric counts, and drawRegions returned orders, orders_id, and ordersUnicalCount."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order",
+                                                              "Map marker"
+                                                          ],
+                                             "relationship":  "Delivery orders are represented as geographic markers with status, type, priority, time-window, and styling metadata.",
+                                             "evidence":  "The markersTest response grouped marker objects geographically and included order-status and display fields."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Delivery region",
+                                                              "Route name"
+                                                          ],
+                                             "relationship":  "A region can reference a route name and a route-name sequence index.",
+                                             "evidence":  "Region objects included route_name_id and route_name_i."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Open Map in the selected service-area context",
+                                         "steps":  [
+                                                       "Open the Main navigation entry Map.",
+                                                       "Verify the facility and service-area or hub selectors.",
+                                                       "Observe the automatic hub-filter message.",
+                                                       "View delivery markers and regions for the displayed date."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session exists.",
+                                                                       "A facility is selected.",
+                                                                       "The Hawaii service area or hub is visibly selected."
+                                                                   ],
+                                         "resultObserved":  "The Map loaded with Hawaii hub filtering, delivery markers, delivery regions, and Ready for Delivery data.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Review delivery regions",
+                                         "steps":  [
+                                                       "Open the Map.",
+                                                       "View the expanded Regions tab.",
+                                                       "Review region names, identifiers, order counts, and corresponding geographic overlays."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The Map has loaded region data.",
+                                                                       "The Regions tab is expanded."
+                                                                   ],
+                                         "resultObserved":  "Multiple Hawaii-associated regions were visible, including regions with zero and non-zero order counts.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Load markers for the active viewport",
+                                         "steps":  [
+                                                       "Load the Map with a delivery date and default delivery status.",
+                                                       "Apply the current hub and visible geographic bounds.",
+                                                       "Receive grouped delivery-marker data."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "A date is present.",
+                                                                       "A current hub is available.",
+                                                                       "The map viewport has geographic bounds."
+                                                                   ],
+                                         "resultObserved":  "The marker endpoint returned geographically grouped delivery markers.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Optimize Chosen",
+                                                       "observedRule":  "The button is disabled when zero items are chosen.",
+                                                       "evidence":  "The live button displayed \u0027Optimize Chosen 0\u0027 and had a disabled state."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Order Hubs filter",
+                                                       "observedRule":  "The page automatically applied the user\u0027s facility hub during this session.",
+                                                       "evidence":  "A visible message stated \u0027The Order Hubs filter was set to your facility hub automatically\u0027 and \u0027Filtered by your hub: Hawaii\u0027."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Map navigation entry",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Map\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "menu-position selectors",
+                                                           "icon-font selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Date filter",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Select date\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "nth-child selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Map section tabs",
+                                             "preferred":  [
+                                                               "getByRole(\u0027tab\u0027, { name: /Drivers/ })",
+                                                               "getByRole(\u0027tab\u0027, { name: /Regions/ })",
+                                                               "getByRole(\u0027tab\u0027, { name: /Orders/ })"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated accessibility references",
+                                                           "panel-order selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Map zoom controls",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Zoom in\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Zoom out\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Full Screen\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Leaflet CSS class selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Region entry",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: /visible region name/ })"
+                                                           ],
+                                             "avoid":  [
+                                                           "region database identifiers as selectors",
+                                                           "icon-only action buttons without an accessible name"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The ADM Map is available at /map and has the page title \u0027Map | Rx2Go\u0027.",
+                                             "evidence":  "Live URL and page title.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Hawaii was the visibly selected facility and service-area or hub context.",
+                                             "evidence":  "Both context comboboxes displayed Hawaii as selected.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The Map automatically filtered Order Hubs to Hawaii during the observed session.",
+                                             "evidence":  "Visible hub-filter notification.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The page supports Drivers, Regions, and Orders sections.",
+                                             "evidence":  "Three visible tab controls in the settings panel.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The Regions section associates visible regions with map polygons and order counts.",
+                                             "evidence":  "Expanded Regions panel, map overlays, and drawRegions response.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The observed Map state used delivery mode, a displayed delivery date, Ready for Delivery status, a hub filter, and current map bounds when loading markers.",
+                                             "evidence":  "markersTest request body and visible UI.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Auto-refresh and Queue mode were checked on initial observation.",
+                                             "evidence":  "Live accessibility snapshot.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The page exposes AI route-planning and route-generation affordances.",
+                                             "evidence":  "Visible AI route planner and Routes panel control, plus successful AI route-status requests.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A",
+                                                  "currentFact":  "This exploration establishes the currently verified ADM Map baseline.",
+                                                  "evidence":  "The requested knowledge layer is ADM_BASELINE and no comparison baseline was supplied."
+                                              }
+                                          ],
+                   "anomalies":  [
+
+                                 ],
+                   "changesFromPrevious":  [
+                                               {
+                                                   "type":  "NEW",
+                                                   "fact":  "A live ADM baseline observation was captured for the Map module.",
+                                                   "evidence":  "The authenticated /map route, controls, relationships, and supporting network calls were observed directly."
+                                               }
+                                           ],
+                   "uncertainties":  [
+                                         "The effects of changing facility, hub, client, date, queue mode, or auto-refresh were not tested to avoid disturbing the existing context.",
+                                         "Drivers and Orders panel contents could not be fully inspected because attempted clicks did not complete reliably while the Map was refreshing.",
+                                         "Mutation-capable controls such as Delete All, route optimization, polygon drawing, polygon editing, region deletion, and route-name assignment were deliberately not activated.",
+                                         "Icon-only per-region actions could not be assigned exact purposes from accessible names alone.",
+                                         "No separate child-page route was proven for Regions Logs, Layers, or the route-generation panel.",
+                                         "AI route-planner response schemas were not inspected deeply enough to identify stable important fields."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM /map is a delivery operations map scoped by facility, hub, date, client, status, and geographic bounds. In the verified Hawaii context it displayed delivery markers, region polygons, region order counts, Drivers/Regions/Orders sections, queue and optimization controls, map-layer tools, and AI route-planning affordances. No business data was mutated."
+               }
+}

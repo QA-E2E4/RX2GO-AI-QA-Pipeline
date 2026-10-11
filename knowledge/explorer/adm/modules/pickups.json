@@ -1,0 +1,700 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Pickups",
+    "moduleSlug":  "pickups",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T00:59:13.0659114+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Pickups",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/clients/pickups",
+                   "endUrl":  "https://adm.rx2go.ai/clients/pickups",
+                   "pagePurpose":  "View and filter client pickup activity for a selected date and service/facility context, with related schedule and map views.",
+                   "routes":  [
+                                  {
+                                      "name":  "Pickups",
+                                      "url":  "https://adm.rx2go.ai/clients/pickups",
+                                      "howToOpen":  "Use the Main navigation link named Pickups.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Pickup Map",
+                                      "url":  "https://adm.rx2go.ai/clients/pickups-map",
+                                      "howToOpen":  "From Pickups, use the Map link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Pickup Schedule",
+                                      "url":  "https://adm.rx2go.ai/clients/schedule",
+                                      "howToOpen":  "From Pickups, use the Schedule link.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Service selector",
+                                        "type":  "select",
+                                        "purpose":  "Select the active service-area context.",
+                                        "locatorHints":  [
+                                                             "role=combobox",
+                                                             "visible selected option text"
+                                                         ],
+                                        "notes":  "Hawaii was selected during observation; other visible options included New York, Los Angeles, Massachusetts, Florida, Ohio, Texas, and Delaware."
+                                    },
+                                    {
+                                        "name":  "Facility/context selector",
+                                        "type":  "select",
+                                        "purpose":  "Select the active facility or subordinate operating context.",
+                                        "locatorHints":  [
+                                                             "role=combobox",
+                                                             "visible selected option text"
+                                                         ],
+                                        "notes":  "Hawaii was selected during observation; Long Ilend was another visible option."
+                                    },
+                                    {
+                                        "name":  "Schedule",
+                                        "type":  "link",
+                                        "purpose":  "Open the pickup schedule configuration view.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027link\u0027, {name: \u0027Schedule\u0027})"
+                                                         ],
+                                        "notes":  "Navigates to /clients/schedule."
+                                    },
+                                    {
+                                        "name":  "Map",
+                                        "type":  "link",
+                                        "purpose":  "Open the pickup map view.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027link\u0027, {name: /Map/})"
+                                                         ],
+                                        "notes":  "Navigates to /clients/pickups-map."
+                                    },
+                                    {
+                                        "name":  "Refresh",
+                                        "type":  "button",
+                                        "purpose":  "Refresh pickup information.",
+                                        "locatorHints":  [
+                                                             "button with refresh icon near Schedule and Map"
+                                                         ],
+                                        "notes":  "Visible but not activated."
+                                    },
+                                    {
+                                        "name":  "CSV",
+                                        "type":  "button",
+                                        "purpose":  "Export pickup information as CSV.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, {name: /CSV/})"
+                                                         ],
+                                        "notes":  "Visible but not activated."
+                                    },
+                                    {
+                                        "name":  "Date",
+                                        "type":  "input",
+                                        "purpose":  "Choose the delivery date used to retrieve pickup rows and counts.",
+                                        "locatorHints":  [
+                                                             "button showing date in MM/DD/YYYY format",
+                                                             "near visible text \u0027Date\u0027"
+                                                         ],
+                                        "notes":  "Displayed 09/07/2026 during observation and opened an expanded date control."
+                                    },
+                                    {
+                                        "name":  "New Pickup",
+                                        "type":  "button",
+                                        "purpose":  "Begin pickup creation.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, {name: \u0027+ New Pickup\u0027})"
+                                                         ],
+                                        "notes":  "Not activated because it begins a mutating workflow."
+                                    },
+                                    {
+                                        "name":  "Pickup status filters",
+                                        "type":  "tab",
+                                        "purpose":  "Filter pickup rows by assignment or completion state.",
+                                        "locatorHints":  [
+                                                             "getByText(/^All \\(/)",
+                                                             "getByText(/^Unassigned \\(/)",
+                                                             "getByText(/^Assigned \\(/)",
+                                                             "getByText(/^Assign\\+Unassign \\(/)",
+                                                             "getByText(/^Picked Up \\(/)",
+                                                             "getByText(/^Completed \\(/)"
+                                                         ],
+                                        "notes":  "Observed categories were All, Unassigned, Assigned, Assign+Unassign, Picked Up, and Completed. Selecting Assigned caused a read-only pickup request with status=assigned."
+                                    },
+                                    {
+                                        "name":  "Search",
+                                        "type":  "input",
+                                        "purpose":  "Filter pickup rows using search text.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Search\u0027})"
+                                                         ],
+                                        "notes":  "Pickup request bodies include a search field."
+                                    },
+                                    {
+                                        "name":  "Pickup table",
+                                        "type":  "table",
+                                        "purpose":  "Display pickup assignment, timing, status, operational, and address information.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027table\u0027)",
+                                                             "columnheader names such as \u0027Order #\u0027, \u0027Driver\u0027, \u0027Pharmacy\u0027, and \u0027Pickup Status\u0027"
+                                                         ],
+                                        "notes":  "Observed columns: selection, Action, F Payout, C Payout, Order #, Group, Driver, Pharmacy, Min Time, Must Be, Max Time, Pickup Status, Next Day, Same Day, Last Order, Status, Picked Up, Pickup Done, Eq, Stops Left, ETA, Late/Early Must Be, Late/Early Frame, and Address."
+                                    },
+                                    {
+                                        "name":  "Rows per page",
+                                        "type":  "select",
+                                        "purpose":  "Control pickup table page size.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, {name: \u0027100\u0027})",
+                                                             "near text \u0027Rows per page:\u0027"
+                                                         ],
+                                        "notes":  "The observed page size was 100."
+                                    },
+                                    {
+                                        "name":  "Sortable table headers",
+                                        "type":  "other",
+                                        "purpose":  "Sort pickup rows by supported columns.",
+                                        "locatorHints":  [
+                                                             "columnheader accessible name containing \u0027Activate to sort ascending\u0027",
+                                                             "columnheader accessible name containing \u0027Sorted descending\u0027"
+                                                         ],
+                                        "notes":  "Order # was sorted descending. Numerous other headers exposed ascending-sort actions."
+                                    },
+                                    {
+                                        "name":  "Choose Client",
+                                        "type":  "select",
+                                        "purpose":  "Filter or select client pickup information on the pickup map.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027combobox\u0027, {name: \u0027Choose Client\u0027})"
+                                                         ],
+                                        "notes":  "Observed on /clients/pickups-map."
+                                    },
+                                    {
+                                        "name":  "Back To Pickups",
+                                        "type":  "link",
+                                        "purpose":  "Return from child views to the Pickups list.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027link\u0027, {name: /Back To Pickups/})"
+                                                         ],
+                                        "notes":  "Observed on both pickup map and schedule views."
+                                    },
+                                    {
+                                        "name":  "Schedule search",
+                                        "type":  "input",
+                                        "purpose":  "Filter configured pharmacy pickup schedules.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Search\u0027})"
+                                                         ],
+                                        "notes":  "The schedule list request includes a search field."
+                                    },
+                                    {
+                                        "name":  "Add",
+                                        "type":  "button",
+                                        "purpose":  "Begin adding a pickup schedule.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, {name: \u0027+ Add\u0027})"
+                                                         ],
+                                        "notes":  "Not activated because it begins a mutating workflow."
+                                    },
+                                    {
+                                        "name":  "Manage Groups",
+                                        "type":  "button",
+                                        "purpose":  "Open management for pickup schedule groups.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Manage Groups\u0027})"
+                                                         ],
+                                        "notes":  "Visible but not activated because group management may mutate configuration."
+                                    },
+                                    {
+                                        "name":  "Schedule table",
+                                        "type":  "table",
+                                        "purpose":  "Display pharmacy pickup schedules by weekday.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027table\u0027)",
+                                                             "columnheader names \u0027Pharmacy Name\u0027, \u0027Address\u0027, \u0027Group\u0027, and weekday names"
+                                                         ],
+                                        "notes":  "Columns cover Action, Pharmacy Name, Address, Group, and Monday through Sunday."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Orders STAT",
+                                          "action":  "Open the Main navigation entry named Pickups or navigate to its observed href.",
+                                          "to":  "Pickups",
+                                          "evidence":  "The Main navigation exposed Pickups with href /clients/pickups, and the resulting page title was Pickups | Rx2Go."
+                                      },
+                                      {
+                                          "from":  "Pickups",
+                                          "action":  "Open Map.",
+                                          "to":  "Delivery Dashboard pickup map",
+                                          "evidence":  "The Map link had href /clients/pickups-map; the resulting view contained Choose Client and map controls."
+                                      },
+                                      {
+                                          "from":  "Pickups",
+                                          "action":  "Open Schedule.",
+                                          "to":  "Delivery Dashboard pickup schedule",
+                                          "evidence":  "The Schedule link had href /clients/schedule; the resulting view showed a pharmacy schedule table."
+                                      },
+                                      {
+                                          "from":  "Pickup map or pickup schedule",
+                                          "action":  "Open Back To Pickups.",
+                                          "to":  "Pickups",
+                                          "evidence":  "Both child views exposed a Back To Pickups link with href /clients/pickups."
+                                      },
+                                      {
+                                          "from":  "Pickups with the current date",
+                                          "action":  "Select Assigned.",
+                                          "to":  "Assigned pickup filter state",
+                                          "evidence":  "A subsequent getPickups request contained filters.status=\u0027assigned\u0027 and the displayed date."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullPickups.php?action=calcCounts",
+                                               "trigger":  "Load the Pickups page.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Calculate counts for pickup status categories.",
+                                               "importantFields":  [
+                                                                       "counts",
+                                                                       "all",
+                                                                       "assigned",
+                                                                       "unassigned",
+                                                                       "both",
+                                                                       "picked_up",
+                                                                       "completed",
+                                                                       "success",
+                                                                       "runtime"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullPickups.php?action=getPickups",
+                                               "trigger":  "Load the Pickups page or select a pickup status filter.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve paginated pickup rows using search, sorting, status, and delivery-date criteria.",
+                                               "importantFields":  [
+                                                                       "limit",
+                                                                       "search",
+                                                                       "order",
+                                                                       "filters",
+                                                                       "status",
+                                                                       "date_to_deliver",
+                                                                       "total",
+                                                                       "items",
+                                                                       "runtime"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullDrivers.php?action=getDriversNameAndUid",
+                                               "trigger":  "Load the Pickups page.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve driver identifiers and display names used by pickup controls or rows.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/users/clients/get-list",
+                                               "trigger":  "Load the Pickups page.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve a client list used by the pickup capability.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullPharmacyPickups.php?action=getGroups",
+                                               "trigger":  "Load Pickups or the pickup schedule view.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve pickup scheduling groups.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=1",
+                                               "trigger":  "Load the Pickups page under the active facility context.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve hubs for the active facility.",
+                                               "importantFields":  [
+                                                                       "facility"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/v1/common/get-facilities",
+                                               "trigger":  "Load the Pickups page.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve available facilities for context selection.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullPickups.php?action=getPickupsForMap",
+                                               "trigger":  "Load the pickup map.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve pickup locations and operational fields for the map, optionally filtered by driver or client.",
+                                               "importantFields":  [
+                                                                       "driver_id",
+                                                                       "client_name",
+                                                                       "pickups",
+                                                                       "uid",
+                                                                       "clientid",
+                                                                       "facility",
+                                                                       "facility_hub",
+                                                                       "status",
+                                                                       "type",
+                                                                       "driver",
+                                                                       "latitude",
+                                                                       "longitude",
+                                                                       "pickup_driver_id",
+                                                                       "pickup_group_id",
+                                                                       "date_to_deliver",
+                                                                       "promised_eta_from",
+                                                                       "promised_eta_to",
+                                                                       "status",
+                                                                       "runtime"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullPharmacyPickups.php?action=list",
+                                               "trigger":  "Load the pickup schedule view.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve pharmacy pickup schedules, filtered by search text.",
+                                               "importantFields":  [
+                                                                       "search",
+                                                                       "pickups",
+                                                                       "id",
+                                                                       "client_id",
+                                                                       "facility",
+                                                                       "pickup_group_id",
+                                                                       "week_day_num",
+                                                                       "start_time",
+                                                                       "end_time",
+                                                                       "deleted_is",
+                                                                       "runtime"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Pickup",
+                                                              "Service/facility context"
+                                                          ],
+                                             "relationship":  "Pickup data is loaded within the currently selected service and facility context.",
+                                             "evidence":  "The page displayed two context comboboxes, and loading Pickups requested facility and hub data."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Pickup",
+                                                              "Client"
+                                                          ],
+                                             "relationship":  "Pickups are associated with clients and can be filtered by client on the map.",
+                                             "evidence":  "The main page requested a client list, the map exposed Choose Client, and map pickup objects contained a client identifier."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Pickup",
+                                                              "Driver"
+                                                          ],
+                                             "relationship":  "A pickup can be assigned to a driver.",
+                                             "evidence":  "The main table includes Driver and assignment-state filters; pickup requests support assigned/unassigned states, and map requests include driver_id."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Pickup",
+                                                              "Pickup group"
+                                                          ],
+                                             "relationship":  "Pickups or pickup schedules may be associated with a group.",
+                                             "evidence":  "The main table includes Group, the schedule view includes Group and Manage Groups, and APIs expose pickup_group_id."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Pharmacy/client",
+                                                              "Weekly pickup schedule"
+                                                          ],
+                                             "relationship":  "A pharmacy/client may have pickup time windows configured per weekday.",
+                                             "evidence":  "The schedule table contains pharmacy, address, group, and Monday-through-Sunday columns; the schedule API returns client_id, week_day_num, start_time, and end_time."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Pickup",
+                                                              "Map location"
+                                                          ],
+                                             "relationship":  "Pickup records with coordinates can be represented on the pickup map.",
+                                             "evidence":  "The map endpoint returned pickup records containing latitude and longitude fields."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Review pickups for a date and status",
+                                         "steps":  [
+                                                       "Open Main \u003e Pickups.",
+                                                       "Verify the active service and facility context.",
+                                                       "Choose a delivery date.",
+                                                       "Select a status category such as Assigned.",
+                                                       "Review the resulting pickup table."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session is active.",
+                                                                       "A service and facility context are selected."
+                                                                   ],
+                                         "resultObserved":  "The pickup retrieval request used the displayed delivery date and selected status; the observed current-date Assigned result was empty.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Review pickups on a map",
+                                         "steps":  [
+                                                       "Open Pickups.",
+                                                       "Open Map.",
+                                                       "Optionally choose a client.",
+                                                       "Review pickup locations using map controls."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The pickup map route is accessible.",
+                                                                       "Pickup records require usable location coordinates to be represented spatially."
+                                                                   ],
+                                         "resultObserved":  "The Delivery Dashboard map loaded and requested pickup map data with driver_id and client_name filters.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Review weekly pickup schedules",
+                                         "steps":  [
+                                                       "Open Pickups.",
+                                                       "Open Schedule.",
+                                                       "Use Search if needed.",
+                                                       "Review pharmacy schedule rows across Monday through Sunday."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The pickup schedule route is accessible."
+                                                                   ],
+                                         "resultObserved":  "A weekly pharmacy pickup schedule table loaded from the schedule-list endpoint.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Pickup list retrieval",
+                                                       "observedRule":  "The retrieval request includes a delivery date and a pickup status value.",
+                                                       "evidence":  "Observed getPickups request bodies contained filters.date_to_deliver and filters.status."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Pagination",
+                                                       "observedRule":  "The page sends limit as a page-size and offset pair.",
+                                                       "evidence":  "Observed getPickups requests contained limit=[100,0], matching the displayed 100-row page size."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Schedule search",
+                                                       "observedRule":  "An empty search is accepted when loading the complete visible schedule list.",
+                                                       "evidence":  "The schedule-list request succeeded with search=\u0027\u0027."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Pickups navigation entry",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, {name: \u0027Pickups\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated aria-ref values",
+                                                           "left-menu CSS class chains"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Date control",
+                                             "preferred":  [
+                                                               "button showing the current MM/DD/YYYY value near text \u0027Date\u0027"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated input IDs"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Status filters",
+                                             "preferred":  [
+                                                               "getByText(/^Assigned \\(/)",
+                                                               "getByText(/^Unassigned \\(/)",
+                                                               "getByText(/^Picked Up \\(/)",
+                                                               "getByText(/^Completed \\(/)"
+                                                           ],
+                                             "avoid":  [
+                                                           "listitem indexes"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Pickup search",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, {name: \u0027Search\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "nested generic-element selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Pickup table",
+                                             "preferred":  [
+                                                               "getByRole(\u0027table\u0027)",
+                                                               "getByRole(\u0027columnheader\u0027, {name: /Order #/})",
+                                                               "getByRole(\u0027columnheader\u0027, {name: /Pickup Status/})"
+                                                           ],
+                                             "avoid":  [
+                                                           "column-number selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Pickup map client selector",
+                                             "preferred":  [
+                                                               "getByRole(\u0027combobox\u0027, {name: \u0027Choose Client\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "hidden combobox siblings"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Return navigation",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, {name: /Back To Pickups/})"
+                                                           ],
+                                             "avoid":  [
+                                                           "icon-only selectors"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Pickups is present in the Main navigation and resolves to /clients/pickups.",
+                                             "evidence":  "Live ADM navigation snapshot and resulting Pickups page title.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The module is context-sensitive and was observed with Hawaii selected in both visible context selectors.",
+                                             "evidence":  "Two navigation comboboxes showed Hawaii as selected.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The main view supports date, status, search, sorting, pagination, CSV export, refresh, schedule, and map controls.",
+                                             "evidence":  "Live Pickups accessibility snapshot.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The observed date showed zero pickups in every displayed status category.",
+                                             "evidence":  "UI categories displayed zero counts and calcCounts returned zeros.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Selecting Assigned changes the getPickups request filter to status=\u0027assigned\u0027.",
+                                             "evidence":  "Live interaction followed by the observed request body.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The pickup map is a related child route and supports client selection and standard map controls.",
+                                             "evidence":  "Live /clients/pickups-map snapshot.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The pickup schedule is a related child route showing pharmacy schedules by weekday.",
+                                             "evidence":  "Live /clients/schedule snapshot and successful schedule-list request.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Pickup creation and schedule-management controls exist, but their workflows were not entered because this crawl was read-only.",
+                                             "evidence":  "Visible New Pickup, Add, and Manage Groups buttons.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A",
+                                                  "currentFact":  "This ADM observation establishes the current stable baseline for Pickups.",
+                                                  "evidence":  "No earlier baseline was supplied; all facts were observed directly on ADM."
+                                              }
+                                          ],
+                   "anomalies":  [
+
+                                 ],
+                   "changesFromPrevious":  [
+                                               {
+                                                   "type":  "UNCHANGED",
+                                                   "fact":  "No previous ADM baseline was supplied for comparison; the live observations are stored as the initial current baseline.",
+                                                   "evidence":  "baselineEnvironment is NONE and baselineAvailable is false."
+                                               }
+                                           ],
+                   "uncertainties":  [
+                                         "The behavior and fields of New Pickup were not inspected because entering that workflow could lead to business-data mutation.",
+                                         "The behavior of Add and Manage Groups on the schedule page was not inspected because these controls may change configuration.",
+                                         "CSV output shape was not verified because the export was not downloaded.",
+                                         "Row-level actions and empty-state selection behavior could not be verified for the observed date because the table contained no pickup rows.",
+                                         "The date picker calendar internals were not fully exposed in the accessibility snapshot.",
+                                         "Map marker interactions were not exercised, and no customer or patient values from map responses were retained.",
+                                         "Context behavior in service areas or facilities other than the currently selected Hawaii context was not tested."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM Pickups is a context-sensitive activity table at /clients/pickups with date/status/search filtering, sorting, pagination, CSV and refresh controls. It links to a client-filterable pickup map and a weekly pharmacy pickup schedule. Live requests confirmed count, list, map, driver, client, facility/hub, and schedule/group data sources. No business data was mutated."
+               }
+}

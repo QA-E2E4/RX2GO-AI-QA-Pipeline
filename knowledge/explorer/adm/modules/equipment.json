@@ -1,0 +1,553 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Equipment",
+    "moduleSlug":  "equipment",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:34:46.5643200+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Equipment",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/equipment",
+                   "endUrl":  "https://adm.rx2go.ai/equipment",
+                   "pagePurpose":  "View operational equipment inventory, its facility hub, equipment type, identifier, assignment or pickup information, elapsed time, lifecycle status, and available actions. The page also exposes equipment-type management and label scanning workflows.",
+                   "routes":  [
+                                  {
+                                      "name":  "Equipment",
+                                      "url":  "https://adm.rx2go.ai/equipment",
+                                      "howToOpen":  "Open the Main navigation link named Equipment or navigate directly to /equipment.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Facility hub filters",
+                                        "type":  "other",
+                                        "purpose":  "Filter equipment by facility hub.",
+                                        "locatorHints":  [
+                                                             "text=All",
+                                                             "text=Hawaii",
+                                                             "text=Long Ilend"
+                                                         ],
+                                        "notes":  "Displayed as counters. All and Hawaii showed 167 equipment records during observation."
+                                    },
+                                    {
+                                        "name":  "Equipment type filters",
+                                        "type":  "other",
+                                        "purpose":  "Filter equipment by equipment type.",
+                                        "locatorHints":  [
+                                                             "text=Test bag",
+                                                             "text=Test freezer",
+                                                             "text=1 Test",
+                                                             "text=123 t",
+                                                             "text=dsgheet",
+                                                             "text=TestEquipment"
+                                                         ],
+                                        "notes":  "Each populated type displayed a count."
+                                    },
+                                    {
+                                        "name":  "Status filters",
+                                        "type":  "other",
+                                        "purpose":  "Filter equipment by lifecycle or printing status.",
+                                        "locatorHints":  [
+                                                             "text=Not Printed",
+                                                             "text=Printed",
+                                                             "text=With Vendor",
+                                                             "text=Stored",
+                                                             "text=Returned",
+                                                             "text=Rejected"
+                                                         ],
+                                        "notes":  "Selecting Stored refreshed the table and counters through read-only list requests and showed only Stored rows."
+                                    },
+                                    {
+                                        "name":  "Equipment table",
+                                        "type":  "table",
+                                        "purpose":  "Display operational equipment records.",
+                                        "locatorHints":  [
+                                                             "role=table",
+                                                             "role=columnheader[name=\u0027Driver\u0027]",
+                                                             "role=columnheader[name=\u0027Facility hub\u0027]",
+                                                             "role=columnheader[name=\u0027Equipment\u0027]",
+                                                             "role=columnheader[name=\u0027Status\u0027]"
+                                                         ],
+                                        "notes":  "Columns observed: selection checkbox, Driver, Facility hub, Equipment, Num, ID, The driver picked up, Time, Status, and Actions."
+                                    },
+                                    {
+                                        "name":  "Select all equipment",
+                                        "type":  "input",
+                                        "purpose":  "Select the currently presented equipment rows.",
+                                        "locatorHints":  [
+                                                             "role=columnheader \u003e\u003e role=checkbox"
+                                                         ],
+                                        "notes":  "Not exercised because downstream bulk operations could mutate business state."
+                                    },
+                                    {
+                                        "name":  "Rows per page",
+                                        "type":  "select",
+                                        "purpose":  "Control the number of equipment rows shown per page.",
+                                        "locatorHints":  [
+                                                             "text=Rows per page",
+                                                             "role=combobox"
+                                                         ],
+                                        "notes":  "Options observed: 5, 10, 25, 50, 100, 200, and 500. The selected value was 50."
+                                    },
+                                    {
+                                        "name":  "Pagination",
+                                        "type":  "other",
+                                        "purpose":  "Move between equipment result pages.",
+                                        "locatorHints":  [
+                                                             "role=link[name=\u00271\u0027]",
+                                                             "role=link[name=\u00272\u0027]",
+                                                             "role=link[name=\u00273\u0027]",
+                                                             "role=link[name=\u00274\u0027]"
+                                                         ],
+                                        "notes":  "Four numbered pages were shown for the unfiltered 167-record list."
+                                    },
+                                    {
+                                        "name":  "Manage",
+                                        "type":  "modal",
+                                        "purpose":  "Open equipment-type management.",
+                                        "locatorHints":  [
+                                                             "text=Manage",
+                                                             "role=heading[name=\u0027Manage Equipment Types\u0027]"
+                                                         ],
+                                        "notes":  "The modal listed each equipment type with its count and exposed per-type icon actions, an Add type button, and Cancel. No mutating action was used."
+                                    },
+                                    {
+                                        "name":  "Add type",
+                                        "type":  "button",
+                                        "purpose":  "Begin adding an equipment type.",
+                                        "locatorHints":  [
+                                                             "role=button[name=\u0027+ Add type\u0027]"
+                                                         ],
+                                        "notes":  "Observed in the Manage Equipment Types modal but not activated because it begins a mutating workflow."
+                                    },
+                                    {
+                                        "name":  "Confirm Print",
+                                        "type":  "modal",
+                                        "purpose":  "Open a scanner input for confirming that an equipment label was printed.",
+                                        "locatorHints":  [
+                                                             "text=Confirm Print",
+                                                             "role=heading[name=\u0027Confirm Printed Equipment\u0027]",
+                                                             "role=textbox[name=\u0027Scan printed Equipment\u0027]",
+                                                             "role=button[name=\u0027Close\u0027]"
+                                                         ],
+                                        "notes":  "Opening the control displayed a modal with a single scan textbox. No value was submitted."
+                                    },
+                                    {
+                                        "name":  "Scan",
+                                        "type":  "modal",
+                                        "purpose":  "Open the equipment-label scanning workflow.",
+                                        "locatorHints":  [
+                                                             "text=Scan",
+                                                             "role=heading[name=\u0027Scan Equipment Label\u0027]",
+                                                             "role=textbox[name=\u0027Scan printed Equipment\u0027]",
+                                                             "role=switch[name=\u0027Automatic unassign\u0027]",
+                                                             "role=button[name=\u0027Close\u0027]"
+                                                         ],
+                                        "notes":  "The Automatic unassign switch was enabled when the modal opened. No label was scanned and the switch was not changed."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Authenticated ADM page",
+                                          "action":  "Open the Main navigation link named Equipment",
+                                          "to":  "Equipment list",
+                                          "evidence":  "The sidebar exposed Equipment with /equipment, and the destination rendered the Equipment heading and table."
+                                      },
+                                      {
+                                          "from":  "Equipment list",
+                                          "action":  "Select Stored",
+                                          "to":  "Stored-filtered equipment list",
+                                          "evidence":  "The table refreshed to rows whose Status cells were Stored."
+                                      },
+                                      {
+                                          "from":  "Equipment list",
+                                          "action":  "Activate Manage",
+                                          "to":  "Manage Equipment Types modal",
+                                          "evidence":  "A modal appeared with the heading Manage Equipment Types, type counts, Add type, and Cancel."
+                                      },
+                                      {
+                                          "from":  "Equipment list",
+                                          "action":  "Activate Confirm Print",
+                                          "to":  "Confirm Printed Equipment modal",
+                                          "evidence":  "A modal appeared with the heading Confirm Printed Equipment and a Scan printed Equipment textbox."
+                                      },
+                                      {
+                                          "from":  "Equipment list",
+                                          "action":  "Activate Scan",
+                                          "to":  "Scan Equipment Label modal",
+                                          "evidence":  "A modal appeared with a scan textbox and an enabled Automatic unassign switch."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullEquipments.php?action=getTypes",
+                                               "trigger":  "Load the Equipment page",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve the available equipment-type identifiers and labels.",
+                                               "importantFields":  [
+                                                                       "types",
+                                                                       "runtime"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullEquipmentsTableRedesign.php?action=getList",
+                                               "trigger":  "Load the Equipment page or change a list filter",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve a paginated, ordered equipment list using search, facility hub, type, and status filters.",
+                                               "importantFields":  [
+                                                                       "order",
+                                                                       "filters",
+                                                                       "search",
+                                                                       "facility_hub",
+                                                                       "type",
+                                                                       "status",
+                                                                       "columns",
+                                                                       "limit",
+                                                                       "offset"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullEquipmentsTableRedesign.php?action=calcCounts",
+                                               "trigger":  "Load the Equipment page or change a list filter",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Calculate filter counter totals for facility hub, equipment type, and status.",
+                                               "importantFields":  [
+                                                                       "countBy",
+                                                                       "filters",
+                                                                       "facility_hub",
+                                                                       "type",
+                                                                       "status"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getAllHubs",
+                                               "trigger":  "Load the authenticated page context",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve available facility hubs for the page context.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=1",
+                                               "trigger":  "Load the authenticated page context with the current facility selected",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve hubs associated with the selected facility.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/v1/common/get-facilities",
+                                               "trigger":  "Load the authenticated page context",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve facilities available to the current authenticated context.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Equipment",
+                                                              "Facility hub"
+                                                          ],
+                                             "relationship":  "Each displayed equipment record is associated with a facility hub, and the list can be filtered by hub.",
+                                             "evidence":  "Facility hub is a table column and a counter-filter dimension; observed rows displayed Hawaii."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Equipment",
+                                                              "Equipment type"
+                                                          ],
+                                             "relationship":  "Equipment records are classified by managed equipment types.",
+                                             "evidence":  "The table includes Equipment and Num columns, the type filters expose counts, and Manage Equipment Types lists those same type categories."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Equipment",
+                                                              "Vendor"
+                                                          ],
+                                             "relationship":  "Equipment may be assigned to a vendor and retain pickup timestamp and elapsed-time information.",
+                                             "evidence":  "Rows with status With Vendor displayed a driver/vendor value, pickup timestamp, and elapsed time; unassigned or stored rows displayed N/A."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Equipment",
+                                                              "Lifecycle status"
+                                                          ],
+                                             "relationship":  "Equipment is grouped by statuses including printing, assignment, storage, return, and rejection states.",
+                                             "evidence":  "Status counters and table cells exposed Not Printed, Printed, With Vendor, Stored, Returned, and Rejected."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Filter equipment by status",
+                                         "steps":  [
+                                                       "Open the Equipment page.",
+                                                       "Select a status counter such as Stored.",
+                                                       "Review the refreshed table."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session is active.",
+                                                                       "A facility and hub context are selected."
+                                                                   ],
+                                         "resultObserved":  "The table refreshed and displayed records matching the selected Stored status.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Inspect equipment types",
+                                         "steps":  [
+                                                       "Open the Equipment page.",
+                                                       "Activate Manage.",
+                                                       "Review the equipment types and counts.",
+                                                       "Close with Cancel."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The Manage control is visible."
+                                                                   ],
+                                         "resultObserved":  "The Manage Equipment Types modal opened and closed without changing data.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Open printed-label confirmation",
+                                         "steps":  [
+                                                       "Activate Confirm Print.",
+                                                       "Review the Scan printed Equipment input.",
+                                                       "Close the modal without scanning."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The Confirm Print control is visible."
+                                                                   ],
+                                         "resultObserved":  "The Confirm Printed Equipment modal opened and closed without submitting a label.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Open equipment-label scanner",
+                                         "steps":  [
+                                                       "Activate Scan.",
+                                                       "Review the scan input and Automatic unassign setting.",
+                                                       "Close the modal without scanning."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The Scan control is visible."
+                                                                   ],
+                                         "resultObserved":  "The Scan Equipment Label modal opened with Automatic unassign enabled and was closed without submission.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Equipment list request",
+                                                       "observedRule":  "The page requests equipment with an explicit limit and offset; the observed initial values were 50 and 0.",
+                                                       "evidence":  "Observed request body for getList."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Scan Equipment Label",
+                                                       "observedRule":  "Automatic unassign is enabled by default when the scan modal opens.",
+                                                       "evidence":  "The accessible switch named Automatic unassign was checked in the live modal."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Equipment navigation link",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Equipment\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "sidebar list-item index",
+                                                           "icon glyph selector"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Equipment table",
+                                             "preferred":  [
+                                                               "getByRole(\u0027table\u0027)",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027Equipment\u0027 })",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027Status\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated element refs",
+                                                           "row position without cell text"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Status filter",
+                                             "preferred":  [
+                                                               "getByText(\u0027Stored\u0027, { exact: true })",
+                                                               "getByText(\u0027With Vendor\u0027, { exact: true })"
+                                                           ],
+                                             "avoid":  [
+                                                           "nth-child filter selector"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Manage Equipment Types modal",
+                                             "preferred":  [
+                                                               "getByRole(\u0027heading\u0027, { name: \u0027Manage Equipment Types\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027+ Add type\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Cancel\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "unlabeled per-type icon actions"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Confirm Printed Equipment modal",
+                                             "preferred":  [
+                                                               "getByRole(\u0027heading\u0027, { name: \u0027Confirm Printed Equipment\u0027 })",
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Scan printed Equipment\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Close\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "modal DOM position"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Scan Equipment Label modal",
+                                             "preferred":  [
+                                                               "getByRole(\u0027heading\u0027, { name: \u0027Scan Equipment Label\u0027 })",
+                                                               "getByRole(\u0027switch\u0027, { name: \u0027Automatic unassign\u0027 })",
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Scan printed Equipment\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "generic span index for modal controls"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The discovered /equipment route is live on ADM and renders a page titled Equipment | Rx2Go.",
+                                             "evidence":  "Live navigation and accessibility snapshot at https://adm.rx2go.ai/equipment.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Equipment is available from the Main navigation.",
+                                             "evidence":  "The authenticated sidebar contains a link named Equipment with URL /equipment.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The page uses current facility and hub context; Hawaii was selected in both context comboboxes during observation.",
+                                             "evidence":  "Two navigation comboboxes showed selected option Hawaii.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The list supports facility hub, equipment type, and status counter filters.",
+                                             "evidence":  "Three visible counter groups and corresponding getList/calcCounts request filters.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The unfiltered view reported 167 equipment records and defaulted to 50 rows per page.",
+                                             "evidence":  "All counter displayed 167; Rows per page selected option was 50; getList request used limit 50 and offset 0.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Equipment status can represent whether a label is printed, whether equipment is with a vendor or stored, and whether it was returned or rejected.",
+                                             "evidence":  "Visible status filters: Not Printed, Printed, With Vendor, Stored, Returned, and Rejected.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Equipment-type management is embedded in a modal on the Equipment page.",
+                                             "evidence":  "Manage opened the Manage Equipment Types modal without changing the route.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Printed-label confirmation and equipment-label scanning are embedded modal workflows.",
+                                             "evidence":  "Confirm Print and Scan each opened a modal while the page URL remained /equipment.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A",
+                                                  "currentFact":  "ADM is the primary baseline environment, and no earlier baseline was supplied for comparison.",
+                                                  "evidence":  "Live ADM observations were recorded directly as the stable baseline."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "A hub label was displayed as \u0027Long Ilend\u0027, which may be an intentional configured name or a spelling inconsistency.",
+                                         "evidence":  "The hub context combobox and facility-hub filter both displayed Long Ilend.",
+                                         "impact":  "Tests using an assumed spelling such as Long Island may fail to locate the configured hub."
+                                     },
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "One Stored table row had a blank Equipment type cell while retaining a numeric equipment number and identifier.",
+                                         "evidence":  "The live Stored-filtered table contained a row with an empty Equipment cell.",
+                                         "impact":  "Automation and reporting should tolerate equipment records whose type label is absent."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+
+                                           ],
+                   "uncertainties":  [
+                                         "No prior ADM baseline was supplied, so changes from a previous baseline could not be determined.",
+                                         "Per-row action icons lacked accessible names, and their behavior was not exercised because they may mutate equipment state.",
+                                         "Add, edit, delete, assignment, printing confirmation, and scan submission behavior were not exercised because the crawl was read-only.",
+                                         "No scan value was submitted, so scan format requirements, invalid-value messaging, and successful results remain unverified.",
+                                         "The consequence of the enabled Automatic unassign option was not tested.",
+                                         "The global Search textbox was not used because its scope could not be proven to be limited to Equipment from the accessible UI alone.",
+                                         "Printed, Returned, and Rejected filters displayed no count in the observed snapshot; whether their current count was zero was not independently proven."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM Equipment is a context-aware operational inventory page at /equipment. It presents equipment in a paginated table with facility hub, type, and status counter filters, backed by dedicated list and count endpoints. It also includes modal workflows for managing equipment types, confirming printed labels, and scanning equipment labels. All exploration remained read-only and created no business mutations."
+               }
+}

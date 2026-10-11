@@ -1,0 +1,601 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Orders",
+    "moduleSlug":  "orders",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T00:49:58.9257679+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Orders",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/orders",
+                   "endUrl":  "https://adm.rx2go.ai/orders",
+                   "pagePurpose":  "Browse operational orders, filter them by service-area hub, status, and return-related property, inspect timing and delivery metadata, select rows for operational actions, export CSV, and navigate to order creation and integration management.",
+                   "routes":  [
+                                  {
+                                      "name":  "Orders",
+                                      "url":  "https://adm.rx2go.ai/orders",
+                                      "howToOpen":  "Use the Main navigation link named Orders.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "New Order",
+                                      "url":  "https://adm.rx2go.ai/orders/new",
+                                      "howToOpen":  "Use the New order link in Main navigation or the New order button in the Orders header.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Orders Integrations",
+                                      "url":  "https://adm.rx2go.ai/orders/integrations",
+                                      "howToOpen":  "Use the Integration control in the Orders header.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Service-area selector",
+                                        "type":  "select",
+                                        "purpose":  "Select the active service area.",
+                                        "locatorHints":  [
+                                                             "combobox with selected option Hawaii"
+                                                         ],
+                                        "notes":  "Hawaii was visibly selected during exploration."
+                                    },
+                                    {
+                                        "name":  "Facility hub filters",
+                                        "type":  "other",
+                                        "purpose":  "Filter orders by facility hub.",
+                                        "locatorHints":  [
+                                                             "text All",
+                                                             "text Hawaii",
+                                                             "text Long Ilend"
+                                                         ],
+                                        "notes":  "Each visible hub chip displayed a result counter. Selecting Long Ilend refreshed the order list."
+                                    },
+                                    {
+                                        "name":  "Status filters",
+                                        "type":  "other",
+                                        "purpose":  "Filter orders by operational status.",
+                                        "locatorHints":  [
+                                                             "text Ready to Print",
+                                                             "text Ready for Pickup",
+                                                             "text Pickup Occurred",
+                                                             "text Ready for Delivery",
+                                                             "text Route Optimized",
+                                                             "text Driver Out",
+                                                             "text Delivered",
+                                                             "text Delivery Attempted",
+                                                             "text Returned",
+                                                             "text Back to pharmacy",
+                                                             "text Investigation",
+                                                             "text Rejected",
+                                                             "text Ready to optimize",
+                                                             "text Ready to optimize Bronx",
+                                                             "text On its way to facility",
+                                                             "text Return in Transit",
+                                                             "text Draft",
+                                                             "text Carrier"
+                                                         ],
+                                        "notes":  "Selecting Rejected gave the chip an active state and sent a list request containing status Rejected."
+                                    },
+                                    {
+                                        "name":  "Return-property filters",
+                                        "type":  "other",
+                                        "purpose":  "Filter orders by return-related property.",
+                                        "locatorHints":  [
+                                                             "text All",
+                                                             "text Empty",
+                                                             "text Pending Back",
+                                                             "text Confirm Back",
+                                                             "text Back to Pharmacy ASAP"
+                                                         ],
+                                        "notes":  "Visible as a third filter-chip group."
+                                    },
+                                    {
+                                        "name":  "Orders table",
+                                        "type":  "table",
+                                        "purpose":  "Display selectable operational order records.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027table\u0027)",
+                                                             "columnheader UID",
+                                                             "columnheader Status",
+                                                             "columnheader In Queue",
+                                                             "columnheader In System",
+                                                             "columnheader Recipient Name",
+                                                             "columnheader Client",
+                                                             "columnheader Date to Deliver",
+                                                             "columnheader Time to Deliver",
+                                                             "columnheader ETA",
+                                                             "columnheader Promised ETA"
+                                                         ],
+                                        "notes":  "The table initially showed loading placeholders, then populated up to the selected page size."
+                                    },
+                                    {
+                                        "name":  "Select-all and row selection",
+                                        "type":  "other",
+                                        "purpose":  "Select order rows for batch operations.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027checkbox\u0027)",
+                                                             "text Selected 0 of 0"
+                                                         ],
+                                        "notes":  "No rows were selected during this read-only exploration."
+                                    },
+                                    {
+                                        "name":  "Batch actions",
+                                        "type":  "button",
+                                        "purpose":  "Operate on selected orders.",
+                                        "locatorHints":  [
+                                                             "text Print Labels",
+                                                             "text Cancel the Orders",
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Change status\u0027 })",
+                                                             "text Dial",
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Print Confirmations\u0027 })",
+                                                             "text Print Documents",
+                                                             "text Assign to Route"
+                                                         ],
+                                        "notes":  "Controls were visible below the table; no batch action was invoked."
+                                    },
+                                    {
+                                        "name":  "CSV",
+                                        "type":  "button",
+                                        "purpose":  "Export order data as CSV.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027CSV\u0027 })"
+                                                         ],
+                                        "notes":  "Visible below the table; not invoked."
+                                    },
+                                    {
+                                        "name":  "Rows per page",
+                                        "type":  "select",
+                                        "purpose":  "Set the number of orders shown per page.",
+                                        "locatorHints":  [
+                                                             "text Rows per page",
+                                                             "combobox with options 5, 10, 25, 50, 100, 200, 500"
+                                                         ],
+                                        "notes":  "50 was selected during observation."
+                                    },
+                                    {
+                                        "name":  "New order",
+                                        "type":  "link",
+                                        "purpose":  "Open the order-creation page.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027link\u0027, { name: \u0027New order\u0027 })",
+                                                             "getByRole(\u0027button\u0027, { name: \u0027New order\u0027 })"
+                                                         ],
+                                        "notes":  "The live New Order page contained Recipient Information, Rx Numbers, Delivery Methods, Delivery information, optional documents, Add/Print, Add, Reset, and Go Back controls."
+                                    },
+                                    {
+                                        "name":  "Integration",
+                                        "type":  "link",
+                                        "purpose":  "Open Orders Integrations.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Integration\u0027 })",
+                                                             "link with URL /orders/integrations"
+                                                         ],
+                                        "notes":  "The destination displayed integration credential columns, an Add Token button, Order Editor downloads, and pharmacy-integration document links. No token action or download was invoked."
+                                    },
+                                    {
+                                        "name":  "Add Token",
+                                        "type":  "button",
+                                        "purpose":  "Begin adding an order integration token.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Add Token\u0027 })"
+                                                         ],
+                                        "notes":  "Observed on Orders Integrations but not invoked because it may mutate integration configuration."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Main navigation",
+                                          "action":  "Open Orders",
+                                          "to":  "https://adm.rx2go.ai/orders",
+                                          "evidence":  "The navigation contained an Orders link with /orders, and the reached page title and heading were Orders."
+                                      },
+                                      {
+                                          "from":  "Orders",
+                                          "action":  "Open Integration",
+                                          "to":  "https://adm.rx2go.ai/orders/integrations",
+                                          "evidence":  "The Orders header exposed an Integration control pointing to /orders/integrations; the reached page heading was Orders Integrations."
+                                      },
+                                      {
+                                          "from":  "Orders",
+                                          "action":  "Open New order",
+                                          "to":  "https://adm.rx2go.ai/orders/new",
+                                          "evidence":  "Both Main navigation and the Orders header exposed /orders/new; the live page title was New order | Rx2Go."
+                                      },
+                                      {
+                                          "from":  "New Order",
+                                          "action":  "Use Go Back",
+                                          "to":  "https://adm.rx2go.ai/orders",
+                                          "evidence":  "A Go Back link on the New Order page pointed to /orders."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrdersTable.php?action=getList",
+                                               "trigger":  "Initial Orders load and filter-chip changes",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Load paginated order rows using sort, filter, column, limit, and offset parameters.",
+                                               "importantFields":  [
+                                                                       "order",
+                                                                       "filters",
+                                                                       "facility_hub",
+                                                                       "client_hub",
+                                                                       "status",
+                                                                       "property",
+                                                                       "columns",
+                                                                       "limit",
+                                                                       "offset"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrdersTable.php?action=getCounters",
+                                               "trigger":  "Initial Orders load and filter-chip changes",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Load counters grouped by facility hub, order status, and property under the active filters.",
+                                               "importantFields":  [
+                                                                       "countBy",
+                                                                       "filters",
+                                                                       "facility_hub",
+                                                                       "client_hub",
+                                                                       "status",
+                                                                       "property"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullOrderStatuses.php?action=getStatuses",
+                                               "trigger":  "Orders page load",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve available order statuses.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=1",
+                                               "trigger":  "Orders page load with the selected service context",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve facility hubs for the active facility/service context.",
+                                               "importantFields":  [
+                                                                       "facility"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/v1/common/get-facilities",
+                                               "trigger":  "Orders page load",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve facilities available to the authenticated session.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Service area",
+                                                              "Facility hub"
+                                                          ],
+                                             "relationship":  "The selected service area determines the facility-hub context available on Orders.",
+                                             "evidence":  "Hawaii was selected in the service-area combobox; a hub request included facility=1 and the page displayed Hawaii and Long Ilend hub chips."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order",
+                                                              "Status"
+                                                          ],
+                                             "relationship":  "Each order has an operational status, and the list can be filtered by that status.",
+                                             "evidence":  "The table contained a Status column, while status chips triggered getList with filters.status."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order",
+                                                              "Client"
+                                                          ],
+                                             "relationship":  "Orders are associated with a client shown in the Client column.",
+                                             "evidence":  "Client was an observed table column and clientid was requested from the list endpoint."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order",
+                                                              "Facility hub"
+                                                          ],
+                                             "relationship":  "Orders can be scoped to a facility hub.",
+                                             "evidence":  "Selecting a hub changed filters.facility_hub in the order-list request."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order",
+                                                              "Delivery timing"
+                                                          ],
+                                             "relationship":  "Orders expose delivery date, delivery time window, ETA, and promised ETA data.",
+                                             "evidence":  "These fields were visible as table columns and requested from the list endpoint."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Orders",
+                                                              "Integration credentials"
+                                                          ],
+                                             "relationship":  "The Orders module includes a child page for managing integration credentials and Order Editor resources.",
+                                             "evidence":  "The Orders header linked to /orders/integrations, whose live heading was Orders Integrations."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Browse orders",
+                                         "steps":  [
+                                                       "Open Orders from Main navigation.",
+                                                       "Confirm the visible service-area context.",
+                                                       "Wait for table loading placeholders to resolve.",
+                                                       "Review order rows and operational timing columns."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Authenticated ADM session",
+                                                                       "A service area is visibly selected"
+                                                                   ],
+                                         "resultObserved":  "The table populated with operational order rows.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Filter orders by status",
+                                         "steps":  [
+                                                       "Open Orders.",
+                                                       "Activate the Rejected status chip.",
+                                                       "Wait for the list refresh."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Orders table is loaded"
+                                                                   ],
+                                         "resultObserved":  "The Rejected chip acquired an active state and the list request contained filters.status set to Rejected.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Combine hub and status filters",
+                                         "steps":  [
+                                                       "Activate the Rejected status filter.",
+                                                       "Activate the Long Ilend hub filter.",
+                                                       "Wait for the list refresh."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Hawaii service area selected",
+                                                                       "Long Ilend hub chip visible"
+                                                                   ],
+                                         "resultObserved":  "The list request combined status Rejected with a numeric facility_hub value.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Review Orders integrations",
+                                         "steps":  [
+                                                       "Open the Integration child page from Orders.",
+                                                       "Review the integration table and available supporting downloads.",
+                                                       "Return to Orders without adding a token or downloading files."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Authenticated ADM session"
+                                                                   ],
+                                         "resultObserved":  "Orders Integrations loaded successfully and Orders was restored as the final page.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Batch order actions",
+                                                       "observedRule":  "Batch operations are presented alongside a selection counter and are associated with selected order rows.",
+                                                       "evidence":  "The page displayed Selected 0 of 0 next to the batch-action controls."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Rows per page",
+                                                       "observedRule":  "The visible selectable page sizes are 5, 10, 25, 50, 100, 200, and 500.",
+                                                       "evidence":  "These options were present in the Rows per page combobox."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Orders filter request",
+                                                       "observedRule":  "Inactive filter dimensions are sent as all; active status and hub filters replace their corresponding all values.",
+                                                       "evidence":  "Initial request used all for facility_hub, client_hub, status, and property; later requests used Rejected and a numeric facility_hub."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Orders navigation link",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Orders\u0027, exact: true })"
+                                                           ],
+                                             "avoid":  [
+                                                           "menu-position CSS selectors",
+                                                           "icon-font text"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Orders table",
+                                             "preferred":  [
+                                                               "getByRole(\u0027table\u0027)",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027UID\u0027 })",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027Status\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated aria-ref values",
+                                                           "row-index-only selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Rejected filter",
+                                             "preferred":  [
+                                                               "getByText(/Rejected\\s+\\d+/)",
+                                                               "label associated with filter-status-rejected-default"
+                                                           ],
+                                             "avoid":  [
+                                                           "chip ordinal position",
+                                                           "counter-specific exact text"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Rows per page",
+                                             "preferred":  [
+                                                               "combobox adjacent to text Rows per page"
+                                                           ],
+                                             "avoid":  [
+                                                           "nth combobox without nearby label context"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "New order",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: \u0027New order\u0027 })",
+                                                               "getByRole(\u0027link\u0027, { name: \u0027New order\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "plus-icon selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Orders Integration",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Integration\u0027 })",
+                                                               "link with href /orders/integrations"
+                                                           ],
+                                             "avoid":  [
+                                                           "header-child position selectors"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The ADM Orders route is /orders and its live heading is Orders.",
+                                             "evidence":  "URL, page title, and heading observed in the authenticated session.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Hawaii was the visibly selected service area during the crawl.",
+                                             "evidence":  "The service-area combobox showed Hawaii as selected.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Orders supports facility-hub, status, and return-property filter groups.",
+                                             "evidence":  "Three visible chip groups and matching getList/getCounters filter fields were observed.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Order rows expose UID, status, queue age, system age, recipient, client, delivery date, delivery time, ETA, and promised ETA.",
+                                             "evidence":  "Observed table headers and populated rows.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The Orders list defaults to descending UID order, limit 50, and offset 0 in the observed request.",
+                                             "evidence":  "Initial getList request body.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Filter counters are loaded separately from list rows.",
+                                             "evidence":  "Distinct successful getList and getCounters POST requests were observed on load and filter changes.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The Orders module links to a New Order page and an Orders Integrations page.",
+                                             "evidence":  "Observed links, live URLs, titles, and page headings.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "NEW",
+                                                  "area":  "route",
+                                                  "baselineFact":  "N/A",
+                                                  "currentFact":  "ADM Orders is available at /orders with child routes /orders/new and /orders/integrations.",
+                                                  "evidence":  "Live ADM navigation, URLs, titles, and headings."
+                                              },
+                                              {
+                                                  "type":  "NEW",
+                                                  "area":  "control",
+                                                  "baselineFact":  "N/A",
+                                                  "currentFact":  "ADM Orders exposes hub, status, and return-property filters, a selectable table, batch actions, CSV export, and page-size selection.",
+                                                  "evidence":  "Live ADM accessibility snapshots."
+                                              },
+                                              {
+                                                  "type":  "NEW",
+                                                  "area":  "api",
+                                                  "baselineFact":  "N/A",
+                                                  "currentFact":  "ADM loads order rows and counters through separate successful PullOrdersTable POST requests.",
+                                                  "evidence":  "Observed ADM network traffic."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The Orders Integrations table visibly presented credential-like fields to the authenticated administrative user.",
+                                         "evidence":  "The live table had columns labeled key, secret, and auth token. No credential values are retained in this knowledge record.",
+                                         "impact":  "Potential QA/security-review relevance concerning credential visibility and masking; no requirement or defect status was inferred."
+                                     },
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The hub label was displayed as Long Ilend.",
+                                         "evidence":  "The exact visible label appeared in both the active-context combobox options and Orders hub filters.",
+                                         "impact":  "Possible locator, reporting, and terminology consistency impact; no correctness requirement was inferred."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+                                               {
+                                                   "type":  "NEW",
+                                                   "fact":  "Established the current ADM Orders routes, controls, filters, table structure, read-only workflows, and API request shapes as baseline knowledge.",
+                                                   "evidence":  "No previous baseline was supplied; all facts were directly observed on ADM."
+                                               }
+                                           ],
+                   "uncertainties":  [
+                                         "No previous ADM baseline was available, so historical change classification could not be proven.",
+                                         "Batch actions were not invoked because they may mutate order state.",
+                                         "CSV export and external downloads were not invoked.",
+                                         "Add Token was not invoked because it may change integration configuration.",
+                                         "Order-detail navigation and recipient links were not opened to avoid unnecessary exposure of customer data.",
+                                         "The exact meaning of the return-property values was not proven beyond their visible labels and request-filter role.",
+                                         "The unlabeled header icon controls were not interpreted because no stable accessible names were available."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM Orders was fully reached and observed with Hawaii selected. The page provides hub, status, and return-property filtering over a selectable operational orders table, supports pagination sizing and batch/export controls, and links to New Order and Orders Integrations. Filtering uses separate successful list and counter requests. No business or integration data was mutated."
+               }
+}

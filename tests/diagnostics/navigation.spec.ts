@@ -5,3 +5,4 @@ test('RX2GO-NAV-001 correct environment URL is opened', async ({ authenticatedPa
   await authenticatedPage.goto(resolveTicketsQueueUrl(), { waitUntil: 'domcontentloaded' });
   await expect(authenticatedPage).toHaveURL(/\/tickets\/queue/i);
 });
+

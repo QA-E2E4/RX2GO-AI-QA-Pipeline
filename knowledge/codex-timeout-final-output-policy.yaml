@@ -1,0 +1,15 @@
+version: 1
+topic: codex_timeout_final_output_recovery
+scope: Smart QA Playwright MCP agent
+rules:
+  - A wrapper timeout is not automatically an agent failure.
+  - Before assigning CODEX_TIMEOUT, inspect the Codex -o output for a complete valid JSON result.
+  - Inspect once before terminating the process and again after Kill/WaitForExit because Codex may flush -o during process termination.
+  - Accept recovered output only when status is PASS, FAIL, or BLOCKED and mcpUsed is true.
+  - A recovered FAIL remains a product FAIL if supported by live current-run evidence.
+  - Continue QA Reviewer, deterministic Playwright, RCA, Knowledge Auto-Learning and final Jira report after successful recovery.
+incident:
+  jira: SCRUM-4075
+  version: 0.12.29
+  symptom: "Agent log said TIMEOUT at 900s while output file contained complete FAIL JSON."
+

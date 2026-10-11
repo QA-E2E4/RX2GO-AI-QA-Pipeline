@@ -1,0 +1,549 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Assign Gigs New",
+    "moduleSlug":  "assign-gigs-new",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T00:41:12.3247476+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Assign Gigs New",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/assign-routes-new/",
+                   "endUrl":  "https://adm.rx2go.ai/assign-routes-new/",
+                   "pagePurpose":  "Assign up to three unassigned delivery routes to drivers, review confirmation state, filter drivers and routes, and access an alternate 3D assignment interface.",
+                   "routes":  [
+                                  {
+                                      "name":  "Assign Gigs New",
+                                      "url":  "https://adm.rx2go.ai/assign-routes-new/",
+                                      "howToOpen":  "Main navigation link named Assign Gigs New or direct observed entry URL.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Assign Gigs 3D",
+                                      "url":  "https://adm.rx2go.ai/assign-routes-3d/",
+                                      "howToOpen":  "Click the 3D button in the Assign Gigs New page header.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Service region",
+                                        "type":  "select",
+                                        "purpose":  "Select the active service region.",
+                                        "locatorHints":  [
+                                                             "combobox containing the selected service-region option"
+                                                         ],
+                                        "notes":  "New York was selected during observation."
+                                    },
+                                    {
+                                        "name":  "Service area",
+                                        "type":  "select",
+                                        "purpose":  "Select the active service area within the service region.",
+                                        "locatorHints":  [
+                                                             "combobox containing the selected service-area option"
+                                                         ],
+                                        "notes":  "The Bronx was selected during observation."
+                                    },
+                                    {
+                                        "name":  "3D",
+                                        "type":  "button",
+                                        "purpose":  "Open the alternate 3D assignment interface.",
+                                        "locatorHints":  [
+                                                             "role=button name=3D"
+                                                         ],
+                                        "notes":  "Navigated to /assign-routes-3d/."
+                                    },
+                                    {
+                                        "name":  "Send SMS",
+                                        "type":  "button",
+                                        "purpose":  "Initiate bulk SMS handling for selected drivers.",
+                                        "locatorHints":  [
+                                                             "banner role=button name=Send SMS"
+                                                         ],
+                                        "notes":  "Clicking it with no selected driver produced no visible state change and no observed mutation."
+                                    },
+                                    {
+                                        "name":  "Assign to Route",
+                                        "type":  "button",
+                                        "purpose":  "Apply route assignments for selected driver rows.",
+                                        "locatorHints":  [
+                                                             "role=button name=Assign to Route"
+                                                         ],
+                                        "notes":  "Clicking it with no selected driver produced no visible state change and no observed mutation."
+                                    },
+                                    {
+                                        "name":  "Unassigned Routes Pool",
+                                        "type":  "other",
+                                        "purpose":  "Display currently unassigned routes available for assignment.",
+                                        "locatorHints":  [
+                                                             "role=heading name matching Unassigned Routes Pool"
+                                                         ],
+                                        "notes":  "Displayed a total count, 20 routes per pool page, and 22 pages during observation."
+                                    },
+                                    {
+                                        "name":  "Pool Prev and Next",
+                                        "type":  "button",
+                                        "purpose":  "Paginate the unassigned-route pool independently of the driver table.",
+                                        "locatorHints":  [
+                                                             "role=button name containing Prev",
+                                                             "role=button name containing Next"
+                                                         ],
+                                        "notes":  "Next changed the indicator from page 1 to page 2; Prev returned to page 1."
+                                    },
+                                    {
+                                        "name":  "Filter Routes",
+                                        "type":  "button",
+                                        "purpose":  "Toggle a route-pool search control.",
+                                        "locatorHints":  [
+                                                             "role=button name containing Filter Routes"
+                                                         ],
+                                        "notes":  "Opening it revealed a Search routes textbox. An unmatched value displayed No routes available inside the filter panel."
+                                    },
+                                    {
+                                        "name":  "Status",
+                                        "type":  "select",
+                                        "purpose":  "Filter driver rows by assignment or confirmation status.",
+                                        "locatorHints":  [
+                                                             "role=combobox name=All near visible text Status"
+                                                         ],
+                                        "notes":  "The observed default was All. Other option names could not be proven safely from the accessibility snapshot."
+                                    },
+                                    {
+                                        "name":  "Driver search",
+                                        "type":  "input",
+                                        "purpose":  "Find and select a driver filter.",
+                                        "locatorHints":  [
+                                                             "role=textbox name=Search driver..."
+                                                         ],
+                                        "notes":  "An unmatched value displayed No drivers found and exposed a clear button."
+                                    },
+                                    {
+                                        "name":  "Route search",
+                                        "type":  "input",
+                                        "purpose":  "Filter the assignment table by route text.",
+                                        "locatorHints":  [
+                                                             "role=textbox name=Search route..."
+                                                         ],
+                                        "notes":  "An unmatched value produced a No data available table row and disabled table pagination."
+                                    },
+                                    {
+                                        "name":  "Driver assignment table",
+                                        "type":  "table",
+                                        "purpose":  "Show drivers, SMS action, confirmation state, and three route assignment slots.",
+                                        "locatorHints":  [
+                                                             "role=table",
+                                                             "columnheader name=Driver",
+                                                             "columnheader name=Send SMS",
+                                                             "columnheader name=Confirmation",
+                                                             "columnheader name=Route 1",
+                                                             "columnheader name=Route 2",
+                                                             "columnheader name=Route 3"
+                                                         ],
+                                        "notes":  "Each observed row had a selection control, row-level Send SMS button, and three Choose route comboboxes."
+                                    },
+                                    {
+                                        "name":  "Rows per page",
+                                        "type":  "select",
+                                        "purpose":  "Control the number of driver rows displayed per table page.",
+                                        "locatorHints":  [
+                                                             "role=button name=50 near text Rows per page"
+                                                         ],
+                                        "notes":  "The observed value was 50; the table reported 1-50 of 646."
+                                    },
+                                    {
+                                        "name":  "Driver table pagination",
+                                        "type":  "button",
+                                        "purpose":  "Navigate driver-table pages.",
+                                        "locatorHints":  [
+                                                             "role=button name=First page",
+                                                             "role=button name=Previous page",
+                                                             "role=button name=Next page",
+                                                             "role=button name=Last page"
+                                                         ],
+                                        "notes":  "First and Previous were disabled on page 1; Next and Last were enabled when data was present."
+                                    },
+                                    {
+                                        "name":  "2D",
+                                        "type":  "button",
+                                        "purpose":  "Return from the 3D interface to Assign Gigs New.",
+                                        "locatorHints":  [
+                                                             "role=button name=2D"
+                                                         ],
+                                        "notes":  "Navigated from /assign-routes-3d/ back to /assign-routes-new/."
+                                    },
+                                    {
+                                        "name":  "3D driver search",
+                                        "type":  "input",
+                                        "purpose":  "Filter driver cards in the 3D interface.",
+                                        "locatorHints":  [
+                                                             "role=textbox name=Search driver..."
+                                                         ],
+                                        "notes":  "Observed without entering data."
+                                    },
+                                    {
+                                        "name":  "3D status filters",
+                                        "type":  "button",
+                                        "purpose":  "Filter 3D driver cards by availability or confirmation state.",
+                                        "locatorHints":  [
+                                                             "role=button name=All",
+                                                             "role=button name=Free slot",
+                                                             "role=button name=Confirmed",
+                                                             "role=button name=Unconfirmed",
+                                                             "role=button name=Declined"
+                                                         ],
+                                        "notes":  "All five filter buttons were visible."
+                                    },
+                                    {
+                                        "name":  "3D view controls",
+                                        "type":  "button",
+                                        "purpose":  "Zoom out, zoom in, or reset the 3D layout.",
+                                        "locatorHints":  [
+                                                             "role=button name=−",
+                                                             "role=button name=+",
+                                                             "role=button name=Reset"
+                                                         ],
+                                        "notes":  "The page also displayed instructions for orbiting, zooming, paging, and dragging routes onto cards."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Main navigation",
+                                          "action":  "Open Assign Gigs New",
+                                          "to":  "https://adm.rx2go.ai/assign-routes-new/",
+                                          "evidence":  "The Main navigation contained an Assign Gigs New link targeting /assign-routes-new/; the page title and H1 both identified Assign Gigs New."
+                                      },
+                                      {
+                                          "from":  "Assign Gigs New",
+                                          "action":  "Click 3D",
+                                          "to":  "https://adm.rx2go.ai/assign-routes-3d/",
+                                          "evidence":  "The URL changed to /assign-routes-3d/, with page title and H1 Assign Gigs 3D."
+                                      },
+                                      {
+                                          "from":  "Assign Gigs 3D",
+                                          "action":  "Click 2D",
+                                          "to":  "https://adm.rx2go.ai/assign-routes-new/",
+                                          "evidence":  "The URL returned to /assign-routes-new/ and the Assign Gigs New page reloaded."
+                                      },
+                                      {
+                                          "from":  "Unassigned Routes Pool page 1",
+                                          "action":  "Click Next",
+                                          "to":  "Unassigned Routes Pool page 2",
+                                          "evidence":  "The pool indicator changed from Page 1 of 22 to Page 2 of 22 and a different route set appeared."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullAssignRoutesNew.php?action=getList",
+                                               "trigger":  "Initial page load, pool pagination, and route-table searching",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Load paginated unassigned routes and driver assignment-table data using current filters.",
+                                               "importantFields":  [
+                                                                       "date",
+                                                                       "poolPage",
+                                                                       "poolLimit",
+                                                                       "routeSearch",
+                                                                       "routeIds",
+                                                                       "driverPage",
+                                                                       "driverLimit",
+                                                                       "driverSearch",
+                                                                       "driverName",
+                                                                       "driverStatus",
+                                                                       "driverSort"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullAssignRoutesNew.php?action=getPoolGrouped",
+                                               "trigger":  "Loading or refreshing the unassigned-routes pool",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Load grouped pool information for the selected date.",
+                                               "importantFields":  [
+                                                                       "date"
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullDrivers.php?action=searchDrivers",
+                                               "trigger":  "Entering text in Search driver",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Search available drivers for the driver filter.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=2",
+                                               "trigger":  "Loading the module in the active facility context",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Load hubs associated with the current facility.",
+                                               "importantFields":  [
+                                                                       "facility"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/v1/common/get-facilities",
+                                               "trigger":  "Loading the module",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Load available facility or service context.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Service region",
+                                                              "Service area",
+                                                              "Assign Gigs data"
+                                                          ],
+                                             "relationship":  "The assignment module is viewed within a selected service-region and service-area context.",
+                                             "evidence":  "New York and The Bronx were selected in the navigation context while the route pool and driver table were displayed."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Driver",
+                                                              "Route"
+                                                          ],
+                                             "relationship":  "A driver row supports up to three route assignment slots.",
+                                             "evidence":  "The table exposed Route 1, Route 2, and Route 3 columns, each containing a Choose route combobox."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Driver",
+                                                              "SMS confirmation"
+                                                          ],
+                                             "relationship":  "Drivers have row-level SMS actions and a confirmation-state column.",
+                                             "evidence":  "The table included Send SMS and Confirmation columns; the 3D view also represented confirmed, pending, declined, and no-SMS states."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Unassigned route pool",
+                                                              "Driver assignment slots"
+                                                          ],
+                                             "relationship":  "Routes in the pool are candidates for placement into driver route slots.",
+                                             "evidence":  "The 2D page presented the pool beside route-slot comboboxes; the 3D instructions explicitly described dragging routes onto driver cards."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Review and filter assignable work",
+                                         "steps":  [
+                                                       "Open Assign Gigs New in the active service context.",
+                                                       "Review the paginated Unassigned Routes Pool.",
+                                                       "Optionally open Filter Routes and search pool routes.",
+                                                       "Filter the driver table by status, driver, or route.",
+                                                       "Review each driver\u0027s confirmation state and three route slots."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session.",
+                                                                       "A selected service region and service area."
+                                                                   ],
+                                         "resultObserved":  "The route pool and matching driver assignment rows were displayed without changing business data.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Switch between 2D and 3D assignment views",
+                                         "steps":  [
+                                                       "Click 3D on Assign Gigs New.",
+                                                       "Review driver cards, status filters, route slots, working windows, and the unassigned route pool.",
+                                                       "Click 2D to return."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Assign Gigs New is open."
+                                                                   ],
+                                         "resultObserved":  "Navigation completed between /assign-routes-new/ and /assign-routes-3d/.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Unassigned-route filter search",
+                                                       "observedRule":  "A search with no match displays No routes available.",
+                                                       "evidence":  "Entering a deliberately unmatched value in Search routes produced that message."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Driver search",
+                                                       "observedRule":  "A search with no match displays No drivers found.",
+                                                       "evidence":  "Entering a deliberately unmatched value in Search driver produced that message."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Assignment-table route search",
+                                                       "observedRule":  "A search with no matching table records displays No data available and disables table pagination.",
+                                                       "evidence":  "An unmatched Search route value replaced body rows with No data available."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Assign to Route without selection",
+                                                       "observedRule":  "No visible validation message or state change was produced when no driver was selected.",
+                                                       "evidence":  "The button was clicked with no selected rows; the page remained unchanged and no mutation was observed."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Bulk Send SMS without selection",
+                                                       "observedRule":  "No visible dialog, validation message, or state change was produced when no driver was selected.",
+                                                       "evidence":  "The header Send SMS button was clicked with no selected rows; the page remained unchanged and no mutation was observed."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Assign Gigs New navigation link",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Assign Gigs New\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "sidebar list-item indexes"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "3D and 2D view toggles",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: \u00273D\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u00272D\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "header child-position selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Route-pool filter",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: /Filter Routes/ })",
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Search routes...\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "icon-class selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Driver and route filters",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Search driver...\u0027 })",
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Search route...\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "input ordinal indexes"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Driver assignment table",
+                                             "preferred":  [
+                                                               "getByRole(\u0027table\u0027)",
+                                                               "getByRole(\u0027columnheader\u0027, { name: /Driver/ })",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027Route 1\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated row references",
+                                                           "nth-child selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Bulk actions",
+                                             "preferred":  [
+                                                               "getByRole(\u0027banner\u0027).getByRole(\u0027button\u0027, { name: \u0027Send SMS\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Assign to Route\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "unscoped Send SMS locator because row-level buttons share the same name"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "ADM exposes Assign Gigs New at /assign-routes-new/ under the Main navigation.",
+                                             "evidence":  "Observed navigation link, URL, page title, and H1.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The live 2D interface combines an independently paginated unassigned-route pool with a paginated driver assignment table.",
+                                             "evidence":  "The pool showed its own Prev/Next controls and page count; the table showed Rows per page plus first, previous, next, and last controls.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Each observed driver row provided three route slots alongside SMS and confirmation information.",
+                                             "evidence":  "Table headers and repeated row controls showed Route 1, Route 2, Route 3, Send SMS, and Confirmation.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Route-table filtering is server-backed through getList.",
+                                             "evidence":  "Searching with an unmatched route value caused a 200 POST whose request included routeSearch.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The 3D route is directly reachable from the new assignment interface and offers driver cards, confirmation filters, route slots, working windows, and drag-and-drop instructions.",
+                                             "evidence":  "Observed /assign-routes-3d/ accessibility snapshot after clicking 3D.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; this crawl establishes the ADM primary baseline.",
+                                                  "currentFact":  "Assign Gigs New and its 3D child view were observed directly on ADM.",
+                                                  "evidence":  "Live authenticated ADM UI and network observations."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The 3D page displayed a small, highly templated dataset and counts that differed substantially from the live 2D page, while no new module-specific data request was observed after entering the 3D route.",
+                                         "evidence":  "The 2D view reported hundreds of driver and pool records; the 3D view reported 18 drivers and 12 pool routes with repeated placeholder-like naming patterns.",
+                                         "impact":  "QA should avoid assuming the 3D view reflects the same live dataset as the 2D interface until its data source and intended status are verified."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+
+                                           ],
+                   "uncertainties":  [
+                                         "The complete list of Status filter options in the 2D interface was not exposed clearly enough to record safely.",
+                                         "The successful assignment workflow was not executed because assigning routes would mutate business data.",
+                                         "SMS dialogs, message contents, and successful-send behavior were not explored because sending messages could cause external side effects.",
+                                         "The intended production status and data source of the 3D interface could not be proven from safe read-only evidence.",
+                                         "The exact effect of hub context on route and driver results was not tested because changing context could disrupt the existing session state."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM currently provides a live Assign Gigs New 2D interface at /assign-routes-new/ with service context, a paginated unassigned-route pool, driver/status/route filters, a driver table with three route slots, confirmation information, SMS actions, and server-backed list loading. A 3D child route is reachable through the header, but its visibly templated and differently sized dataset should be treated cautiously pending verification of its data source."
+               }
+}

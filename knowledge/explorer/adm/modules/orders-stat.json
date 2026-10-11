@@ -1,0 +1,601 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Orders STAT",
+    "moduleSlug":  "orders-stat",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T00:54:30.0596451+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Orders STAT",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/orders",
+                   "endUrl":  "https://adm.rx2go.ai/orders/stat",
+                   "pagePurpose":  "Displays the STAT-order queue with status filtering, operational timing, assignment, delivery, address, and financial columns, plus a related pharmacy-oriented delivery map.",
+                   "routes":  [
+                                  {
+                                      "name":  "Orders STAT",
+                                      "url":  "https://adm.rx2go.ai/orders/stat",
+                                      "howToOpen":  "Open the Main navigation link named Orders STAT; observed href is /orders/stat.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "STAT MAP / Delivery Dashboard",
+                                      "url":  "https://adm.rx2go.ai/orders/stat/map",
+                                      "howToOpen":  "Open the STAT MAP link from the Orders STAT page; observed href is /orders/stat/map.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "STAT MAP",
+                                        "type":  "link",
+                                        "purpose":  "Opens the Delivery Dashboard map for STAT orders by pharmacy.",
+                                        "locatorHints":  [
+                                                             "role=link, name=STAT MAP",
+                                                             "role=button, name=STAT MAP"
+                                                         ],
+                                        "notes":  "Observed on the Orders STAT header and linked to /orders/stat/map."
+                                    },
+                                    {
+                                        "name":  "Status chips",
+                                        "type":  "other",
+                                        "purpose":  "Represent queue filters and display per-status order counts.",
+                                        "locatorHints":  [
+                                                             "text=All",
+                                                             "text=Ready to Print",
+                                                             "text=Ready for Pickup",
+                                                             "text=Pickup Occurred",
+                                                             "text=Ready for Delivery",
+                                                             "text=Route Optimized",
+                                                             "text=Driver Out",
+                                                             "text=Delivered",
+                                                             "text=Delivery Attempted",
+                                                             "text=Returned",
+                                                             "text=Back to pharmacy",
+                                                             "text=Investigation",
+                                                             "text=Rejected",
+                                                             "text=Ready to optimize",
+                                                             "text=Ready to optimize Bronx",
+                                                             "text=On its way to facility",
+                                                             "text=Return in Transit",
+                                                             "text=Draft",
+                                                             "text=Carrier"
+                                                         ],
+                                        "notes":  "The All state showed 128 records. Counts were displayed for statuses with matching records."
+                                    },
+                                    {
+                                        "name":  "Orders table",
+                                        "type":  "table",
+                                        "purpose":  "Displays the STAT workflow queue and operational order attributes.",
+                                        "locatorHints":  [
+                                                             "role=table",
+                                                             "columnheader=Order Id",
+                                                             "columnheader=Status",
+                                                             "columnheader=In Queue",
+                                                             "columnheader=In System",
+                                                             "columnheader=Stops Left",
+                                                             "columnheader=Client",
+                                                             "columnheader=Recipient Name",
+                                                             "columnheader=Driver",
+                                                             "columnheader=Date to Deliver",
+                                                             "columnheader=Time to Deliver",
+                                                             "columnheader=Ready for Pick up at",
+                                                             "columnheader=ETA",
+                                                             "columnheader=Promised ETA",
+                                                             "columnheader=Recipient Address",
+                                                             "columnheader=Recipient City",
+                                                             "columnheader=Recipient State",
+                                                             "columnheader=Recipient ZIP",
+                                                             "columnheader=Recipient Apt.",
+                                                             "columnheader=Future Rate",
+                                                             "columnheader=Payout"
+                                                         ],
+                                        "notes":  "Rows include selection checkboxes and order-ID links. No row selection or order-detail action was performed."
+                                    },
+                                    {
+                                        "name":  "Rows per page",
+                                        "type":  "select",
+                                        "purpose":  "Changes the number of queue rows requested and displayed per page.",
+                                        "locatorHints":  [
+                                                             "text=Rows per page",
+                                                             "role=combobox near Rows per page"
+                                                         ],
+                                        "notes":  "Options observed: 5, 10, 25, 50, 100, 200, and 500. Changing from 50 to 5 caused a new list request with limit 5 and offset 0."
+                                    },
+                                    {
+                                        "name":  "Pagination",
+                                        "type":  "link",
+                                        "purpose":  "Navigates among result pages.",
+                                        "locatorHints":  [
+                                                             "role=link, name=1",
+                                                             "role=link, name=2",
+                                                             "role=link, name=3",
+                                                             "role=link, name=26"
+                                                         ],
+                                        "notes":  "With five rows per page, pages 1, 2, 3, an ellipsis, and page 26 were visible. Page 1 was current and the previous-page button was disabled."
+                                    },
+                                    {
+                                        "name":  "Search",
+                                        "type":  "input",
+                                        "purpose":  "Provides the shared page-header search entry.",
+                                        "locatorHints":  [
+                                                             "role=textbox, name=Search..."
+                                                         ],
+                                        "notes":  "Visible on both Orders STAT and Delivery Dashboard; search behavior was not exercised."
+                                    },
+                                    {
+                                        "name":  "Delivery date",
+                                        "type":  "input",
+                                        "purpose":  "Selects the date used by the STAT map.",
+                                        "locatorHints":  [
+                                                             "role=textbox, name=Delivery date"
+                                                         ],
+                                        "notes":  "Displayed 2026-09-07 during observation."
+                                    },
+                                    {
+                                        "name":  "Range",
+                                        "type":  "input",
+                                        "purpose":  "Appears to enable a delivery-date range on the STAT map.",
+                                        "locatorHints":  [
+                                                             "role=checkbox, name=Range"
+                                                         ],
+                                        "notes":  "Visible but not successfully toggled; range behavior remains unverified."
+                                    },
+                                    {
+                                        "name":  "Map controls",
+                                        "type":  "button",
+                                        "purpose":  "Control map zoom and full-screen display.",
+                                        "locatorHints":  [
+                                                             "role=button, name=Zoom in",
+                                                             "role=button, name=Zoom out",
+                                                             "role=button, name=Full Screen",
+                                                             "role=link, name=Layers"
+                                                         ],
+                                        "notes":  "Observed on the Delivery Dashboard map."
+                                    },
+                                    {
+                                        "name":  "Drivers panel",
+                                        "type":  "button",
+                                        "purpose":  "Displays or collapses the active-driver section for the map.",
+                                        "locatorHints":  [
+                                                             "role=button, name matching Drivers"
+                                                         ],
+                                        "notes":  "The current date showed zero drivers and the message No active drivers."
+                                    },
+                                    {
+                                        "name":  "Orders STAT return link",
+                                        "type":  "link",
+                                        "purpose":  "Returns from the Delivery Dashboard to the STAT queue.",
+                                        "locatorHints":  [
+                                                             "role=link, name=Orders STAT"
+                                                         ],
+                                        "notes":  "Observed href is /orders/stat."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Orders page",
+                                          "action":  "Use the Main navigation item Orders STAT.",
+                                          "to":  "Orders STAT queue",
+                                          "evidence":  "The authenticated Orders page exposed an Orders STAT link with href /orders/stat; the route loaded with title Orders STAT | Rx2Go."
+                                      },
+                                      {
+                                          "from":  "Orders STAT queue",
+                                          "action":  "Open STAT MAP.",
+                                          "to":  "Delivery Dashboard",
+                                          "evidence":  "The STAT MAP link exposed href /orders/stat/map; that route loaded with title Delivery Dashboard | Rx2Go."
+                                      },
+                                      {
+                                          "from":  "Delivery Dashboard",
+                                          "action":  "Open Orders STAT.",
+                                          "to":  "Orders STAT queue",
+                                          "evidence":  "The map sidebar contained an Orders STAT link with href /orders/stat."
+                                      },
+                                      {
+                                          "from":  "Orders STAT queue with 50 rows per page",
+                                          "action":  "Select 5 in Rows per page.",
+                                          "to":  "Orders STAT queue with five rows per page",
+                                          "evidence":  "The combobox selected value became 5, pagination expanded to 26 pages, and the subsequent list request used limit 5 and offset 0."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrdersTableStat.php?action=getList",
+                                               "trigger":  "Load Orders STAT or change Rows per page.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Fetches a page of STAT queue records using sorting, filters, selected columns, limit, and offset.",
+                                               "importantFields":  [
+                                                                       "order",
+                                                                       "filters",
+                                                                       "status",
+                                                                       "clientid_group",
+                                                                       "columns",
+                                                                       "limit",
+                                                                       "offset",
+                                                                       "uid",
+                                                                       "status_updated_last",
+                                                                       "created",
+                                                                       "stops_left",
+                                                                       "clientid",
+                                                                       "recipient_name",
+                                                                       "driver",
+                                                                       "date_to_deliver",
+                                                                       "time_to_deliver_min",
+                                                                       "ready_for_pickup_at",
+                                                                       "eta",
+                                                                       "promised_eta",
+                                                                       "recipient_address",
+                                                                       "recipient_city",
+                                                                       "recipient_state",
+                                                                       "recipient_zip",
+                                                                       "recipient_apt",
+                                                                       "rate_stop",
+                                                                       "payout"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrdersTableStat.php?action=getCounters",
+                                               "trigger":  "Load Orders STAT or refresh the queue after changing pagination.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Fetches aggregate counts for the All state and individual order statuses.",
+                                               "importantFields":  [
+                                                                       "counters",
+                                                                       "status",
+                                                                       "all",
+                                                                       "runtime"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullOrderStatuses.php?action=getStatuses",
+                                               "trigger":  "Load the authenticated orders interface.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Fetches order-status metadata used by the orders interface.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullStatMap.php?action=getFilters\u0026status=Ready+for+Delivery\u0026date=2026-09-07",
+                                               "trigger":  "Load the STAT MAP Delivery Dashboard.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Fetches map filter data for a selected order status and delivery date.",
+                                               "importantFields":  [
+                                                                       "status",
+                                                                       "date"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullDrivers.php?action=getActiveDrivers",
+                                               "trigger":  "Load the STAT MAP Delivery Dashboard.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Fetches active drivers for display in the map sidebar or map.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=1",
+                                               "trigger":  "Load Orders STAT or its map in the selected facility context.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Fetches hubs for the active facility context.",
+                                               "importantFields":  [
+                                                                       "facility"
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/v1/common/get-facilities",
+                                               "trigger":  "Load Orders STAT or its map.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Fetches facility data used by the authenticated interface.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "STAT order",
+                                                              "Order status"
+                                                          ],
+                                             "relationship":  "Each displayed queue row has a current operational status, and the page aggregates orders into status chips.",
+                                             "evidence":  "The table includes a Status column while the counters API returns counts grouped by status."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "STAT order",
+                                                              "Client"
+                                                          ],
+                                             "relationship":  "A queue row may identify the client associated with the order.",
+                                             "evidence":  "Client is a displayed table column and clientid is requested from the list endpoint."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "STAT order",
+                                                              "Driver"
+                                                          ],
+                                             "relationship":  "A queue row may be associated with a driver and a stops-left value.",
+                                             "evidence":  "Driver and Stops Left columns were observed; the map also requests active drivers."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "STAT order",
+                                                              "Delivery location"
+                                                          ],
+                                             "relationship":  "Orders carry address components used by the table and related map.",
+                                             "evidence":  "The queue requests and displays address, city, state, ZIP, and apartment fields; the child route is a map labeled Orders by pharmacy."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Facility context",
+                                                              "STAT queue"
+                                                          ],
+                                             "relationship":  "The module loads within the current facility/service context.",
+                                             "evidence":  "Two context comboboxes were visible and the page requested hubs with facility=1 plus a facilities list."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "STAT queue",
+                                                              "STAT map"
+                                                          ],
+                                             "relationship":  "The queue links to a Delivery Dashboard that summarizes STAT orders by pharmacy for a selected delivery date and status.",
+                                             "evidence":  "Observed navigation from /orders/stat to /orders/stat/map and map label Orders by pharmacy."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Review the STAT queue",
+                                         "steps":  [
+                                                       "Open Orders STAT from Main navigation.",
+                                                       "Review status-count chips.",
+                                                       "Review the tabular order attributes.",
+                                                       "Adjust Rows per page or use pagination for additional results."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session is active.",
+                                                                       "A facility/service context is selected."
+                                                                   ],
+                                         "resultObserved":  "The queue loaded successfully and displayed 128 records in the All state.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Review STAT orders on the map",
+                                         "steps":  [
+                                                       "Open STAT MAP from Orders STAT.",
+                                                       "Review the selected delivery date.",
+                                                       "Review status, client, and driver sections.",
+                                                       "Use the Orders STAT link to return to the queue."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session is active.",
+                                                                       "The Delivery Dashboard route is accessible."
+                                                                   ],
+                                         "resultObserved":  "The map loaded for 2026-09-07 and reported no STAT orders, no clients in the selected status, and no active drivers.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Rows per page",
+                                                       "observedRule":  "The selector offered only 5, 10, 25, 50, 100, 200, and 500.",
+                                                       "evidence":  "These options were present in the live combobox; selecting 5 changed the API limit to 5."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "STAT list initial request",
+                                                       "observedRule":  "The initial list request used status=all, clientid_group=all, descending UID order, limit=50, and offset=0.",
+                                                       "evidence":  "Observed request body for getList."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "STAT map delivery date",
+                                                       "observedRule":  "When no data matched the current date and selected status, the UI displayed explicit empty states rather than markers or client entries.",
+                                                       "evidence":  "The map showed No STAT orders for this date and No clients in this status."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Orders STAT navigation",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Orders STAT\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "sidebar position selectors",
+                                                           "generated accessibility references"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "STAT MAP navigation",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027STAT MAP\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027STAT MAP\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "header child-index selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Orders table",
+                                             "preferred":  [
+                                                               "getByRole(\u0027table\u0027)",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027Order Id\u0027 })",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027Status\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "row-number selectors",
+                                                           "selectors based on customer data"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Rows per page",
+                                             "preferred":  [
+                                                               "getByText(\u0027Rows per page\u0027) with the adjacent getByRole(\u0027combobox\u0027)"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated toolbar IDs",
+                                                           "absolute CSS paths"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Map delivery date",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Delivery date\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "date-input position selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Map range toggle",
+                                             "preferred":  [
+                                                               "getByRole(\u0027checkbox\u0027, { name: \u0027Range\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "input[type=checkbox] without a name"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Map controls",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Zoom in\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Zoom out\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Full Screen\u0027 })",
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Layers\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "map-library class names"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "ADM exposes Orders STAT at /orders/stat with page title Orders STAT | Rx2Go.",
+                                             "evidence":  "Live URL, document title, heading, and Main navigation link.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The All status count was 128 during observation.",
+                                             "evidence":  "Live All chip and getCounters response.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The queue supports status-level counters and server-side pagination parameters.",
+                                             "evidence":  "Status chips, getCounters response, and getList request bodies containing filters, limit, and offset.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The queue exposes operational timing, assignment, delivery-location, rate, and payout columns.",
+                                             "evidence":  "Live table headers and requested column names.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The child route /orders/stat/map is titled Delivery Dashboard and labeled STAT MAP / Orders by pharmacy.",
+                                             "evidence":  "Live URL, title, heading, and sidebar text.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The map loaded using a Ready for Delivery status and the date 2026-09-07.",
+                                             "evidence":  "PullStatMap getFilters request query and visible Delivery date field.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "For the observed map date and status, the page displayed no STAT orders, no clients, and zero active drivers.",
+                                             "evidence":  "Visible map sidebar empty-state messages.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The selected service-area context displayed Hawaii and the secondary context also displayed Hawaii.",
+                                             "evidence":  "Two live context comboboxes showed Hawaii selected.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; ADM is the primary baseline and no separate baseline environment applies.",
+                                                  "currentFact":  "The live ADM observations in this result establish the current stable baseline for Orders STAT.",
+                                                  "evidence":  "The module and its child map were directly observed on adm.rx2go.ai."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "Some rows visible in the Orders STAT queue carried a Transplant order-type indicator rather than STAT.",
+                                         "evidence":  "Live table rows on /orders/stat displayed both STAT and Transplant type indicators.",
+                                         "impact":  "QA assertions that assume every row must have the STAT type label could be unreliable; the inclusion rule was not safely determined."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+
+                                           ],
+                   "uncertainties":  [
+                                         "No previous ADM knowledge snapshot was supplied, so historical changes could not be classified.",
+                                         "The exact meaning and filtering logic of clientid_group were not proven.",
+                                         "Status-chip interaction could not be completed because the live element did not remain stable long enough for the Playwright click; only its UI and API-backed counter behavior were observed.",
+                                         "Search behavior was not exercised.",
+                                         "Order-detail links were not opened to avoid unnecessary exposure to customer-specific data.",
+                                         "The Range control could not be toggled because the element did not remain stable long enough for the Playwright click.",
+                                         "Map marker, client-list, and active-driver behaviors could not be observed because the selected date/status returned an empty state.",
+                                         "The reason Transplant-labeled rows appear in the Orders STAT queue was not established.",
+                                         "No sorting interaction was performed, although descending UID ordering was observed in the list request.",
+                                         "The semantics of Future Rate and Payout were not independently verified beyond their displayed column names."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM currently provides an Orders STAT queue at /orders/stat with status counters, a detailed paginated order table, and a related /orders/stat/map Delivery Dashboard. The queue returned 128 records in All during observation and loads data through dedicated getList and getCounters calls. The map filters by delivery date and status and provides status, client, driver, zoom, full-screen, and layer controls; the observed date/status produced an empty state. No business data was mutated."
+               }
+}

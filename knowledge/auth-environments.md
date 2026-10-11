@@ -25,3 +25,4 @@ Implementation rules:
 - it is never committed to Git;
 - ADM daily Telegram code is kept only in the current Launcher session;
 - the native Chrome auth dialog is handled via CDP `Fetch.authRequired`, not DOM selectors.
+

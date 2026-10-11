@@ -1,4 +1,4 @@
-﻿param(
+param(
   [Parameter(Position=0)]
   [ValidateSet('branch','hot','adm')]
   [string]$Environment = 'branch',
@@ -64,3 +64,4 @@ finally {
     [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($dailyPtr)
   }
 }
+

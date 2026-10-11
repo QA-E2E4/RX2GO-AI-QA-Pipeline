@@ -1,0 +1,445 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Back to Pharmacy",
+    "moduleSlug":  "back-to-pharmacy",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:06:52.7790052+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Back to Pharmacy",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/back-to-pharmacy",
+                   "endUrl":  "https://adm.rx2go.ai/back-to-pharmacy",
+                   "pagePurpose":  "View and filter orders moving through the return-to-pharmacy process, including pending, confirmed, urgent, in-transit, and returned states.",
+                   "routes":  [
+                                  {
+                                      "name":  "Back to Pharmacy",
+                                      "url":  "https://adm.rx2go.ai/back-to-pharmacy",
+                                      "howToOpen":  "Open the Main navigation link named \"Back to Pharmacy\" or navigate to /back-to-pharmacy.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Service-area context selectors",
+                                        "type":  "select",
+                                        "purpose":  "Select the active operational context used by the application.",
+                                        "locatorHints":  [
+                                                             "navigation combobox",
+                                                             "selected option text"
+                                                         ],
+                                        "notes":  "Two navigation comboboxes were visible. Both showed Hawaii selected during observation; the first also listed other geographic service areas."
+                                    },
+                                    {
+                                        "name":  "Search",
+                                        "type":  "input",
+                                        "purpose":  "Filter the displayed return orders using a search value.",
+                                        "locatorHints":  [
+                                                             "getByRole(\"textbox\", { name: \"Search...\" })"
+                                                         ],
+                                        "notes":  "Entering a nonmatching QA search value produced an empty table and changed the selected count to 0 of 0."
+                                    },
+                                    {
+                                        "name":  "Pending Back to Pharmacy",
+                                        "type":  "tab",
+                                        "purpose":  "Show orders in the pending return state.",
+                                        "locatorHints":  [
+                                                             "getByText(\"Pending Back to Pharmacy\")"
+                                                         ],
+                                        "notes":  "This was the default state after a fresh page load. The observed counter was 202."
+                                    },
+                                    {
+                                        "name":  "Confirmed Back to Pharmacy",
+                                        "type":  "tab",
+                                        "purpose":  "Show orders whose return to pharmacy is confirmed.",
+                                        "locatorHints":  [
+                                                             "getByText(\"Confirmed Back to Pharmacy\")"
+                                                         ],
+                                        "notes":  "Activating this state refreshed the table and changed the selected summary to 0 of 161."
+                                    },
+                                    {
+                                        "name":  "BACK TO PH ASAP",
+                                        "type":  "tab",
+                                        "purpose":  "Filter orders assigned the urgent return state.",
+                                        "locatorHints":  [
+                                                             "getByText(\"BACK TO PH ASAP\")"
+                                                         ],
+                                        "notes":  "The observed counter was 19."
+                                    },
+                                    {
+                                        "name":  "Return in Transit",
+                                        "type":  "tab",
+                                        "purpose":  "Filter orders currently returning to the pharmacy.",
+                                        "locatorHints":  [
+                                                             "getByText(\"Return in Transit\")"
+                                                         ],
+                                        "notes":  "The observed counter was 152."
+                                    },
+                                    {
+                                        "name":  "Returned to Pharmacy",
+                                        "type":  "tab",
+                                        "purpose":  "Filter orders recorded as returned to the pharmacy.",
+                                        "locatorHints":  [
+                                                             "getByText(\"Returned to Pharmacy\")"
+                                                         ],
+                                        "notes":  "The observed counter was 246."
+                                    },
+                                    {
+                                        "name":  "Return orders table",
+                                        "type":  "table",
+                                        "purpose":  "Display return-order identifiers, state/property, recipient, parent-order, and delivery-attempt information.",
+                                        "locatorHints":  [
+                                                             "getByRole(\"table\")",
+                                                             "getByRole(\"columnheader\", { name: \"Order\" })",
+                                                             "getByRole(\"columnheader\", { name: \"Property\" })",
+                                                             "getByRole(\"columnheader\", { name: \"Recipient Name\" })"
+                                                         ],
+                                        "notes":  "Observed columns were selection checkbox, Order, Property, Recipient Name, Parent Order, Attempt 1, Reason Attempt 1, Attempt 2, and Reason Attempt 2."
+                                    },
+                                    {
+                                        "name":  "Row selection",
+                                        "type":  "other",
+                                        "purpose":  "Select individual return-order rows or all visible rows.",
+                                        "locatorHints":  [
+                                                             "getByRole(\"checkbox\")"
+                                                         ],
+                                        "notes":  "A header checkbox and one checkbox per row were visible. No rows were selected."
+                                    },
+                                    {
+                                        "name":  "Rows per page",
+                                        "type":  "select",
+                                        "purpose":  "Control the table page size.",
+                                        "locatorHints":  [
+                                                             "getByText(\"Rows per page\")",
+                                                             "adjacent combobox"
+                                                         ],
+                                        "notes":  "Options observed were 5, 10, 25, 50, 100, 200, and 500. The default observed value was 50."
+                                    },
+                                    {
+                                        "name":  "Pagination",
+                                        "type":  "other",
+                                        "purpose":  "Move between pages of return orders.",
+                                        "locatorHints":  [
+                                                             "pagination link by page number",
+                                                             "pagination previous/next button"
+                                                         ],
+                                        "notes":  "Pending results displayed numbered page links and previous/next controls."
+                                    },
+                                    {
+                                        "name":  "Order identifier",
+                                        "type":  "link",
+                                        "purpose":  "Provide an interactive entry point associated with an individual order.",
+                                        "locatorHints":  [
+                                                             "order link text beginning with #"
+                                                         ],
+                                        "notes":  "Order identifiers were rendered as JavaScript-backed links. Their destination behavior was not opened to avoid exposing additional customer data."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Main navigation",
+                                          "action":  "Open the \"Back to Pharmacy\" link",
+                                          "to":  "Back to Pharmacy page",
+                                          "evidence":  "The navigation link had /back-to-pharmacy and the destination title and heading were \"Back to Pharmacy\"."
+                                      },
+                                      {
+                                          "from":  "Pending Back to Pharmacy state",
+                                          "action":  "Activate \"Confirmed Back to Pharmacy\"",
+                                          "to":  "Confirmed Back to Pharmacy filtered table",
+                                          "evidence":  "Table rows changed to the confirmed property and the selected summary became \"Selected 0 of 161\"."
+                                      },
+                                      {
+                                          "from":  "Confirmed filtered table",
+                                          "action":  "Enter a nonmatching value in Search",
+                                          "to":  "Empty filtered table",
+                                          "evidence":  "The table displayed \"Empty table\" and the summary became \"Selected 0 of 0\"."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullBackToPharmacy.php?action=getList",
+                                               "trigger":  "Initial page load, status selection, search entry, or page-size change",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve the paginated list of return orders using search and return-state filters.",
+                                               "importantFields":  [
+                                                                       "order",
+                                                                       "filters",
+                                                                       "search",
+                                                                       "return_state",
+                                                                       "columns",
+                                                                       "limit",
+                                                                       "offset",
+                                                                       "uid",
+                                                                       "property_value",
+                                                                       "recipient_name",
+                                                                       "return_order_uid",
+                                                                       "attempt_1_at",
+                                                                       "attempt_1_reason",
+                                                                       "attempt_2_at",
+                                                                       "attempt_2_reason"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullBackToPharmacy.php?action=getCounters",
+                                               "trigger":  "Initial page load, status selection, or search change",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve counts grouped by return state for the five status controls.",
+                                               "importantFields":  [
+                                                                       "countBy",
+                                                                       "filters",
+                                                                       "counters",
+                                                                       "return_state",
+                                                                       "pending",
+                                                                       "confirmed",
+                                                                       "confirmed_asap",
+                                                                       "on_its_way",
+                                                                       "returned",
+                                                                       "runtime"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Return order",
+                                                              "Return state"
+                                                          ],
+                                             "relationship":  "Each displayed order belongs to a return-state category used by the status controls and counters.",
+                                             "evidence":  "The table Property values matched the active return-state filter, and getList requests contained filters.return_state."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Return order",
+                                                              "Delivery attempt"
+                                                          ],
+                                             "relationship":  "A return order can display up to two attempt timestamps and corresponding reasons.",
+                                             "evidence":  "The table and getList column request included attempt_1_at, attempt_1_reason, attempt_2_at, and attempt_2_reason."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Return order",
+                                                              "Parent order"
+                                                          ],
+                                             "relationship":  "A return order can reference a parent order.",
+                                             "evidence":  "The table included Parent Order and the API column list included return_order_uid."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Return-order list",
+                                                              "Service-area context"
+                                                          ],
+                                             "relationship":  "The module is displayed within the application\u0027s active geographic/service context.",
+                                             "evidence":  "Two context comboboxes were present in navigation and showed Hawaii selected while the module was observed."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Review orders by return state",
+                                         "steps":  [
+                                                       "Open Back to Pharmacy from Main navigation.",
+                                                       "Review the five state counters.",
+                                                       "Activate a state control.",
+                                                       "Review the filtered table and selected-total summary."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Authenticated ADM session",
+                                                                       "An active service-area context"
+                                                                   ],
+                                         "resultObserved":  "Activating Confirmed Back to Pharmacy displayed confirmed rows and a total of 161.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Search within a return state",
+                                         "steps":  [
+                                                       "Activate a return-state control.",
+                                                       "Enter a value in the Search textbox.",
+                                                       "Review the refreshed table and result total."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Back to Pharmacy page loaded",
+                                                                       "A return state selected"
+                                                                   ],
+                                         "resultObserved":  "A nonmatching QA value returned an empty table and selected total of 0 of 0.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Change table page size",
+                                         "steps":  [
+                                                       "Open the Rows per page combobox.",
+                                                       "Select a supported page size."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Back to Pharmacy table loaded"
+                                                                   ],
+                                         "resultObserved":  "Selecting 5 caused getList to request limit 5 and offset 0.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Search",
+                                                       "observedRule":  "A search value with no matching records produces an empty table and a result total of zero.",
+                                                       "evidence":  "The nonmatching QA search produced \"Empty table\" and \"Selected 0 of 0\"."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Rows per page",
+                                                       "observedRule":  "The available page sizes are restricted to 5, 10, 25, 50, 100, 200, and 500.",
+                                                       "evidence":  "These values were the options in the Rows per page combobox."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Initial return-state filter",
+                                                       "observedRule":  "A fresh module load selects the pending return state.",
+                                                       "evidence":  "The initial getList request used return_state value \"pending\", and pending rows were displayed."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Module heading",
+                                             "preferred":  [
+                                                               "getByRole(\"heading\", { name: \"Back to Pharmacy\" })"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated element references",
+                                                           "position-based CSS"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Search textbox",
+                                             "preferred":  [
+                                                               "getByRole(\"textbox\", { name: \"Search...\" })"
+                                                           ],
+                                             "avoid":  [
+                                                           "generic input index"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Status controls",
+                                             "preferred":  [
+                                                               "getByText(\"Pending Back to Pharmacy\")",
+                                                               "getByText(\"Confirmed Back to Pharmacy\")",
+                                                               "getByText(\"BACK TO PH ASAP\")",
+                                                               "getByText(\"Return in Transit\")",
+                                                               "getByText(\"Returned to Pharmacy\")"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated aria-ref values",
+                                                           "nth-child selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Return orders table",
+                                             "preferred":  [
+                                                               "getByRole(\"table\")",
+                                                               "getByRole(\"columnheader\", { name: \"Order\" })",
+                                                               "getByRole(\"columnheader\", { name: \"Reason Attempt 1\" })"
+                                                           ],
+                                             "avoid":  [
+                                                           "table row indexes for identifying specific orders"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Rows per page",
+                                             "preferred":  [
+                                                               "combobox associated with visible text \"Rows per page\""
+                                                           ],
+                                             "avoid":  [
+                                                           "toolbar-specific CSS IDs"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "ADM exposes Back to Pharmacy at /back-to-pharmacy with matching page title and heading.",
+                                             "evidence":  "Live URL, browser title, heading, and Main navigation link.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The module categorizes return orders into pending, confirmed, urgent, in-transit, and returned states.",
+                                             "evidence":  "Five visible state controls and return_state API values.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "At observation time, counters were pending 202, confirmed 161, urgent 19, in transit 152, and returned 246.",
+                                             "evidence":  "Visible controls and the getCounters 200 response.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The list supports server-backed state filtering, searching, pagination, and configurable page size.",
+                                             "evidence":  "UI interactions generated successful getList and getCounters POST requests with filters, limit, and offset fields.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The return-order table exposes order, property/state, recipient, parent-order, and two attempt/reason pairs.",
+                                             "evidence":  "Observed table headers and getList columns.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The page provides row-selection checkboxes and reports the number selected relative to the filtered total.",
+                                             "evidence":  "Header and row checkboxes plus summaries such as \"Selected 0 of 202\" and \"Selected 0 of 161\".",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; ADM is the primary baseline and baselineEnvironment is NONE.",
+                                                  "currentFact":  "Current ADM behavior was recorded directly as the stable baseline.",
+                                                  "evidence":  "Live authenticated ADM exploration at /back-to-pharmacy."
+                                              }
+                                          ],
+                   "anomalies":  [
+
+                                 ],
+                   "changesFromPrevious":  [
+                                               {
+                                                   "type":  "NEW",
+                                                   "fact":  "Initial ADM baseline knowledge was established for the Back to Pharmacy module.",
+                                                   "evidence":  "No prior baseline was supplied; current facts were verified live on ADM."
+                                               }
+                                           ],
+                   "uncertainties":  [
+                                         "The exact business labels and scoping behavior of the two navigation context comboboxes could not be proven because they had no accessible names.",
+                                         "The behavior behind individual order identifiers and adjacent icon controls was not opened to avoid exposing additional customer or prescription details.",
+                                         "No row-selection action was performed, so any actions that may appear after selecting orders remain unverified.",
+                                         "Only the pending and confirmed state tables were directly loaded; the urgent, in-transit, and returned controls and counters were observed, but their row contents were not opened.",
+                                         "No prior ADM snapshot was supplied, so historical changes cannot be determined."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM currently provides a read-only Back to Pharmacy worklist under Main navigation. It uses five server-backed return-state filters, search, row selection, pagination, and configurable page size to review orders and their parent-order and delivery-attempt context. No business data was mutated."
+               }
+}

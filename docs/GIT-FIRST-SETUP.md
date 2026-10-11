@@ -7,3 +7,4 @@
 5. Use **Commit knowledge**, then **Synchronize**.
 
 When the team moves to a shared organization later, change `origin` to the organization repository; the Git history and accumulated knowledge remain intact.
+

@@ -1,0 +1,15 @@
+version: 1
+topic: git_sync_and_ssh_status
+rules:
+  - GitHub SSH check must leave a persistent visible status in the Knowledge tab.
+  - SSH states: CHECKING, CONNECTED, KEY NOT FOUND, KEY NOT REGISTERED, AUTH FAILED, ERROR.
+  - Local Git changes are classified as managed, outside-tracked, and outside-untracked.
+  - Outside untracked files do not automatically block `git pull --ff-only`.
+  - Git itself remains the final safety guard and refuses to overwrite conflicting untracked paths.
+  - Outside tracked changes block Pull and the UI must list concrete file paths.
+  - A `Show changes` action must display managed and outside changes.
+runtime_ignore:
+  - "*.log"
+  - "package-lock.json"
+  - "knowledge/explorer/branch/"
+

@@ -33,3 +33,4 @@ rules:
   - ProductResultAndAutomationResult
   - A TEST_AUTOMATION_BUG must not be reported as a product FAIL when live Smart QA passed the acceptance criteria.
   - Jira mutation permission must be read from the Jira Task checkbox, not the Quick Run checkbox.
+

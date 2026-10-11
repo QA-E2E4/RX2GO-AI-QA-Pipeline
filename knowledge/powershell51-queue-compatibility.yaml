@@ -1,0 +1,16 @@
+version: 1
+topic: windows_powershell_5_1_queue_compatibility
+scope: Jira Queue manager
+incident:
+  version: 0.12.26
+  exception: "System.ArgumentException: Типы аргумента не совпадают"
+  function: Refresh-QueueGrid
+  cause: "Generic.List[object] coerced through @() in Windows PowerShell 5.1"
+rules:
+  - QueueItems uses System.Collections.ArrayList.
+  - ArrayList.Add return values are suppressed with [void].
+  - Queue self-test runs before first grid refresh.
+  - Queue rendering is fail-safe and cannot terminate the main Launcher.
+  - Status/result are normalized to string before ToUpperInvariant.
+  - Queue failure leaves Quick Launch, Jira Task and Knowledge available.
+

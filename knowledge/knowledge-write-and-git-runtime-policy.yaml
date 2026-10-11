@@ -1,0 +1,18 @@
+version: 1
+topic: knowledge_write_and_git_runtime
+scope: post-run Auto-Learning and Auto Git
+powershell51:
+  - Do not use Generic.List plus @() coercion for learned-knowledge arrays.
+  - Use ArrayList and suppress Add() index output with [void].
+  - Run Knowledge Auto-Learning self-test before writing learned JSON.
+git:
+  - Read stdout/stderr asynchronously before waiting for git process exit.
+  - Keep UI responsive while waiting.
+  - git add timeout: 120000 ms.
+  - A git timeout must preserve local knowledge and product PASS/FAIL.
+select_assertions:
+  - Visible option label is not the same as HTML select.value.
+  - For labels such as Facility New York, assert option:checked text unless underlying value was proven live.
+jira_report:
+  - Final readable report is overwritten after Playwright, RCA, Auto-Learning and Git sync.
+

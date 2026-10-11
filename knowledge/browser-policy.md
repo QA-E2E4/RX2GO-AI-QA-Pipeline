@@ -9,3 +9,4 @@ Session mode:
 - branded Chrome is selected with Playwright `channel: 'chrome'`.
 
 The Launcher checks that Google Chrome is installed before running tests.
+

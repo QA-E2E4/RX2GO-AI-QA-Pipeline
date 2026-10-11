@@ -1,0 +1,556 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Apply Vendors",
+    "moduleSlug":  "apply-vendors",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:38:22.9539583+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Apply Vendors",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/apply/drivers",
+                   "endUrl":  "https://adm.rx2go.ai/apply/analytics",
+                   "pagePurpose":  "Review vendor applications and their progress through registration, interview, training, rejection, and completion stages; related pages provide interview scheduling, interview-location administration, and QR application analytics.",
+                   "routes":  [
+                                  {
+                                      "name":  "Apply Vendors",
+                                      "url":  "https://adm.rx2go.ai/apply/drivers",
+                                      "howToOpen":  "Main navigation link named Apply Vendors",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Interview Calendar",
+                                      "url":  "https://adm.rx2go.ai/apply/calendar",
+                                      "howToOpen":  "Interview Calendar link on Apply Vendors",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Interview Addresses",
+                                      "url":  "https://adm.rx2go.ai/apply/addresses",
+                                      "howToOpen":  "Interview Addresses link on Apply Vendors or Interview Calendar",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "QR Apply Analytics",
+                                      "url":  "https://adm.rx2go.ai/apply/analytics",
+                                      "howToOpen":  "QR Analytics link in the Apply Vendors page family or QR Apply Analytics in Main navigation",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Application search",
+                                        "type":  "input",
+                                        "purpose":  "Filter the vendor-application table using entered text",
+                                        "locatorHints":  [
+                                                             "role=textbox, name=Search, exact=true",
+                                                             "role=button, name=Clear Search"
+                                                         ],
+                                        "notes":  "Entering a no-match query refreshed the table request; Clear Search removed the query."
+                                    },
+                                    {
+                                        "name":  "Completed info",
+                                        "type":  "select",
+                                        "purpose":  "Appears to filter applications by completion-information state",
+                                        "locatorHints":  [
+                                                             "role=button, name=Completed info"
+                                                         ],
+                                        "notes":  "Visible but not changed, so its options and filtering semantics remain unverified."
+                                    },
+                                    {
+                                        "name":  "Application status filters",
+                                        "type":  "tab",
+                                        "purpose":  "Filter applications by lifecycle status",
+                                        "locatorHints":  [
+                                                             "role=link, name starts with all",
+                                                             "role=link, name starts with registered",
+                                                             "role=link, name starts with Interview scheduled",
+                                                             "role=link, name starts with Interview completed",
+                                                             "role=link, name starts with Training scheduled",
+                                                             "role=link, name starts with Training completed",
+                                                             "role=link, name starts with Application rejected",
+                                                             "role=link, name starts with Completed"
+                                                         ],
+                                        "notes":  "Each status displays a count. Selecting registered sent a request containing filters.apply_status=registered."
+                                    },
+                                    {
+                                        "name":  "Applications table",
+                                        "type":  "table",
+                                        "purpose":  "Display vendor application identity, lifecycle state, progress, contact columns, age, and available actions",
+                                        "locatorHints":  [
+                                                             "role=table",
+                                                             "role=columnheader, name starts with Uid",
+                                                             "role=columnheader, name starts with Name",
+                                                             "role=button, name=VIEW",
+                                                             "role=button, name=Manage"
+                                                         ],
+                                        "notes":  "Observed columns: Uid, Name, Status, Step, Info, Step At, Phone, Email, Hired, Actions. Personal row values are intentionally omitted."
+                                    },
+                                    {
+                                        "name":  "Sortable application columns",
+                                        "type":  "other",
+                                        "purpose":  "Change application ordering",
+                                        "locatorHints":  [
+                                                             "role=columnheader, name starts with Name",
+                                                             "role=columnheader, name starts with Status",
+                                                             "role=columnheader, name starts with Step",
+                                                             "role=columnheader, name starts with Step At",
+                                                             "role=columnheader, name starts with Phone",
+                                                             "role=columnheader, name starts with Email",
+                                                             "role=columnheader, name starts with Hired",
+                                                             "role=columnheader, name starts with Actions"
+                                                         ],
+                                        "notes":  "Name was safely sorted ascending; the request changed order to name=ASC. Uid was initially sorted descending."
+                                    },
+                                    {
+                                        "name":  "Application pagination",
+                                        "type":  "other",
+                                        "purpose":  "Select rows per page and navigate application result pages",
+                                        "locatorHints":  [
+                                                             "role=button, name=10",
+                                                             "role=button, name=First page",
+                                                             "role=button, name=Previous page",
+                                                             "role=button, name=Next page",
+                                                             "role=button, name=Last page"
+                                                         ],
+                                        "notes":  "The observed result set contained one row, so all navigation buttons were disabled."
+                                    },
+                                    {
+                                        "name":  "Calendar navigation and views",
+                                        "type":  "other",
+                                        "purpose":  "Navigate interview dates and switch between day, week, month, and four-day views",
+                                        "locatorHints":  [
+                                                             "role=button, name=Today",
+                                                             "role=button, name=Day",
+                                                             "role=button, name=Week",
+                                                             "role=button, name=Month",
+                                                             "role=button, name=4 days"
+                                                         ],
+                                        "notes":  "A month grid for September 2026 was visible."
+                                    },
+                                    {
+                                        "name":  "Refresh events",
+                                        "type":  "button",
+                                        "purpose":  "Refresh interview-calendar events",
+                                        "locatorHints":  [
+                                                             "text=Refresh events"
+                                                         ],
+                                        "notes":  "Visible but not activated."
+                                    },
+                                    {
+                                        "name":  "Enable scheduling",
+                                        "type":  "button",
+                                        "purpose":  "Appears to enable interview scheduling",
+                                        "locatorHints":  [
+                                                             "text=Enable scheduling"
+                                                         ],
+                                        "notes":  "Not activated because its state-changing implications were not safely established."
+                                    },
+                                    {
+                                        "name":  "Interview addresses table",
+                                        "type":  "table",
+                                        "purpose":  "Display interview locations and whether each location is active for interviews",
+                                        "locatorHints":  [
+                                                             "role=table",
+                                                             "text=Active for interview",
+                                                             "role=button, name=Activate"
+                                                         ],
+                                        "notes":  "Observed columns included Uid, Facility, Title, Address, Created, Active for interview, and Actions. Actual addresses are intentionally omitted."
+                                    },
+                                    {
+                                        "name":  "QR analytics filters",
+                                        "type":  "other",
+                                        "purpose":  "Filter and group QR application analytics",
+                                        "locatorHints":  [
+                                                             "role=button, name=Clear Date from",
+                                                             "role=button, name=Clear Date to",
+                                                             "role=button, name=Group by QR city",
+                                                             "role=button, name=Apply"
+                                                         ],
+                                        "notes":  "Date controls and QR-city grouping were visible but not changed."
+                                    },
+                                    {
+                                        "name":  "Download CSV",
+                                        "type":  "button",
+                                        "purpose":  "Export QR application analytics as CSV",
+                                        "locatorHints":  [
+                                                             "role=button, name=Download CSV"
+                                                         ],
+                                        "notes":  "Visible but not activated."
+                                    },
+                                    {
+                                        "name":  "QR analytics tables",
+                                        "type":  "table",
+                                        "purpose":  "Summarize QR clicks, applications, application statuses, and application steps by date and QR city",
+                                        "locatorHints":  [
+                                                             "role=table",
+                                                             "role=heading, name=QR City Summary"
+                                                         ],
+                                        "notes":  "The page also displayed aggregate cards for total registrations, targeted registrations, non-targeted registrations, and targeted share."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Main navigation on Equipment",
+                                          "action":  "Click Apply Vendors",
+                                          "to":  "Apply Vendors",
+                                          "evidence":  "URL changed from /equipment to /apply/drivers and the heading became Apply Vendors."
+                                      },
+                                      {
+                                          "from":  "Apply Vendors",
+                                          "action":  "Click registered status filter",
+                                          "to":  "Registered-filtered application list",
+                                          "evidence":  "A new getApplyDrivers request contained filters.apply_status=registered."
+                                      },
+                                      {
+                                          "from":  "Apply Vendors",
+                                          "action":  "Click Interview Calendar",
+                                          "to":  "Interview Calendar",
+                                          "evidence":  "URL changed to /apply/calendar and a calendar grid was displayed."
+                                      },
+                                      {
+                                          "from":  "Interview Calendar",
+                                          "action":  "Click Interview Addresses",
+                                          "to":  "Interview Addresses",
+                                          "evidence":  "URL changed to /apply/addresses and an interview-locations table was displayed."
+                                      },
+                                      {
+                                          "from":  "Interview Addresses",
+                                          "action":  "Click QR Analytics",
+                                          "to":  "QR Apply Analytics",
+                                          "evidence":  "URL changed to /apply/analytics and analytics cards and tables were displayed."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullDrivers.php?action=getApplyDrivers",
+                                               "trigger":  "Initial Apply Vendors page load, status selection, column sorting, and text search",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve the filtered, sorted, and paginated vendor-application list",
+                                               "importantFields":  [
+                                                                       "limit",
+                                                                       "search",
+                                                                       "order",
+                                                                       "filters",
+                                                                       "uid",
+                                                                       "name",
+                                                                       "apply_status"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullDrivers.php?action=calcCounts",
+                                               "trigger":  "Initial Apply Vendors page load",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Calculate application counts grouped by application status",
+                                               "importantFields":  [
+                                                                       "filters",
+                                                                       "group",
+                                                                       "apply_status"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Vendor application",
+                                                              "Application status"
+                                                          ],
+                                             "relationship":  "Each application is categorized into a lifecycle status used for table filtering and grouped counts.",
+                                             "evidence":  "Status column plus all, registered, interview, training, rejected, and completed filters; calcCounts groups by apply_status."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Vendor application",
+                                                              "Application step"
+                                                          ],
+                                             "relationship":  "An application has a current progress step distinct from its broader status.",
+                                             "evidence":  "Separate Status and Step columns and QR analytics summaries for statuses and steps."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Vendor application",
+                                                              "Vendor account"
+                                                          ],
+                                             "relationship":  "The application UID links to an account page.",
+                                             "evidence":  "UID cells contained links with an /account/{uid} route shape."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Interview calendar",
+                                                              "Interview address"
+                                                          ],
+                                             "relationship":  "Interview scheduling is accompanied by administrable interview locations.",
+                                             "evidence":  "Calendar and addresses are linked sibling pages within the Apply Vendors page family."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "QR city",
+                                                              "Application analytics"
+                                                          ],
+                                             "relationship":  "QR activity is grouped by QR city and summarizes clicks, applications, statuses, and steps.",
+                                             "evidence":  "QR analytics detail and QR City Summary tables."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Review filtered vendor applications",
+                                         "steps":  [
+                                                       "Open Apply Vendors from Main navigation",
+                                                       "Select an application-status filter",
+                                                       "Optionally enter search text or activate a sortable column",
+                                                       "Review the resulting application table and available VIEW or Manage actions"
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Authenticated ADM session",
+                                                                       "Apply Vendors navigation permission"
+                                                                   ],
+                                         "resultObserved":  "The application list refreshed using the selected filter, search, and ordering parameters.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Review interview scheduling surfaces",
+                                         "steps":  [
+                                                       "Open Interview Calendar from Apply Vendors",
+                                                       "Review the calendar and available view controls",
+                                                       "Open Interview Addresses from the page-family navigation",
+                                                       "Review configured location rows and active-for-interview state"
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Authenticated ADM session"
+                                                                   ],
+                                         "resultObserved":  "Calendar and interview-address pages were reached without changing scheduling or address state.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Review QR application analytics",
+                                         "steps":  [
+                                                       "Open QR Analytics from the Apply Vendors page family",
+                                                       "Review aggregate registration cards",
+                                                       "Review dated QR analytics and QR City Summary tables"
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Authenticated ADM session"
+                                                                   ],
+                                         "resultObserved":  "QR click and application aggregates were displayed without applying new filters or downloading data.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Application search",
+                                                       "observedRule":  "The entered text is submitted in the search field of the application-list request; a deliberately unmatched query produced an empty result state.",
+                                                       "evidence":  "Request body contained search=__qa_no_match__ and the table range changed to an empty indicator."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Registered status filter",
+                                                       "observedRule":  "Selecting registered applies filters.apply_status=registered.",
+                                                       "evidence":  "Observed getApplyDrivers request body after selecting the filter."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Name sorting",
+                                                       "observedRule":  "Activating an unsorted Name header applies ascending name ordering.",
+                                                       "evidence":  "Observed getApplyDrivers request body with order.name=ASC."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Pagination",
+                                                       "observedRule":  "Pagination controls are disabled when the current result set fits on one page.",
+                                                       "evidence":  "First, Previous, Next, and Last buttons were disabled for the one-row result."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Apply Vendors navigation link",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Apply Vendors\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "sidebar list-item index",
+                                                           "icon glyph selector"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Application search",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Search\u0027, exact: true })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Clear Search\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "generic top-banner Search... textbox",
+                                                           "DOM position"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Status filter",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: /^registered \\(/ })",
+                                                               "getByRole(\u0027link\u0027, { name: /^Completed \\(/ })"
+                                                           ],
+                                             "avoid":  [
+                                                           "list-item index",
+                                                           "javascript URL"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Sortable Name column",
+                                             "preferred":  [
+                                                               "getByRole(\u0027columnheader\u0027, { name: /^Name:/ })"
+                                                           ],
+                                             "avoid":  [
+                                                           "nth column selector"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Application actions",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: \u0027VIEW\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Manage\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "action-cell child index"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Apply module child-page navigation",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Interview Calendar\u0027 })",
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Interview Addresses\u0027 })",
+                                                               "getByRole(\u0027link\u0027, { name: \u0027QR Analytics\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "icon glyph selector"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Calendar view controls",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Today\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Day\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Week\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Month\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u00274 days\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "calendar-library class names"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "QR analytics export and filtering",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Download CSV\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Group by QR city\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Apply\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "unnamed icon button",
+                                                           "DOM position"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Apply Vendors is present in Main navigation and resolves to /apply/drivers.",
+                                             "evidence":  "Live Main navigation link and page heading/title.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The application list supports lifecycle-status filtering, text search, sortable columns, and pagination.",
+                                             "evidence":  "Live controls and corresponding application-list requests.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Application status and application step are represented separately.",
+                                             "evidence":  "Separate Status and Step columns and separate analytics summaries.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The observed status set includes registered, Interview scheduled, Interview completed, Training scheduled, Training completed, Application rejected, and Completed.",
+                                             "evidence":  "Live status-filter labels.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Interview Calendar, Interview Addresses, and QR Analytics form a linked page family with Apply Vendors.",
+                                             "evidence":  "Repeated sibling navigation links across all four pages.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Interview Calendar offers day, week, month, and four-day views plus Today navigation.",
+                                             "evidence":  "Live calendar controls.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Interview Addresses lists facility/location metadata and an active-for-interview state with an Activate action.",
+                                             "evidence":  "Live table headers and row actions; sensitive address values omitted.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "QR Apply Analytics reports registration totals and breaks QR activity down into clicks, applications, statuses, and steps.",
+                                             "evidence":  "Live aggregate cards, dated analytics table, and QR City Summary table.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; ADM is being recorded as the primary baseline and no prior baseline was supplied.",
+                                                  "currentFact":  "The currently observed Apply Vendors capability includes application review, interview calendar, interview addresses, and QR analytics.",
+                                                  "evidence":  "Live ADM observations across /apply/drivers, /apply/calendar, /apply/addresses, and /apply/analytics."
+                                              }
+                                          ],
+                   "anomalies":  [
+
+                                 ],
+                   "changesFromPrevious":  [
+                                               {
+                                                   "type":  "UNCHANGED",
+                                                   "fact":  "The Project Mapper entry URL and navigation label were verified live.",
+                                                   "evidence":  "Main navigation Apply Vendors link resolved to https://adm.rx2go.ai/apply/drivers."
+                                               }
+                                           ],
+                   "uncertainties":  [
+                                         "VIEW and Manage were not opened because their detailed behavior could expose personal application data or lead toward state-changing actions.",
+                                         "The Completed info selector options and precise filtering semantics were not inspected.",
+                                         "Enable scheduling, interview-address Activate actions, date selection, analytics Apply, and CSV download were not activated because they were unnecessary or could change state/create an external artifact.",
+                                         "Calendar event-detail behavior was not proven because no event was safely opened.",
+                                         "No prior ADM baseline was provided, so historical change classification is unavailable."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM currently exposes Apply Vendors as a four-page capability: application review, interview calendar, interview-address administration, and QR application analytics. The application list is server-filtered, searchable, sortable, paginated, and grouped by lifecycle status. Exploration remained read-only and omitted personal row data."
+               }
+}

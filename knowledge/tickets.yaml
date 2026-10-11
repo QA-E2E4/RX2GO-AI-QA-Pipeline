@@ -25,3 +25,4 @@ rules:
       scheduled_long_e2e:
         - check_not_in_queue_before_expiration
         - check_returns_after_expiration
+

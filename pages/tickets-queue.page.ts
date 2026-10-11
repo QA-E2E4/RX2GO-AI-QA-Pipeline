@@ -74,3 +74,4 @@ export class TicketsQueuePage {
     await save.click();
   }
 }
+

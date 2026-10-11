@@ -1,0 +1,305 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Scan | Unlock Vendor",
+    "moduleSlug":  "scan-unlock-vendor",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:25:13.2363832+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Scan | Unlock Vendor",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/get-route-name",
+                   "endUrl":  "https://adm.rx2go.ai/scanner/unlock-for-driver",
+                   "pagePurpose":  "Provides a barcode-scanner workflow labeled \"Scanner | Unlock Route For Driver\" within the ADM page titled \"Scan | Unlock Vendor\".",
+                   "routes":  [
+                                  {
+                                      "name":  "Scan | Unlock Vendor",
+                                      "url":  "https://adm.rx2go.ai/scanner/unlock-for-driver",
+                                      "howToOpen":  "Use the Main navigation link named \"Scan | Unlock Vendor\" or open its observed URL.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Barcode Numbers",
+                                        "type":  "input",
+                                        "purpose":  "Accept barcode numbers for the unlock scanning workflow.",
+                                        "locatorHints":  [
+                                                             "role=textbox name=\"Barcode Numbers...\"",
+                                                             "placeholder=\"Barcode Numbers...\"",
+                                                             "text=\"Barcode Numbers\""
+                                                         ],
+                                        "notes":  "Observed as an enabled text input without required, name, or id attributes."
+                                    },
+                                    {
+                                        "name":  "Auto Submit on Scan",
+                                        "type":  "other",
+                                        "purpose":  "Switch automatic submission after scanning between Off and On.",
+                                        "locatorHints":  [
+                                                             "text=\"Auto Submit on Scan\"",
+                                                             "text=\"Off\"",
+                                                             "text=\"On\""
+                                                         ],
+                                        "notes":  "On was initially active. Selecting Off made Off active, and selecting On restored On as active."
+                                    },
+                                    {
+                                        "name":  "Facility selector",
+                                        "type":  "select",
+                                        "purpose":  "Select the active service/facility context used by the authenticated ADM session.",
+                                        "locatorHints":  [
+                                                             "role=combobox"
+                                                         ],
+                                        "notes":  "The first navigation combobox showed Hawaii selected and offered multiple facility choices. It was not changed."
+                                    },
+                                    {
+                                        "name":  "Hub selector",
+                                        "type":  "select",
+                                        "purpose":  "Select a hub within the active facility context.",
+                                        "locatorHints":  [
+                                                             "role=combobox"
+                                                         ],
+                                        "notes":  "The second navigation combobox showed Hawaii selected and also offered Long Ilend. It was not changed."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Get Route Name page",
+                                          "action":  "Observed the Main navigation link named \"Scan | Unlock Vendor\" with href /scanner/unlock-for-driver, then opened the verified absolute URL.",
+                                          "to":  "Scan | Unlock Vendor page",
+                                          "evidence":  "The resulting URL was https://adm.rx2go.ai/scanner/unlock-for-driver and the document title was \"Scan | Unlock Vendor | Rx2Go\"."
+                                      },
+                                      {
+                                          "from":  "Scan | Unlock Vendor with Auto Submit On",
+                                          "action":  "Selected \"Off\".",
+                                          "to":  "Auto Submit Off state",
+                                          "evidence":  "The Off label gained the active class and the On label lost it."
+                                      },
+                                      {
+                                          "from":  "Auto Submit Off state",
+                                          "action":  "Selected \"On\".",
+                                          "to":  "Auto Submit On state",
+                                          "evidence":  "The On option was restored as active."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/v1/common/get-facilities",
+                                               "trigger":  "Initial page loading and shared navigation initialization",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to supply available facility context for the navigation selector.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=1",
+                                               "trigger":  "Initial page loading with the current facility context",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to load hubs associated with the active facility.",
+                                               "importantFields":  [
+                                                                       "action",
+                                                                       "facility"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Facility",
+                                                              "Hub"
+                                                          ],
+                                             "relationship":  "The available hub context is loaded for the active facility.",
+                                             "evidence":  "A successful getHubs request included a facility query parameter, and separate facility and hub selectors were visible."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Barcode",
+                                                              "Vendor/Driver route"
+                                                          ],
+                                             "relationship":  "The page associates barcode scanning with a route-unlock workflow for a vendor/driver.",
+                                             "evidence":  "The page title says \"Scan | Unlock Vendor\", while the workflow heading says \"Scanner | Unlock Route For Driver\" beside the Barcode Numbers input."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Open the vendor/driver route unlock scanner",
+                                         "steps":  [
+                                                       "Open the Main navigation entry \"Scan | Unlock Vendor\".",
+                                                       "Confirm the page at /scanner/unlock-for-driver.",
+                                                       "Use the Barcode Numbers input within the \"Scanner | Unlock Route For Driver\" panel."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session is required.",
+                                                                       "Facility and hub context selectors are present.",
+                                                                       "A valid barcode and the associated vendor/driver route context appear necessary to exercise the business action safely."
+                                                                   ],
+                                         "resultObserved":  "The scanner page loaded with an empty barcode input and Auto Submit set to On.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Configure automatic scan submission",
+                                         "steps":  [
+                                                       "Select Off under Auto Submit on Scan.",
+                                                       "Observe Off become active.",
+                                                       "Select On.",
+                                                       "Observe On become active again."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The scanner page is loaded."
+                                                                   ],
+                                         "resultObserved":  "The local control state changed between Off and On; On was restored.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Barcode Numbers / Enter on empty input",
+                                                       "observedRule":  "Pressing Enter while the barcode input was empty produced no visible result, validation message, navigation, or module-specific network request.",
+                                                       "evidence":  "The scanner panel remained unchanged and the network list showed no unlock/scanner submission request after the empty Enter action."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Barcode Numbers",
+                                                       "observedRule":  "The browser DOM did not mark the text input as required.",
+                                                       "evidence":  "Live element inspection reported required=false and disabled=false."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Scan | Unlock Vendor navigation entry",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Scan | Unlock Vendor\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Snapshot reference IDs",
+                                                           "Positional sidebar selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Barcode Numbers input",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Barcode Numbers...\u0027 })",
+                                                               "getByPlaceholder(\u0027Barcode Numbers...\u0027)"
+                                                           ],
+                                             "avoid":  [
+                                                           "Empty id selector",
+                                                           "Generic .form-control selector"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Auto Submit Off option",
+                                             "preferred":  [
+                                                               "getByText(\u0027Off\u0027, { exact: true }) scoped to the Auto Submit on Scan control"
+                                                           ],
+                                             "avoid":  [
+                                                           "Active-state CSS classes as the click locator",
+                                                           "Global unscoped text when other Off controls exist"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Auto Submit On option",
+                                             "preferred":  [
+                                                               "getByText(\u0027On\u0027, { exact: true }) scoped to the Auto Submit on Scan control"
+                                                           ],
+                                             "avoid":  [
+                                                           "Active-state CSS classes as the click locator",
+                                                           "Global unscoped text when other On controls exist"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The discovered ADM route is live and authenticated.",
+                                             "evidence":  "The URL loaded as https://adm.rx2go.ai/scanner/unlock-for-driver with title \"Scan | Unlock Vendor | Rx2Go\" and application navigation visible.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The page\u0027s scanner panel is labeled \"Scanner | Unlock Route For Driver\".",
+                                             "evidence":  "Live accessibility snapshot of the module panel.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The scanner surface contains one visible barcode text input and an Auto Submit Off/On control.",
+                                             "evidence":  "Live accessibility snapshot and element inspection.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Auto Submit was On when first observed.",
+                                             "evidence":  "The On label initially had the active class.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "No submit button was visible in the scanner panel.",
+                                             "evidence":  "The targeted scanner-panel snapshot contained only the Barcode Numbers input and Auto Submit control.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; this observation establishes the ADM primary baseline.",
+                                                  "currentFact":  "The ADM module is available at /scanner/unlock-for-driver with barcode input and Auto Submit controls.",
+                                                  "evidence":  "Live ADM route, title, scanner-panel snapshot, and control-state observations."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The navigation and document title use \"Unlock Vendor\", while the in-page scanner heading uses \"Unlock Route For Driver\".",
+                                         "evidence":  "The same live page showed title \"Scan | Unlock Vendor | Rx2Go\" and panel text \"Scanner | Unlock Route For Driver\".",
+                                         "impact":  "QA automation and documentation may need to account for inconsistent Vendor, Driver, and Route terminology."
+                                     },
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The Off and On options are exposed as generic clickable labels rather than semantically named radio buttons or switches.",
+                                         "evidence":  "The accessibility snapshot represented both options as generic nodes, and DOM inspection found LABEL elements without role or aria-checked attributes.",
+                                         "impact":  "Accessibility and stable role-based selector coverage are limited for this control."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+
+                                           ],
+                   "uncertainties":  [
+                                         "The actual unlock submission was not exercised because no safe QA barcode or vendor/route context was available.",
+                                         "The module-specific submission endpoint, request method, response fields, success state, and error states were not triggered.",
+                                         "It was not proven whether Auto Submit state persists across reloads or sessions.",
+                                         "It was not proven whether changing facility or hub changes the eligible barcode/vendor/route context.",
+                                         "No valid-barcode, invalid-barcode, duplicate-scan, locked-route, or already-unlocked validation behavior was safely observable."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM currently exposes the verified Scan | Unlock Vendor route at /scanner/unlock-for-driver. Its read-only observed surface is a barcode input under \"Scanner | Unlock Route For Driver\" plus an Off/On Auto Submit control, initially On. Facility and hub context are present, but the business unlock action and its API could not be safely exercised without a valid QA barcode and associated context."
+               }
+}

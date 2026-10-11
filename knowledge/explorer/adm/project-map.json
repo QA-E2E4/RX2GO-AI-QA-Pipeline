@@ -1,0 +1,1157 @@
+{
+    "schemaVersion":  1,
+    "sourceClass":  "LIVE_PROJECT_MAP",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "observedAt":  "2026-09-07T00:31:52.7503897+03:00",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "requirementAuthority":  false,
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/orders/",
+                   "endUrl":  "https://adm.rx2go.ai/orders/",
+                   "navigationModel":  "mixed",
+                   "modules":  [
+                                   {
+                                       "name":  "Gigs",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/routes/",
+                                       "howToOpen":  "Select Gigs in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View and manage delivery gigs/routes.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "A service area is visibly selected.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Gig Names",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/route-names/",
+                                       "howToOpen":  "Select Gig Names in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "Manage names used for gigs/routes.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "A service area is visibly selected.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Assign Gigs New",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/assign-routes-new/",
+                                       "howToOpen":  "Select Assign Gigs New in the sidebar.",
+                                       "aliases":  [
+                                                       "Assign Gigs"
+                                                   ],
+                                       "purposeHint":  "Assign delivery gigs using the newer or legacy interface.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Service-area and gig context may be required.",
+                                       "confidence":  "MEDIUM"
+                                   },
+                                   {
+                                       "name":  "New order",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/orders/new",
+                                       "howToOpen":  "Select New order in the sidebar or Orders page header.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "Open the order-entry workflow; do not submit during read-only exploration.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Client and service context may be required to complete an order.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Orders",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/orders",
+                                       "howToOpen":  "Select Orders in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "Browse and filter operational orders.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "A service area is visibly selected.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Orders STAT",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/orders/stat",
+                                       "howToOpen":  "Select Orders STAT in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View the STAT-order workflow or queue.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Service-area and order context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Pickups",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/clients/pickups",
+                                       "howToOpen":  "Select Pickups in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View client pickup activity.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Client or service-area context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Carrier Pickups",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/carrier-pickups",
+                                       "howToOpen":  "Select Carrier Pickups in the sidebar or Orders page header.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View carrier pickup operations.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Service-area context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Back to Pharmacy",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/back-to-pharmacy",
+                                       "howToOpen":  "Select Back to Pharmacy in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View orders returning to a pharmacy.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Order and service-area context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Copays",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/copays",
+                                       "howToOpen":  "Select Copays in the sidebar or Orders page header.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View copay-related operations.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Order or client context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Map",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/map",
+                                       "howToOpen":  "Select Map in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View operational delivery data geographically.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "A service area is visibly selected.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Scanner",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/scanner/order-editor",
+                                       "howToOpen":  "Select Scanner in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "Access the scanner-based order editor.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "A scanned order identifier may be required.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Get Route Name",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/get-route-name",
+                                       "howToOpen":  "Select Get Route Name in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "Resolve or retrieve a route name through scanning.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Route or scan context may be required.",
+                                       "confidence":  "MEDIUM"
+                                   },
+                                   {
+                                       "name":  "Scan | Unlock Vendor",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/scanner/unlock-for-driver",
+                                       "howToOpen":  "Select Scan | Unlock Vendor in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "Open the scanner workflow for unlocking a vendor.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Vendor and scan context may be required.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Scan | As Vendor",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/scanner/as-driver",
+                                       "howToOpen":  "Select Scan | As Vendor in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "Open a vendor-oriented scanning workflow.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Vendor and scan context may be required.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Scan New",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/scan-new/",
+                                       "howToOpen":  "Select Scan New in the sidebar.",
+                                       "aliases":  [
+                                                       "Scan"
+                                                   ],
+                                       "purposeHint":  "Access the newer or legacy general scanning interface.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "A scannable business identifier may be required.",
+                                       "confidence":  "MEDIUM"
+                                   },
+                                   {
+                                       "name":  "Equipment",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/equipment",
+                                       "howToOpen":  "Select Equipment in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View operational equipment.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Apply Vendors",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/apply/drivers",
+                                       "howToOpen":  "Select Apply Vendors in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "Review vendor applications.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "QR Apply Analytics",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/apply/analytics",
+                                       "howToOpen":  "Select QR Apply Analytics in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View analytics for QR-based applications.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Quote Requests",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/quotes",
+                                       "howToOpen":  "Select Quote Requests in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View quote requests.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Quote Route Rx Requests",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/quotes-route-rx",
+                                       "howToOpen":  "Select Quote Route Rx Requests in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View Route Rx-specific quote requests.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "QAQC Dashboard",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/qaqc/dashboard",
+                                       "howToOpen":  "Select QAQC Dashboard in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View quality-assurance and quality-control operations.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "QAQC Rejected Dashboard",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/qaqc/rejected-dashboard",
+                                       "howToOpen":  "Select QAQC Rejected Dashboard in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View rejected QA/QC work.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "QAQC Calls Queue",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/qaqc/calls",
+                                       "howToOpen":  "Select QAQC Calls Queue in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View calls awaiting QA/QC handling.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Dispatcher Queue",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/dispatcher-queue",
+                                       "howToOpen":  "Select Dispatcher Queue in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View work queued for dispatchers.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Service-area context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Dispatcher Queue Analytics",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/dispatcher/queue-analytics/",
+                                       "howToOpen":  "Select Dispatcher Queue Analytics in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View dispatcher queue analytics.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Call Queue",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/calls/queue",
+                                       "howToOpen":  "Select Call Queue in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View queued calls.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Call Analytics",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/calls/analytics",
+                                       "howToOpen":  "Select Call Analytics in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View call-performance analytics.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Finances Rx4Route",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/finances-rx4route",
+                                       "howToOpen":  "Select Finances Rx4Route in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View Rx4Route financial operations.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Feedbacks",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/fb/",
+                                       "howToOpen":  "Select Feedbacks in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View submitted feedback.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Vendors Tips",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/tip/driver",
+                                       "howToOpen":  "Select Vendors Tips in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View vendor tip information.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Vendor context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "PrimeRX Orders",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/prime-rx-orders",
+                                       "howToOpen":  "Select PrimeRX Orders in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View orders associated with PrimeRX integration.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Client or integration context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Control Orders",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/control/orders",
+                                       "howToOpen":  "Select Control Orders in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View controlled-order operations.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Order context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Control Fridge",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/control/fridge",
+                                       "howToOpen":  "Select Control Fridge in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View refrigerator-control operations.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Facility context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Abandoned Calls",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/abandoned-calls",
+                                       "howToOpen":  "Select Abandoned Calls in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View abandoned call records.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Tickets List",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/tickets/dashboard",
+                                       "howToOpen":  "Select Tickets List in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View the ticket dashboard and ticket list.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Tickets Queue",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/tickets/queue",
+                                       "howToOpen":  "Select Tickets Queue in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View queued tickets.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Voicemails",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/voicemails",
+                                       "howToOpen":  "Select Voicemails in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View voicemail records.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "SMS",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/sms",
+                                       "howToOpen":  "Select SMS in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View SMS communications.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Leads",
+                                       "group":  "Leads",
+                                       "entryUrl":  "https://adm.rx2go.ai/leads/",
+                                       "howToOpen":  "Expand Leads in the sidebar, then select Leads.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View lead records.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Leads Orders",
+                                       "group":  "Leads",
+                                       "entryUrl":  "https://adm.rx2go.ai/leads/orders",
+                                       "howToOpen":  "Expand Leads in the sidebar, then select Leads Orders.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View orders associated with leads.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Lead or order context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Leads Map",
+                                       "group":  "Leads",
+                                       "entryUrl":  "https://adm.rx2go.ai/lmap",
+                                       "howToOpen":  "Expand Leads in the sidebar, then select Leads Map.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View leads geographically.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Leads Gigs",
+                                       "group":  "Leads",
+                                       "entryUrl":  "https://adm.rx2go.ai/lead-gigs/",
+                                       "howToOpen":  "Expand Leads in the sidebar, then select Leads Gigs.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View gigs associated with leads.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Lead or gig context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Lead Status Labels",
+                                       "group":  "Leads",
+                                       "entryUrl":  "https://adm.rx2go.ai/lead-status-labels",
+                                       "howToOpen":  "Expand Leads in the sidebar, then select Lead Status Labels.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "Manage labels used for lead statuses.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Clients New",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/clients/new",
+                                       "howToOpen":  "Select Clients New in the sidebar.",
+                                       "aliases":  [
+                                                       "Clients"
+                                                   ],
+                                       "purposeHint":  "Access client management through the newer or legacy interface.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "MEDIUM"
+                                   },
+                                   {
+                                       "name":  "Integration Statistics",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/integration-statistics",
+                                       "howToOpen":  "Select Integration Statistics in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View integration activity and statistics.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Vendors",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/drivers",
+                                       "howToOpen":  "Select Vendors in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View and manage vendor/driver records.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Staff",
+                                       "group":  "Staff",
+                                       "entryUrl":  "https://adm.rx2go.ai/staff/list",
+                                       "howToOpen":  "Expand Staff in the sidebar, then select Staff.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View staff records.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Dispatchers New",
+                                       "group":  "Staff",
+                                       "entryUrl":  "https://adm.rx2go.ai/staff/dispatchers/list",
+                                       "howToOpen":  "Expand Staff in the sidebar, then select Dispatchers New.",
+                                       "aliases":  [
+                                                       "Dispatchers"
+                                                   ],
+                                       "purposeHint":  "View dispatcher staffing through the newer or legacy interface.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "MEDIUM"
+                                   },
+                                   {
+                                       "name":  "Vendor Availability New",
+                                       "group":  "Staff",
+                                       "entryUrl":  "https://adm.rx2go.ai/staff/availability/list",
+                                       "howToOpen":  "Expand Staff in the sidebar, then select Vendor Availability New.",
+                                       "aliases":  [
+                                                       "Vendor Availability"
+                                                   ],
+                                       "purposeHint":  "View vendor availability through the newer or legacy interface.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Vendor and service-area context may apply.",
+                                       "confidence":  "MEDIUM"
+                                   },
+                                   {
+                                       "name":  "Modal Notifications",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/modal-notifications",
+                                       "howToOpen":  "Select Modal Notifications in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View or administer modal notification content.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Complaints",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/complains-vendor",
+                                       "howToOpen":  "Select Complaints in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View vendor-related complaints.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Vendor context may apply.",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Settings",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/system/settings",
+                                       "howToOpen":  "Expand System. in the sidebar, then select Settings.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View system settings.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Manage Facilities",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/facilities",
+                                       "howToOpen":  "Expand System. in the sidebar, then select Manage Facilities.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View and administer facilities.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Quick Replies",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/system/quick-replies",
+                                       "howToOpen":  "Expand System. in the sidebar, then select Quick Replies.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View reusable quick-reply content.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Manage Departments",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/departments",
+                                       "howToOpen":  "Expand System. in the sidebar, then select Manage Departments.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View and administer departments.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "System Permissions",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/system/permissions",
+                                       "howToOpen":  "Expand System. in the sidebar, then select System Permissions.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View system permission configuration.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Security",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/system/security",
+                                       "howToOpen":  "Expand System. in the sidebar, then select Security.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View system security administration.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Manage Hubs",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/hubs/",
+                                       "howToOpen":  "Expand System. in the sidebar, then select Manage Hubs.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View and administer operational hubs.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Manage address cache",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/system/manage-address-cache",
+                                       "howToOpen":  "Expand System. in the sidebar, then select Manage address cache.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "Inspect or administer cached address data.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Order Types",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/system/order-types",
+                                       "howToOpen":  "Expand System. in the sidebar, then select Order Types.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View configured order types.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "User Status Labels",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/system/user-statuses",
+                                       "howToOpen":  "Expand System. in the sidebar, then select User Status Labels.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View configured user-status labels.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Phones Blacklist",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/system/blacklist",
+                                       "howToOpen":  "Expand System. in the sidebar, then select Phones Blacklist.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View blacklisted phone records.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Landlines",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/system/landlines",
+                                       "howToOpen":  "Expand System. in the sidebar, then select Landlines.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View configured landline records.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Sensitive Addresses",
+                                       "group":  "System",
+                                       "entryUrl":  "https://adm.rx2go.ai/system/sensitive-address",
+                                       "howToOpen":  "Expand System. in the sidebar, then select Sensitive Addresses.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View addresses designated as sensitive.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Performance",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/performance/",
+                                       "howToOpen":  "Select Performance in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View operational performance information.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Reports",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/my/reports",
+                                       "howToOpen":  "Select Reports in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View reports available to the authenticated user.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Address Book",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/address-book",
+                                       "howToOpen":  "Select Address Book in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "View saved address-book entries.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Support",
+                                       "group":  "Main",
+                                       "entryUrl":  "https://adm.rx2go.ai/support",
+                                       "howToOpen":  "Select Support in the sidebar.",
+                                       "aliases":  [
+
+                                                   ],
+                                       "purposeHint":  "Access the internal support capability.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  false,
+                                       "contextHint":  "",
+                                       "confidence":  "HIGH"
+                                   },
+                                   {
+                                       "name":  "Orders Integration",
+                                       "group":  "Orders",
+                                       "entryUrl":  "https://adm.rx2go.ai/orders/integrations",
+                                       "howToOpen":  "From Orders, select Integration in the page header.",
+                                       "aliases":  [
+                                                       "Integration"
+                                                   ],
+                                       "purposeHint":  "Access order integration functionality.",
+                                       "safeToExploreReadOnly":  true,
+                                       "requiresSpecificContext":  true,
+                                       "contextHint":  "Client or integration context may apply.",
+                                       "confidence":  "HIGH"
+                                   }
+                               ],
+                   "navigationGroups":  [
+                                            {
+                                                "name":  "Main",
+                                                "items":  [
+                                                              "Gigs",
+                                                              "Gig Names",
+                                                              "Assign Gigs New",
+                                                              "New order",
+                                                              "Orders",
+                                                              "Orders STAT",
+                                                              "Pickups",
+                                                              "Carrier Pickups",
+                                                              "Back to Pharmacy",
+                                                              "Copays",
+                                                              "Map",
+                                                              "Scanner",
+                                                              "Get Route Name",
+                                                              "Scan | Unlock Vendor",
+                                                              "Scan | As Vendor",
+                                                              "Scan New",
+                                                              "Equipment",
+                                                              "Apply Vendors",
+                                                              "QR Apply Analytics",
+                                                              "Quote Requests",
+                                                              "Quote Route Rx Requests",
+                                                              "QAQC Dashboard",
+                                                              "QAQC Rejected Dashboard",
+                                                              "QAQC Calls Queue",
+                                                              "Dispatcher Queue",
+                                                              "Dispatcher Queue Analytics",
+                                                              "Call Queue",
+                                                              "Call Analytics",
+                                                              "Finances Rx4Route",
+                                                              "Feedbacks",
+                                                              "Vendors Tips",
+                                                              "PrimeRX Orders",
+                                                              "Control Orders",
+                                                              "Control Fridge",
+                                                              "Abandoned Calls",
+                                                              "Tickets List",
+                                                              "Tickets Queue",
+                                                              "Voicemails",
+                                                              "SMS",
+                                                              "Clients New",
+                                                              "Integration Statistics",
+                                                              "Vendors",
+                                                              "Modal Notifications",
+                                                              "Complaints",
+                                                              "Performance",
+                                                              "Reports",
+                                                              "Address Book",
+                                                              "Support"
+                                                          ]
+                                            },
+                                            {
+                                                "name":  "Leads",
+                                                "items":  [
+                                                              "Leads",
+                                                              "Leads Orders",
+                                                              "Leads Map",
+                                                              "Leads Gigs",
+                                                              "Lead Status Labels"
+                                                          ]
+                                            },
+                                            {
+                                                "name":  "Staff",
+                                                "items":  [
+                                                              "Staff",
+                                                              "Dispatchers New",
+                                                              "Vendor Availability New"
+                                                          ]
+                                            },
+                                            {
+                                                "name":  "System",
+                                                "items":  [
+                                                              "Settings",
+                                                              "Manage Facilities",
+                                                              "Quick Replies",
+                                                              "Manage Departments",
+                                                              "System Permissions",
+                                                              "Security",
+                                                              "Manage Hubs",
+                                                              "Manage address cache",
+                                                              "Order Types",
+                                                              "User Status Labels",
+                                                              "Phones Blacklist",
+                                                              "Landlines",
+                                                              "Sensitive Addresses"
+                                                          ]
+                                            },
+                                            {
+                                                "name":  "Orders",
+                                                "items":  [
+                                                              "Orders Integration"
+                                                          ]
+                                            }
+                                        ],
+                   "excludedItems":  [
+                                         {
+                                             "name":  "Authenticated user identity",
+                                             "reason":  "Profile/account-only control."
+                                         },
+                                         {
+                                             "name":  "My Account",
+                                             "reason":  "Profile/account-only control."
+                                         },
+                                         {
+                                             "name":  "Log Out",
+                                             "reason":  "Logout control."
+                                         },
+                                         {
+                                             "name":  "Archive",
+                                             "reason":  "Separate external subdomain rather than the current ADM application."
+                                         },
+                                         {
+                                             "name":  "Service",
+                                             "reason":  "Opens an administrative utility panel containing impersonation, debug, theme, and speech controls rather than a business module."
+                                         },
+                                         {
+                                             "name":  "State and region selectors",
+                                             "reason":  "Context selectors, not product capabilities."
+                                         },
+                                         {
+                                             "name":  "Clients",
+                                             "reason":  "Deduplicated as a legacy/alternate client-management interface under Clients New."
+                                         },
+                                         {
+                                             "name":  "Assign Gigs",
+                                             "reason":  "Deduplicated as a legacy/alternate interface under Assign Gigs New."
+                                         },
+                                         {
+                                             "name":  "Scan",
+                                             "reason":  "Deduplicated as a legacy/alternate interface under Scan New."
+                                         },
+                                         {
+                                             "name":  "Dispatchers",
+                                             "reason":  "Deduplicated as a legacy/alternate interface under Dispatchers New."
+                                         },
+                                         {
+                                             "name":  "Vendor Availability",
+                                             "reason":  "Deduplicated as a legacy/alternate interface under Vendor Availability New."
+                                         },
+                                         {
+                                             "name":  "Avatar menu",
+                                             "reason":  "Account-only control."
+                                         },
+                                         {
+                                             "name":  "Pure separators",
+                                             "reason":  "Non-product visual grouping elements."
+                                         }
+                                     ],
+                   "uncertainties":  [
+                                         "Visible navigation targets were mapped from the authenticated live UI, but each destination page was not opened individually; destination-level permission failures or redirects were therefore not independently proven.",
+                                         "Items labeled New beside an older label were treated as alternate implementations of the same capability and deduplicated; the UI did not explicitly identify whether both versions have functional differences.",
+                                         "The sidebar contains visual separators without visible section names, so their direct-link items are grouped under Main.",
+                                         "Orders Integration was visible only as an Orders page-header shortcut, not as a global sidebar item."
+                                     ],
+                   "summary":  "The authenticated ADM session exposes a mixed navigation model dominated by a large sidebar, with expandable Leads, Staff, and System groups plus an Orders-specific Integration shortcut. All visible expandable main-navigation groups were inspected, and legacy/new aliases were deduplicated by apparent capability."
+               }
+}

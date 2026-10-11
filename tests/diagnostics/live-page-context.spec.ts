@@ -214,3 +214,4 @@ test('collect live Rx2GO page context for AI agents', async ({ authenticatedPage
   console.log(`[CONTEXT] Visible controls captured: ${controls.length}`);
   console.log(`[CONTEXT] Network observations captured: ${network.length}`);
 });
+

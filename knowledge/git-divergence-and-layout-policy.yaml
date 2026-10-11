@@ -1,0 +1,35 @@
+version: 1
+topic: git_divergence_and_knowledge_layout
+git_sync:
+  fast_forward:
+    condition: "remote ahead > 0 and local ahead == 0"
+    action: "pull --ff-only"
+  divergence:
+    condition: "remote ahead > 0 and local ahead > 0"
+    action: "rebase local committed knowledge onto origin branch"
+  conflict:
+    action:
+      - collect conflicting file names
+      - git rebase --abort
+      - preserve original local history
+      - show human-readable warning
+  forbidden:
+    - force push
+    - deleting local knowledge to resolve divergence
+    - automatically resolving content conflicts by choosing one side
+knowledge_saved:
+  requires:
+    - local managed changes == 0
+    - local ahead == 0
+    - remote behind == 0
+ui:
+  git_actions:
+    columns: 2
+    rows: 4
+    primary_button:
+      row: 0
+      span_columns: 2
+    technical_buttons:
+      layout: "3 rows x 2 columns"
+  reason: "Prevent clipped/overlapping controls at 1280/1366-class resolutions."
+

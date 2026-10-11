@@ -1,0 +1,42 @@
+version: 1
+topic: jira_parallel_queue
+max_parallel_workers: 3
+architecture:
+  - each Jira task runs in an isolated PowerShell Worker process
+  - each Worker gets a separate copied project runtime and separate Chrome/CDP session
+  - node_modules is shared read-only through a Windows directory junction
+  - worker Git sync is disabled
+  - parent Launcher merges learned knowledge and generated tests after worker completion
+  - parent serializes Git commit/push so concurrent workers cannot race Git
+knowledge:
+  read: snapshot at worker start
+  publish: after worker completion
+  concurrent_worker_visibility: new knowledge is visible to workers started after merge, not mid-run
+merge_paths:
+  - knowledge
+  - jira-cases
+  - scenarios
+  - tests/generated
+statuses:
+  - WAITING
+  - STARTING
+  - ANALYZING
+  - TESTING
+  - REVIEWING
+  - PLAYWRIGHT
+  - RCA
+  - SYNCING
+  - PASS
+  - FAIL
+  - BLOCKED
+  - ERROR
+  - STOPPED
+safety:
+  - no secrets, .env, reports, runtime state or .git are copied into worker source snapshot
+  - parent manual Quick/Jira execution is disabled while queue is active
+  - closing parent asks before killing active workers
+  - interrupted queue items are restored as INTERRUPTED and can be retried
+ui:
+  implementation: Dock/TableLayout/FlowLayout/DataGridView only
+  fixed_absolute_content_positions: false
+

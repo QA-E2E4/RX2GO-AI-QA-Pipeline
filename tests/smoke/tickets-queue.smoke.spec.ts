@@ -17,3 +17,4 @@ test('RX2GO-TQ-001 Tickets Queue opens successfully', async ({ authenticatedPage
   const badResponse = await responsePromise;
   expect(badResponse, 'No ticket-related HTTP 4xx/5xx should occur during queue load').toBeNull();
 });
+

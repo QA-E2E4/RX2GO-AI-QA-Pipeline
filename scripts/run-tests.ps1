@@ -1,4 +1,4 @@
-﻿param(
+param(
     [ValidateSet('auth','smoke','tickets','all')]
     [string]$Suite = 'smoke',
     [switch]$Headed,
@@ -572,6 +572,14 @@ function Start-ExternalChromeForTests {
     Write-Step "Запускаю постоянный Google Chrome для всей QA-сессии..."
     Write-Step "Начальная страница Chrome: $InitialUrl"
 
+    $browserLocale = if (-not [string]::IsNullOrWhiteSpace([string]$env:RX2GO_BROWSER_LOCALE)) {
+        [string]$env:RX2GO_BROWSER_LOCALE
+    } else {
+        'en-US'
+    }
+
+    Write-Step "Chrome locale: $browserLocale"
+
     $args = @(
         "--remote-debugging-port=$port",
         "--user-data-dir=$profileDir",
@@ -579,6 +587,7 @@ function Start-ExternalChromeForTests {
         "--start-maximized",
         "--no-first-run",
         "--no-default-browser-check",
+        "--lang=$browserLocale",
         $InitialUrl
     )
 
@@ -739,3 +748,4 @@ if ($useExternalChrome) {
     }
 }
 exit $exitCode
+

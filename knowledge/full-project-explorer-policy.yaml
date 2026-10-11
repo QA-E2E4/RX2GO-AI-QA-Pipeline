@@ -1,0 +1,38 @@
+version: 1
+topic: full_project_explorer
+mode: full-project
+stages:
+  - name: project_mapper
+    mutation: false
+    output: "knowledge/explorer/<environment>/project-map.json"
+    purpose:
+      - discover actual accessible navigation
+      - deduplicate aliases by business capability
+      - exclude logout/profile/external/non-product items
+  - name: module_crawler
+    mutation: false
+    input: project_mapper.modules
+    purpose:
+      - inspect every discovered product capability
+      - collect UI, safe API/network, navigation, relationships, validation hints, selectors
+catalog:
+  predefined_priority_modules:
+    purpose: "Quick/Deep convenience only"
+  full_project:
+    source: "live project map"
+    dynamic: true
+environment:
+  ADM:
+    role: PRIMARY_BASELINE
+  HOT:
+    role: DELTA_VS_ADM
+  BRANCH:
+    role: TEMP_DELTA_VS_HOT
+safety:
+  - full-project is read-only
+  - project map is observation, never requirement authority
+  - do not store secrets or personal customer/patient data
+  - do not invent hidden modules
+  - do not recursively crawl unrelated capabilities inside a module
+  - Project Mapper controls project-level coverage
+

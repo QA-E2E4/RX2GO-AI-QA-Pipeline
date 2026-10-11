@@ -9,3 +9,4 @@ codex --version
 Write-Host ''
 Write-Host 'Starting ChatGPT sign-in...' -ForegroundColor Cyan
 codex login
+

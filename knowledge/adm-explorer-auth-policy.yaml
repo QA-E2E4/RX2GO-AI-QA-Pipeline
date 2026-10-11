@@ -1,0 +1,11 @@
+version: 1
+topic: adm_knowledge_explorer_auth
+rules:
+  - Knowledge Explorer must not require navigating to Quick Run to enter ADM first-factor credentials.
+  - ADM daily Telegram password is entered directly on the Knowledge tab.
+  - The Knowledge and Quick Run ADM daily-password fields are synchronized in memory.
+  - The daily password is not written to Git or Knowledge files.
+  - A reusable authenticated ADM Chrome session may be reused without requiring a new code.
+  - If no reusable ADM session exists and no daily code is entered, Explorer must stop before browser bootstrap with a clear user-facing message.
+  - Full Project must not display "0 modules" before Project Mapper has discovered the module map.
+

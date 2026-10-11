@@ -11,3 +11,4 @@ test('RX2GO-TQ-003 Start Workout automatically takes a ticket into work', async 
   await tickets.startWorkout();
   await tickets.expectWorkoutStarted();
 });
+

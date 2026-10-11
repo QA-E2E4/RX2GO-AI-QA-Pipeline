@@ -1,0 +1,328 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Quote Requests",
+    "moduleSlug":  "quote-requests",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:45:34.6577815+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Quote Requests",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/apply/analytics",
+                   "endUrl":  "https://adm.rx2go.ai/quotes",
+                   "pagePurpose":  "View incoming quote requests and switch between new and reviewed requests.",
+                   "routes":  [
+                                  {
+                                      "name":  "Quote Requests",
+                                      "url":  "https://adm.rx2go.ai/quotes",
+                                      "howToOpen":  "Select the Quote Requests link in the Main navigation.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Quote Requests table",
+                                        "type":  "table",
+                                        "purpose":  "Displays quote-request submission details and regional service selections.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027table\u0027)",
+                                                             "getByRole(\u0027columnheader\u0027, { name: \u0027Date\u0027 })"
+                                                         ],
+                                        "notes":  "Columns observed: Date, Action, Name, Business Name, Phone, E-mail, Daily Deliveries, New York, New Jersey, Massachusetts, Pennsylvania, Connecticut, and California."
+                                    },
+                                    {
+                                        "name":  "New",
+                                        "type":  "tab",
+                                        "purpose":  "Shows requests whose status filter is new.",
+                                        "locatorHints":  [
+                                                             "getByText(\u0027New\u0027, { exact: true })"
+                                                         ],
+                                        "notes":  "Rendered as a clickable generic element rather than an element with tab semantics. Selecting it refreshed the table data without changing the URL."
+                                    },
+                                    {
+                                        "name":  "Reviewed",
+                                        "type":  "tab",
+                                        "purpose":  "Shows requests whose status filter is reviewed.",
+                                        "locatorHints":  [
+                                                             "getByText(\u0027Reviewed\u0027, { exact: true })"
+                                                         ],
+                                        "notes":  "Selecting it refreshed the table data without changing the URL. The reviewed result was an empty table during observation."
+                                    },
+                                    {
+                                        "name":  "Date column header",
+                                        "type":  "other",
+                                        "purpose":  "Provides client-side table ordering.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027columnheader\u0027, { name: \u0027Date\u0027 })"
+                                                         ],
+                                        "notes":  "Clicking the header did not produce another PullQuotes network request."
+                                    },
+                                    {
+                                        "name":  "Row action links",
+                                        "type":  "link",
+                                        "purpose":  "Purpose was not safely proven; glyphs visually suggest destructive and review-status actions.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027cell\u0027).getByRole(\u0027link\u0027)"
+                                                         ],
+                                        "notes":  "Not activated because the actions could mutate business data. The links expose glyphs rather than stable accessible names."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "QR Apply Analytics",
+                                          "action":  "Click the Main navigation link named Quote Requests.",
+                                          "to":  "Quote Requests at https://adm.rx2go.ai/quotes",
+                                          "evidence":  "The page title and level-one heading both became Quote Requests."
+                                      },
+                                      {
+                                          "from":  "Quote Requests - New state",
+                                          "action":  "Click Reviewed.",
+                                          "to":  "Quote Requests - Reviewed state",
+                                          "evidence":  "A POST request used filters.status=\u0027reviewed\u0027, and the table displayed Empty table."
+                                      },
+                                      {
+                                          "from":  "Quote Requests - Reviewed state",
+                                          "action":  "Click New.",
+                                          "to":  "Quote Requests - New state",
+                                          "evidence":  "A POST request used filters.status=\u0027new\u0027, and the table returned to a populated state."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullQuotes.php?action=getList",
+                                               "trigger":  "Initial page load and selection of the New or Reviewed state.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieves quote-request rows using the selected status filter and declared table columns.",
+                                               "importantFields":  [
+                                                                       "order",
+                                                                       "filters",
+                                                                       "status",
+                                                                       "columns",
+                                                                       "limit",
+                                                                       "offset",
+                                                                       "created_at_dt",
+                                                                       "action",
+                                                                       "name",
+                                                                       "businessName",
+                                                                       "phone",
+                                                                       "email",
+                                                                       "dailyDeliveries",
+                                                                       "regionNewYork",
+                                                                       "regionNj",
+                                                                       "regionMa",
+                                                                       "regionPe",
+                                                                       "regionCn",
+                                                                       "regionLa"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Quote request",
+                                                              "Review status"
+                                                          ],
+                                             "relationship":  "Each list query is filtered into either the new or reviewed state.",
+                                             "evidence":  "The same getList endpoint received filters.status values of \u0027new\u0027 and \u0027reviewed\u0027 when the corresponding controls were selected."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Quote request",
+                                                              "Service region"
+                                                          ],
+                                             "relationship":  "Each request records yes/no selections for six displayed service regions.",
+                                             "evidence":  "The UI table and request column declaration include regional fields for New York, New Jersey, Massachusetts, Pennsylvania, Connecticut, and California."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "View new quote requests",
+                                         "steps":  [
+                                                       "Open Quote Requests from the Main navigation.",
+                                                       "Select New.",
+                                                       "Review the populated request table."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session is active."
+                                                                   ],
+                                         "resultObserved":  "The table loaded requests using filters.status=\u0027new\u0027.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "View reviewed quote requests",
+                                         "steps":  [
+                                                       "Open Quote Requests.",
+                                                       "Select Reviewed.",
+                                                       "Inspect the resulting table."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session is active."
+                                                                   ],
+                                         "resultObserved":  "The table queried filters.status=\u0027reviewed\u0027 and displayed Empty table during this crawl.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Order by date",
+                                         "steps":  [
+                                                       "Open either request state.",
+                                                       "Click the Date column header."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The Quote Requests table is displayed."
+                                                                   ],
+                                         "resultObserved":  "The table accepted the interaction without navigation or an additional list request, indicating local ordering behavior.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Quote Requests navigation link",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Quote Requests\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Sidebar position selectors",
+                                                           "Icon-font selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "New state selector",
+                                             "preferred":  [
+                                                               "getByText(\u0027New\u0027, { exact: true })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Generated element references",
+                                                           "Nth-child selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Reviewed state selector",
+                                             "preferred":  [
+                                                               "getByText(\u0027Reviewed\u0027, { exact: true })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Generated element references",
+                                                           "Nth-child selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Quote request table",
+                                             "preferred":  [
+                                                               "getByRole(\u0027table\u0027)",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027Daily Deliveries\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Locators containing customer data",
+                                                           "Row-index selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Row actions",
+                                             "preferred":  [
+                                                               "Scope links through the Action column cell if interaction is explicitly authorized"
+                                                           ],
+                                             "avoid":  [
+                                                           "Glyph text",
+                                                           "Unlabeled link position"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The verified ADM route is /quotes and its page title and heading are Quote Requests.",
+                                             "evidence":  "Live navigation, URL, title, and accessibility snapshot.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The page has New and Reviewed list states that reuse the same route.",
+                                             "evidence":  "Both state changes remained at https://adm.rx2go.ai/quotes.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Status changes cause POST requests to the quote-list endpoint with either \u0027new\u0027 or \u0027reviewed\u0027.",
+                                             "evidence":  "Observed request bodies for /ajax/PullQuotes.php?action=getList.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The New state contained rows, while the Reviewed state displayed Empty table at observation time.",
+                                             "evidence":  "Live table snapshots after selecting each state.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The list query requests up to 1000 rows from offset 0.",
+                                             "evidence":  "Observed request fields limit=1000 and offset=0.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Clicking the Date header did not trigger another PullQuotes request.",
+                                             "evidence":  "Network request list remained unchanged after the header interaction.",
+                                             "confidence":  "MEDIUM"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; ADM is the primary baseline and no previous ADM baseline was supplied.",
+                                                  "currentFact":  "The current ADM behavior was observed and recorded directly.",
+                                                  "evidence":  "Live authenticated ADM exploration."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The New and Reviewed controls lack tab semantics, and row action links lack descriptive accessible names.",
+                                         "evidence":  "Accessibility snapshots expose the state controls as clickable generic elements and actions as glyph-only links.",
+                                         "impact":  "Semantic automation and assistive-technology identification may be less reliable."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+                                               {
+                                                   "type":  "NEW",
+                                                   "fact":  "ADM Quote Requests baseline captured for route, list states, table structure, and list API.",
+                                                   "evidence":  "No previous ADM baseline was provided; current facts come from live observation."
+                                               }
+                                           ],
+                   "uncertainties":  [
+                                         "The exact behavior of the glyph-only row actions was not tested because they may delete data or change review status.",
+                                         "No reviewed records were available, so reviewed-row actions and content could not be compared with new rows.",
+                                         "No empty-state validation beyond the displayed Empty table message was observed.",
+                                         "The complete response schema was not inspected to avoid copying customer data."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM Quote Requests is verified at /quotes. It provides New and Reviewed request states backed by a POST list endpoint, with a table covering submission metadata, delivery volume, and six regional selections. All exploration was read-only; potentially mutating row actions were not activated."
+               }
+}

@@ -1,0 +1,41 @@
+version: 1
+topic: fixture_recovery_runtime_safety
+scope: all Smart QA fixture-recovery runs
+codex_limit:
+  behavior:
+    - preserve_initial_blocked_result
+    - never_convert_to_product_fail
+    - show_clear_warning
+    - in_jira_queue_pause_new_workers
+    - allow_resume_after_limit_recovers
+tool_budget:
+  allowed_browser_tools:
+    - playwright/browser_*
+  forbidden:
+    - bundled Browser plugin
+    - Chrome/Computer Use plugin
+    - node_repl
+    - Browser extension/native-host diagnostics
+    - unrelated MCP/plugin diagnostics
+prompt_budget:
+  include:
+    - current narrowed Jira scope
+    - blocked acceptance criteria
+    - blockers
+    - current test-data provenance
+    - selected P0/P1 coverage
+    - compact relevant knowledge
+  exclude:
+    - full historical Jira text when not needed
+    - full Knowledge Base dump
+    - full prior MCP trace
+autocomplete:
+  - Typing into an autocomplete field is not acceptance of the value.
+  - Select the actual suggestion.
+  - Verify required/invalid validation disappears.
+  - Do not submit while Is required remains.
+  - Apply to Recipient, Street Address, Facility, Client, Pharmacy and similar fields.
+result:
+  interrupted_recovery: BLOCKED
+  product_fail: false
+

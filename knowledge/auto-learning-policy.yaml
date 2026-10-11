@@ -1,0 +1,46 @@
+version: 1
+topic: automatic post-run project learning
+trigger: every completed Jira Smart QA run with live MCP evidence
+storage:
+  path: knowledge/learned/<module>/<JIRA-KEY>.json
+  merge: case-insensitive deduplication across reruns
+sources_allowed:
+  - current Jira source used for the run
+  - current live Playwright MCP evidence
+  - current Failure Triage
+sources_reference_only:
+  - previous Knowledge Retrieval memory
+persist:
+  - stable product facts
+  - navigation and UI location facts
+  - API/network contracts
+  - stable test-data rules
+  - automation lessons
+  - regression candidates
+  - advisory project-rule candidates
+  - verified current-run acceptance snapshot
+never_persist:
+  - passwords
+  - tokens
+  - cookies
+  - authorization headers
+  - API keys
+  - secrets
+  - session data
+  - temporary order IDs
+  - temporary ticket IDs
+  - temporary route IDs
+  - random generated names
+  - timestamps from individual test data
+  - screenshot paths
+  - browser process IDs
+trust:
+  - current live evidence outranks historical memory
+  - historical memory is used only for deduplication/reference
+  - auto-learning failure never changes PASS/FAIL product verdict
+git:
+  auto_write: true
+  auto_commit: true
+  auto_push: true
+  note: After a completed Jira run, safe managed project files are committed and pushed automatically over SSH. Sync failures preserve the local commit and do not change the product PASS/FAIL verdict.
+

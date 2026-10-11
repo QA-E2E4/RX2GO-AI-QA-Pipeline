@@ -45,3 +45,4 @@ authentication:
       BRANCH:
         enabled: possible_after_secret_store_setup
         reason: branch environment does not require the rotating gateway password
+

@@ -47,3 +47,4 @@ case "$SUITE" in
   all) npm test ;;
   *) echo "Unknown suite: $SUITE (use smoke|tickets|all)" >&2; exit 2 ;;
 esac
+

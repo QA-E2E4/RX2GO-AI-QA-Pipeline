@@ -1,0 +1,18 @@
+version: 1
+topic: main_agent_codex_usage_limit
+scope: 02-playwright-mcp-qa
+rules:
+  - Codex usage/rate/quota exhaustion is infrastructure interruption, not product FAIL.
+  - Do not show red MCP QA FAILED for CODEX_USAGE_LIMIT.
+  - Do not create a synthetic product verdict when final Smart QA JSON is missing.
+  - Show amber status: "Проверка прервана — лимит Codex".
+  - Preserve browser/log/snapshot artifacts already created by the interrupted run.
+  - Do not write post-run product Knowledge from an incomplete Smart QA run.
+  - In Jira Queue, finish the worker as BLOCKED with CODEX_USAGE_LIMIT marker.
+  - Jira Queue must pause new workers when a CODEX_USAGE_LIMIT result arrives.
+  - Resume is manual after the account limit becomes available again.
+incident:
+  jira: SCRUM-4075
+  version: 0.12.30
+  evidence: "Codex exit 1 after 'You've hit your usage limit ... try again at 3:43 PM'; no final JSON."
+

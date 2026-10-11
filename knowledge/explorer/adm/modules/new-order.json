@@ -1,0 +1,662 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "New order",
+    "moduleSlug":  "new-order",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T00:45:14.4080483+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "New order",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/orders/new",
+                   "endUrl":  "https://adm.rx2go.ai/orders/new",
+                   "pagePurpose":  "Create a delivery order for a selected client, recipient, prescription, delivery method, delivery schedule, package, and optional signature documents. Exploration was read-only and no order was submitted.",
+                   "routes":  [
+                                  {
+                                      "name":  "New Order",
+                                      "url":  "https://adm.rx2go.ai/orders/new",
+                                      "howToOpen":  "Open the Main navigation link named New order, whose observed href is /orders/new.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Orders",
+                                      "url":  "https://adm.rx2go.ai/orders",
+                                      "howToOpen":  "Use the Go Back link on the New Order form or the Orders link in Main navigation.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Client for create Order",
+                                        "type":  "select",
+                                        "purpose":  "Select or clear the client context used to create the order.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Client for create Order\u0027})",
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Clear Client for create Order\u0027})"
+                                                         ],
+                                        "notes":  "A client was already selected in the authenticated session; no selection was changed."
+                                    },
+                                    {
+                                        "name":  "Recipient Information",
+                                        "type":  "other",
+                                        "purpose":  "Capture recipient name, call phone, arrival-call preference, street address, and apartment/suite/floor.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Recipient Name *\u0027})",
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Call Phone\u0027})",
+                                                             "getByRole(\u0027checkbox\u0027, {name: /Call Upon Arrival/})",
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Street Address *\u0027})",
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Apt/Suite/Floor\u0027})"
+                                                         ],
+                                        "notes":  "Call Upon Arrival was checked in the observed initial state. The page also displayed a map with zoom, layer, and full-screen controls."
+                                    },
+                                    {
+                                        "name":  "Rx Numbers and Copay",
+                                        "type":  "other",
+                                        "purpose":  "Capture prescription numbers, filled date, total and per-prescription copay, payment state/type, and copay instructions.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Rx Number №1\u0027})",
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Copay to collect\u0027})",
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Copay №1\u0027})",
+                                                             "getByRole(\u0027switch\u0027, {name: \u0027Copay is paid\u0027})",
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Copay document instructions\u0027})"
+                                                         ],
+                                        "notes":  "One prescription row was initially visible. Copay values displayed 0.00."
+                                    },
+                                    {
+                                        "name":  "Carrier",
+                                        "type":  "select",
+                                        "purpose":  "Choose RX2GO or a supported third-party shipping carrier.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027RX2GO\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027USPS\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027UPS\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027FedEx\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027DHL\u0027})"
+                                                         ],
+                                        "notes":  "RX2GO was selected. USPS, UPS, FedEx, and DHL were visible but disabled in the observed client/context."
+                                    },
+                                    {
+                                        "name":  "Delivery approval method",
+                                        "type":  "select",
+                                        "purpose":  "Choose how delivery and recipient acknowledgement are handled.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027Face-to-Face ID \u0026 Signature required\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027Face-to-Face Signature required\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027Face-to-Face NO Signature required\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027Online Signature\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027Signature optional\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027No-Contact delivery\u0027})"
+                                                         ],
+                                        "notes":  "Face-to-Face Signature required was selected initially."
+                                    },
+                                    {
+                                        "name":  "Order service type",
+                                        "type":  "select",
+                                        "purpose":  "Choose the delivery service or pickup timing.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027Regular\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027STAT\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027SAME DAY\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027Time Window Next Day\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027Time Window Next Day 9am-3pm, 3pm-9pm\u0027})",
+                                                             "getByRole(\u0027radio\u0027, {name: \u0027Pick up from the location\u0027})"
+                                                         ],
+                                        "notes":  "Regular was selected. STAT and SAME DAY were visible but disabled in the observed context."
+                                    },
+                                    {
+                                        "name":  "Delivery information",
+                                        "type":  "other",
+                                        "purpose":  "Set delivery date/time, special instructions, and temperature-handling options.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027radiogroup\u0027, {name: \u0027Time to Deliver\u0027})",
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Special Instructions\u0027})",
+                                                             "getByRole(\u0027switch\u0027, {name: \u0027Fridge Storage\u0027})",
+                                                             "getByRole(\u0027switch\u0027, {name: /Pharmacy CoolBox/})"
+                                                         ],
+                                        "notes":  "Suggested instruction phrases were visible below Special Instructions."
+                                    },
+                                    {
+                                        "name":  "Package Details and Additional Information",
+                                        "type":  "other",
+                                        "purpose":  "Set item count, notification email options, communication language, filling metadata, and insurance inclusion.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027spinbutton\u0027, {name: \u0027Items #\u0027})",
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Recipient E-mail №1\u0027})",
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Add another email\u0027})",
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Communication Language\u0027})",
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027RPH/TECH\u0027})",
+                                                             "getByRole(\u0027switch\u0027, {name: \u0027Include insurance\u0027})"
+                                                         ],
+                                        "notes":  "Items defaulted to 1 and communication language displayed English."
+                                    },
+                                    {
+                                        "name":  "Documents to sign by Recipient",
+                                        "type":  "other",
+                                        "purpose":  "Optionally attach predefined document types for recipient signature.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027switch\u0027, {name: \u0027AOB\u0027})",
+                                                             "getByRole(\u0027switch\u0027, {name: \u0027HIPAA\u0027})",
+                                                             "getByRole(\u0027switch\u0027, {name: \u0027Medical Lien\u0027})",
+                                                             "getByRole(\u0027switch\u0027, {name: \u0027Paid copay Prove\u0027})",
+                                                             "getByRole(\u0027switch\u0027, {name: \u0027Notice of Privacy Practices\u0027})",
+                                                             "getByRole(\u0027switch\u0027, {name: \u0027Assignment\u0027})",
+                                                             "getByRole(\u0027switch\u0027, {name: \u0027LIEN\u0027})"
+                                                         ],
+                                        "notes":  "The section was explicitly labeled optional. Each document type also had an adjacent unlabeled action button."
+                                    },
+                                    {
+                                        "name":  "Quick Import CSV",
+                                        "type":  "modal",
+                                        "purpose":  "Import order/address data from a CSV or XLSX file using documented column mappings.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, {name: /Quick Import CSV/})",
+                                                             "getByText(\u0027Drop files here to upload\u0027)",
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Save\u0027})",
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Cancel\u0027})"
+                                                         ],
+                                        "notes":  "Opening the modal was non-mutating. It accepted CSV/XLSX, displayed import columns and mappings, and was closed with Cancel without uploading."
+                                    },
+                                    {
+                                        "name":  "Add/Print, Add, Reset, Go Back",
+                                        "type":  "other",
+                                        "purpose":  "Submit and print, submit, clear the form, or return to Orders.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, {name: /Add\\/Print/})",
+                                                             "getByRole(\u0027button\u0027, {name: /^\\+?\\s*Add$/})",
+                                                             "getByRole(\u0027button\u0027, {name: /Reset/})",
+                                                             "getByRole(\u0027link\u0027, {name: \u0027Go Back\u0027})"
+                                                         ],
+                                        "notes":  "Submission and reset actions were not used."
+                                    },
+                                    {
+                                        "name":  "Recent Orders",
+                                        "type":  "table",
+                                        "purpose":  "Show and search a small list of recent orders while entering a new order.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Search\u0027})",
+                                                             "getByRole(\u0027table\u0027)",
+                                                             "getByText(\u0027Recent Orders\u0027)"
+                                                         ],
+                                        "notes":  "Observed sortable columns included UID, Remote ID, In Status, Status, Recipient, Facility Hub, address fields, Copay, and Pharmacy. No customer details were retained."
+                                    },
+                                    {
+                                        "name":  "Shipping services disclaimer",
+                                        "type":  "modal",
+                                        "purpose":  "Explain the role of Rx2GO and third-party carriers for shipping-label and shipment services.",
+                                        "locatorHints":  [
+                                                             "getByText(\u0027Disclaimer and Limitation of Liability for Shipping Services\u0027)",
+                                                             "getByRole(\u0027heading\u0027, {name: \u0027Disclaimer and Limitation of Liability for Shipping Services\u0027})",
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Accept\u0027})"
+                                                         ],
+                                        "notes":  "The modal was opened for observation. Accept was not selected because it could record acknowledgement."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Main navigation",
+                                          "action":  "Open New order",
+                                          "to":  "New Order form at /orders/new",
+                                          "evidence":  "The live navigation exposed a New order link with href /orders/new; direct navigation reached the page titled New order | Rx2Go."
+                                      },
+                                      {
+                                          "from":  "New Order form",
+                                          "action":  "Select Quick Import CSV",
+                                          "to":  "Import CSV/XLSX file modal",
+                                          "evidence":  "A modal appeared with upload guidance, a drop zone, column mappings, Save, and Cancel."
+                                      },
+                                      {
+                                          "from":  "Import CSV/XLSX file modal",
+                                          "action":  "Select Cancel",
+                                          "to":  "New Order form",
+                                          "evidence":  "The modal closed without a file upload or save."
+                                      },
+                                      {
+                                          "from":  "Delivery Methods section",
+                                          "action":  "Open Disclaimer and Limitation of Liability for Shipping Services",
+                                          "to":  "Shipping disclaimer modal",
+                                          "evidence":  "A modal appeared describing third-party carrier services and an Accept button."
+                                      },
+                                      {
+                                          "from":  "New Order form",
+                                          "action":  "Use Go Back",
+                                          "to":  "Orders at /orders",
+                                          "evidence":  "The observed Go Back link had href /orders; it was not activated."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrders.php?action=getDefaultOrder",
+                                               "trigger":  "Load New Order page",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to obtain initial/default order-entry state.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrders.php?action=getServicesList",
+                                               "trigger":  "Load New Order page",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to load delivery service choices.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrders.php?action=getApproveMethods",
+                                               "trigger":  "Load New Order page",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to load delivery approval/signature methods.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrders.php?action=getSubTypes",
+                                               "trigger":  "Load New Order page",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to load available order or delivery subtypes.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrdersDocuments.php?action=getDocumentsToSign",
+                                               "trigger":  "Load New Order page",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads optional recipient-signature document choices.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullClientsRegionManage.php?action=getMyRegions",
+                                               "trigger":  "Load New Order page",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to load regions available to the authenticated context.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullUsers.php?action=getUsersByQuery",
+                                               "trigger":  "Initialize the selected client control",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to resolve or search client/user choices for order creation.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/o/index/address-typeahead",
+                                               "trigger":  "Initialize the recipient address control",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Supports address autocomplete/typeahead.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrders.php?action=getRecentOrders",
+                                               "trigger":  "Load the Recent Orders panel",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads the Recent Orders table shown beside the form.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilities.php?action=getFacilityLang\u0026uid=1",
+                                               "trigger":  "Load New Order page in the current facility context",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to load the facility communication-language configuration.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=1",
+                                               "trigger":  "Load authenticated facility context",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to load hubs belonging to the current facility.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Client",
+                                                              "Order"
+                                                          ],
+                                             "relationship":  "An order is created under a selected client context.",
+                                             "evidence":  "The form begins with a control labeled Client for create Order."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Facility",
+                                                              "Hub"
+                                                          ],
+                                             "relationship":  "The active facility determines the available hub context.",
+                                             "evidence":  "Two context selectors were visible and the page requested getHubs with the active facility identifier."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order",
+                                                              "Recipient"
+                                                          ],
+                                             "relationship":  "An order contains recipient identity, contact, and destination information.",
+                                             "evidence":  "The Recipient Information section contains name, phone, address, arrival-call, and map controls."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order",
+                                                              "Prescription"
+                                                          ],
+                                             "relationship":  "An order can contain prescription number, filled date, and prescription-level copay information.",
+                                             "evidence":  "The Rx Numbers section displayed an initial Rx Number №1 row with Filled Date №1 and Copay №1."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order",
+                                                              "Delivery method"
+                                                          ],
+                                             "relationship":  "Each order uses a carrier, approval/signature method, and service type selected from context-sensitive choices.",
+                                             "evidence":  "Three radio groups displayed carrier, acknowledgement, and timing/service options, while API calls loaded services and approval methods."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order",
+                                                              "Signature document"
+                                                          ],
+                                             "relationship":  "Optional predefined documents can be associated with an order for recipient signature.",
+                                             "evidence":  "The optional documents section displayed seven document switches and getDocumentsToSign returned 200."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Open and inspect new-order entry",
+                                         "steps":  [
+                                                       "Open Main \u003e New order or navigate to /orders/new.",
+                                                       "Verify the active facility/hub and selected client context.",
+                                                       "Review recipient, prescription, delivery, package, and optional document sections.",
+                                                       "Do not activate Add or Add/Print during read-only exploration."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session is required.",
+                                                                       "Facility and hub selectors are present.",
+                                                                       "A client-selection control is present and a client was selected in the observed session."
+                                                                   ],
+                                         "resultObserved":  "The complete New Order form and Recent Orders panel were visible; no business data was mutated.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Inspect bulk import configuration",
+                                         "steps":  [
+                                                       "Select Quick Import CSV.",
+                                                       "Review the CSV/XLSX instructions and expected import columns.",
+                                                       "Select Cancel without uploading or saving."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The New Order page is open."
+                                                                   ],
+                                         "resultObserved":  "The import modal closed and the New Order page remained open.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Review carrier disclaimer",
+                                         "steps":  [
+                                                       "Select the shipping-services disclaimer text.",
+                                                       "Review the third-party carrier and liability information.",
+                                                       "Do not select Accept during read-only exploration."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The Delivery Methods section is visible."
+                                                                   ],
+                                         "resultObserved":  "The disclaimer modal opened over the New Order page.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Recipient Name",
+                                                       "observedRule":  "The label visually marks the field with an asterisk.",
+                                                       "evidence":  "The accessible label was Recipient Name *."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Street Address",
+                                                       "observedRule":  "The label visually marks the field with an asterisk.",
+                                                       "evidence":  "The accessible label was Street Address *."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Quick Import file",
+                                                       "observedRule":  "The modal states that CSV and XLSX spreadsheet files may be uploaded.",
+                                                       "evidence":  "The live modal heading was Import CSV/XLSX file and its guidance named CSV and XLSX."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Shipping carrier",
+                                                       "observedRule":  "Carrier availability depends on the current context.",
+                                                       "evidence":  "RX2GO was selected and enabled, while USPS, UPS, FedEx, and DHL were disabled."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Order service type",
+                                                       "observedRule":  "Service-type availability depends on the current context.",
+                                                       "evidence":  "Regular and several next-day/pickup choices were enabled, while STAT and SAME DAY were disabled."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "New order navigation entry",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, {name: \u0027New order\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "Position-based sidebar selectors",
+                                                           "Icon text selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Client selector",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, {name: \u0027Client for create Order\u0027})",
+                                                               "getByRole(\u0027button\u0027, {name: \u0027Clear Client for create Order\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "Generated combobox wrapper classes"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Recipient fields",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, {name: \u0027Recipient Name *\u0027})",
+                                                               "getByRole(\u0027textbox\u0027, {name: \u0027Call Phone\u0027})",
+                                                               "getByRole(\u0027textbox\u0027, {name: \u0027Street Address *\u0027})",
+                                                               "getByRole(\u0027textbox\u0027, {name: \u0027Apt/Suite/Floor\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "Nth-child field selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Delivery choices",
+                                             "preferred":  [
+                                                               "getByRole(\u0027radio\u0027, {name: \u0027RX2GO\u0027})",
+                                                               "getByRole(\u0027radio\u0027, {name: \u0027Face-to-Face Signature required\u0027})",
+                                                               "getByRole(\u0027radio\u0027, {name: \u0027Regular\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "Selectors based on radio icon glyphs"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Order actions",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, {name: /Add\\/Print/})",
+                                                               "getByRole(\u0027button\u0027, {name: /^\\+?\\s*Add$/})",
+                                                               "getByRole(\u0027button\u0027, {name: /Reset/})",
+                                                               "getByRole(\u0027link\u0027, {name: \u0027Go Back\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "Selectors based only on plus, print, or reset icons"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Import dialog",
+                                             "preferred":  [
+                                                               "getByRole(\u0027heading\u0027, {name: /Import CSV\\/XLSX file/})",
+                                                               "getByText(\u0027Drop files here to upload\u0027)",
+                                                               "getByRole(\u0027button\u0027, {name: \u0027Cancel\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "Modal index selectors"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "ADM exposes New order at /orders/new under Main navigation.",
+                                             "evidence":  "Live navigation link and page URL/title.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The form is client-contextual and the active facility/hub context is visible on the page.",
+                                             "evidence":  "Facility and hub selectors plus Client for create Order control.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The form combines recipient, prescription, copay, delivery, package, additional-information, and optional document inputs.",
+                                             "evidence":  "Live section headings and controls in the accessibility snapshot.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The observed defaults included RX2GO, Face-to-Face Signature required, Regular service, one item, and one prescription row.",
+                                             "evidence":  "Checked radio states and initial field values in the live snapshot.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Third-party carriers and some expedited service types were visible but disabled in the observed context.",
+                                             "evidence":  "Disabled radio states for USPS, UPS, FedEx, DHL, STAT, and SAME DAY.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Quick Import supports CSV/XLSX and exposes mappings for delivery timing, recipient data, phones, item count, instructions, prescriptions, subtype, approval method, order type, and copay.",
+                                             "evidence":  "Live Import CSV/XLSX file modal and its mapping table.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "A Recent Orders table is embedded on the order-entry page and populated through getRecentOrders.",
+                                             "evidence":  "Live table plus successful POST /ajax/PullOrders.php?action=getRecentOrders.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; ADM is being recorded as the primary stable baseline and no prior baseline was supplied.",
+                                                  "currentFact":  "The live ADM New Order capability was reached and documented.",
+                                                  "evidence":  "Live ADM page at https://adm.rx2go.ai/orders/new."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The browser console reported that Google Maps JavaScript was loaded without the recommended asynchronous loading option.",
+                                         "evidence":  "A live console warning appeared while the New Order page loaded.",
+                                         "impact":  "Possible map-loading performance impact; no functional failure was observed."
+                                     },
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The browser console reported use of the legacy Google Maps Places Autocomplete API.",
+                                         "evidence":  "A live console warning recommended PlaceAutocompleteElement for new implementations.",
+                                         "impact":  "Possible future maintenance or compatibility concern; address autocomplete remained present and no failure was observed."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+
+                                           ],
+                   "uncertainties":  [
+                                         "Submission-time enforcement and error messages were not tested because Add and Add/Print could create business data.",
+                                         "Reset behavior was not tested because it would alter the current form state.",
+                                         "No client, facility, hub, carrier, service type, or approval method was changed, so context-dependent option changes were not proven.",
+                                         "The behavior of document attachment action buttons was not explored because their accessible names were not descriptive and their effects were uncertain.",
+                                         "No import file was uploaded, mapped, or saved.",
+                                         "The shipping disclaimer Accept action was not used because it could record acknowledgement.",
+                                         "API response bodies were not inspected, so endpoint field shapes remain unverified."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM New order is a client- and facility-contextual order-entry page at /orders/new. It captures recipient and prescription information, delivery and signature choices, package details, optional documents, and supports CSV/XLSX import. Recent orders are shown alongside the form. The module was fully reached and safely observed without submitting, resetting, uploading, accepting terms, or changing business data."
+               }
+}

@@ -27,3 +27,4 @@ Choose **Sign in with ChatGPT**.
 5. If Codex is missing, the Launcher asks permission to install the official OpenAI standalone build, then starts login.
 
 Codex CLI is not a Windows background service, so there is no daemon that needs to remain running. The Launcher starts individual Codex commands only when AI analysis is required.
+

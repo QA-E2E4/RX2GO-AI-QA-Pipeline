@@ -28,3 +28,4 @@ environments:
       - Developer branch environment
       - Uses the same application QA credentials as ADM
       - Daily Telegram gateway password is not used
+
