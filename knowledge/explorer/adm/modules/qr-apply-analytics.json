@@ -1,0 +1,490 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "QR Apply Analytics",
+    "moduleSlug":  "qr-apply-analytics",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:42:57.7017676+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "QR Apply Analytics",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/apply/analytics",
+                   "endUrl":  "https://adm.rx2go.ai/apply/analytics",
+                   "pagePurpose":  "View QR-based vendor application analytics by date, QR city or detected IP city, including registrations, completed applications, targeting metrics, application statuses and application-step summaries.",
+                   "routes":  [
+                                  {
+                                      "name":  "QR Apply Analytics",
+                                      "url":  "https://adm.rx2go.ai/apply/analytics",
+                                      "howToOpen":  "Open the Main navigation link named QR Apply Analytics, observed with path /apply/analytics.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Apply Vendors",
+                                      "url":  "https://adm.rx2go.ai/apply/drivers",
+                                      "howToOpen":  "Use the Apply Vendors link in the module-level navigation.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Interview Calendar",
+                                      "url":  "https://adm.rx2go.ai/apply/calendar",
+                                      "howToOpen":  "Use the Interview Calendar link in the module-level navigation.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Interview Addresses",
+                                      "url":  "https://adm.rx2go.ai/apply/addresses",
+                                      "howToOpen":  "Use the Interview Addresses link in the module-level navigation.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Date from",
+                                        "type":  "input",
+                                        "purpose":  "Set the beginning of the analytics date range.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, { name: \u0027Date from\u0027 })"
+                                                         ],
+                                        "notes":  "Initially displayed 2026-09-01. A separate Clear Date from button was present."
+                                    },
+                                    {
+                                        "name":  "Clear Date from",
+                                        "type":  "button",
+                                        "purpose":  "Clear the start-date value.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Clear Date from\u0027 })"
+                                                         ],
+                                        "notes":  "Observed but not activated."
+                                    },
+                                    {
+                                        "name":  "Date to",
+                                        "type":  "input",
+                                        "purpose":  "Set the end of the analytics date range.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, { name: \u0027Date to\u0027 })"
+                                                         ],
+                                        "notes":  "Initially displayed 2026-09-30. A separate Clear Date to button was present."
+                                    },
+                                    {
+                                        "name":  "Clear Date to",
+                                        "type":  "button",
+                                        "purpose":  "Clear the end-date value.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Clear Date to\u0027 })"
+                                                         ],
+                                        "notes":  "Observed but not activated."
+                                    },
+                                    {
+                                        "name":  "Group by",
+                                        "type":  "select",
+                                        "purpose":  "Choose whether analytics are grouped by QR city or IP city.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: /Group by/ })",
+                                                             "getByRole(\u0027option\u0027, { name: \u0027QR city\u0027 })",
+                                                             "getByRole(\u0027option\u0027, { name: \u0027IP city\u0027 })"
+                                                         ],
+                                        "notes":  "QR city was initially selected. The dropdown exposed QR city and IP city options."
+                                    },
+                                    {
+                                        "name":  "Targeted only",
+                                        "type":  "other",
+                                        "purpose":  "Restrict the detailed analytics result to targeted registrations.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027switch\u0027, { name: \u0027Targeted only\u0027 })"
+                                                         ],
+                                        "notes":  "Enabling it and applying filters added targeted_only=1 to the analytics request."
+                                    },
+                                    {
+                                        "name":  "Apply",
+                                        "type":  "button",
+                                        "purpose":  "Apply the current date, grouping and targeting filters.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Apply\u0027 })"
+                                                         ],
+                                        "notes":  "Triggered a read-only GET analytics request and refreshed displayed results."
+                                    },
+                                    {
+                                        "name":  "Download CSV",
+                                        "type":  "button",
+                                        "purpose":  "Offer CSV export of analytics.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: /Download CSV/ })"
+                                                         ],
+                                        "notes":  "Observed but not activated; its request and downloaded schema were not verified."
+                                    },
+                                    {
+                                        "name":  "Detailed analytics table",
+                                        "type":  "table",
+                                        "purpose":  "Show daily grouped analytics.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027table\u0027).first()",
+                                                             "getByRole(\u0027columnheader\u0027, { name: \u0027Clicks\u0027 })",
+                                                             "getByRole(\u0027columnheader\u0027, { name: \u0027Applications\u0027 })"
+                                                         ],
+                                        "notes":  "In QR-city mode, columns were QR City, IP Cities, Date, Clicks, Applications, Summary Statuses and Summary Steps. In IP-city mode, the first two columns became IP City and QR Cities."
+                                    },
+                                    {
+                                        "name":  "Grouping summary table",
+                                        "type":  "table",
+                                        "purpose":  "Aggregate the selected date range by the chosen city dimension.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027heading\u0027, { name: \u0027QR City Summary\u0027 })",
+                                                             "getByRole(\u0027heading\u0027, { name: \u0027IP City Summary\u0027 })",
+                                                             "getByRole(\u0027table\u0027).nth(1)"
+                                                         ],
+                                        "notes":  "The summary table omits the Date column and changes its heading and first two columns with the selected grouping."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Main navigation",
+                                          "action":  "Open QR Apply Analytics",
+                                          "to":  "QR Apply Analytics page",
+                                          "evidence":  "The link named QR Apply Analytics pointed to /apply/analytics and the resulting page title and heading were QR Apply Analytics."
+                                      },
+                                      {
+                                          "from":  "QR Apply Analytics in QR-city mode",
+                                          "action":  "Open Group by, select IP city, then activate Apply",
+                                          "to":  "QR Apply Analytics in IP-city mode",
+                                          "evidence":  "The detailed table changed from QR City/IP Cities columns to IP City/QR Cities, and the summary heading changed to IP City Summary."
+                                      },
+                                      {
+                                          "from":  "IP-city analytics",
+                                          "action":  "Enable Targeted only and activate Apply",
+                                          "to":  "Targeted-only IP-city results",
+                                          "evidence":  "The switch became checked and the resulting GET request included targeted_only=1."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/users/apply-analytics?group_by=qr_city\u0026date_from=2026-09-01\u0026date_to=2026-09-30",
+                                               "trigger":  "Initial page load in QR-city grouping mode.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve daily QR-city analytics and aggregate summaries for the selected date range.",
+                                               "importantFields":  [
+                                                                       "status",
+                                                                       "rows",
+                                                                       "city",
+                                                                       "date",
+                                                                       "clicks",
+                                                                       "applications",
+                                                                       "summary",
+                                                                       "statuses",
+                                                                       "steps",
+                                                                       "other_cities"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/users/apply-analytics?group_by=ip_city\u0026date_from=2026-09-01\u0026date_to=2026-09-30",
+                                               "trigger":  "Select IP city and activate Apply.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve the same analytics grouped by detected IP city.",
+                                               "importantFields":  [
+                                                                       "status",
+                                                                       "rows",
+                                                                       "city",
+                                                                       "date",
+                                                                       "clicks",
+                                                                       "applications",
+                                                                       "summary",
+                                                                       "statuses",
+                                                                       "steps",
+                                                                       "other_cities"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/users/apply-analytics?group_by=ip_city\u0026date_from=2026-09-01\u0026date_to=2026-09-30\u0026targeted_only=1",
+                                               "trigger":  "Enable Targeted only and activate Apply while grouped by IP city.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve targeted-only analytics for the current date range and grouping.",
+                                               "importantFields":  [
+                                                                       "status",
+                                                                       "rows",
+                                                                       "city",
+                                                                       "date",
+                                                                       "clicks",
+                                                                       "applications",
+                                                                       "summary",
+                                                                       "statuses",
+                                                                       "steps",
+                                                                       "other_cities"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "QR city",
+                                                              "IP city"
+                                                          ],
+                                             "relationship":  "Each grouping exposes the opposite city dimension as a counted breakdown: QR-city rows show IP Cities, while IP-city rows show QR Cities.",
+                                             "evidence":  "Observed table headers changed between QR City/IP Cities and IP City/QR Cities; API rows included an other_cities object."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Registration",
+                                                              "Application"
+                                                          ],
+                                             "relationship":  "Registrations and applications are displayed as distinct metrics, both in KPI cards and grouped rows.",
+                                             "evidence":  "The live page showed Total registrations with an apps count, and table rows contained separate Clicks and Applications columns."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Application",
+                                                              "Application status"
+                                                          ],
+                                             "relationship":  "Each grouped analytics row includes counts by application status.",
+                                             "evidence":  "Summary Statuses displayed registered, Interview scheduled, Interview completed, Training scheduled, Training completed, Application rejected and Completed."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Application",
+                                                              "Application step"
+                                                          ],
+                                             "relationship":  "Each grouped analytics row includes counts by current application step.",
+                                             "evidence":  "Summary Steps displayed new, account, schedule, personal, car, business and wait."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "QR targeting",
+                                                              "Registration"
+                                                          ],
+                                             "relationship":  "Registrations are classified as targeted or non-targeted, with a targeted-share KPI and optional targeted-only filtering.",
+                                             "evidence":  "Observed KPI cards named Targeted, Non-targeted and Targeted share, plus the Targeted only switch and targeted_only request parameter."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Review QR-city analytics",
+                                         "steps":  [
+                                                       "Open QR Apply Analytics.",
+                                                       "Review or set Date from and Date to.",
+                                                       "Keep Group by set to QR city.",
+                                                       "Activate Apply.",
+                                                       "Review KPI cards, daily detail rows and QR City Summary."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session.",
+                                                                       "Access to /apply/analytics."
+                                                                   ],
+                                         "resultObserved":  "The page displayed QR-city analytics for the chosen date range.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Review IP-city analytics",
+                                         "steps":  [
+                                                       "Open the Group by control.",
+                                                       "Select IP city.",
+                                                       "Activate Apply.",
+                                                       "Review the IP City/QR Cities detail columns and IP City Summary."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The QR Apply Analytics page is loaded."
+                                                                   ],
+                                         "resultObserved":  "The page requested group_by=ip_city and rendered IP-city grouped results.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Filter to targeted analytics",
+                                         "steps":  [
+                                                       "Enable Targeted only.",
+                                                       "Activate Apply.",
+                                                       "Review the filtered detail and summary tables."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The QR Apply Analytics page is loaded."
+                                                                   ],
+                                         "resultObserved":  "The analytics request included targeted_only=1 and returned HTTP 200.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Group by",
+                                                       "observedRule":  "The live selector offered exactly two observed choices: QR city and IP city.",
+                                                       "evidence":  "The expanded listbox contained options named QR city and IP city."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Apply filters",
+                                                       "observedRule":  "The applied date values were serialized as date_from and date_to, and the selected grouping was serialized as group_by.",
+                                                       "evidence":  "Observed successful GET requests contained group_by, date_from and date_to query parameters."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Targeted only",
+                                                       "observedRule":  "When enabled, the applied request included targeted_only=1.",
+                                                       "evidence":  "Observed successful targeted-only GET request."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "QR Apply Analytics navigation link",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027QR Apply Analytics\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Sidebar list indexes or icon-font selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Date range fields",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Date from\u0027 })",
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Date to\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Generated input IDs"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Grouping control",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: /Group by/ })",
+                                                               "getByRole(\u0027option\u0027, { name: \u0027QR city\u0027 })",
+                                                               "getByRole(\u0027option\u0027, { name: \u0027IP city\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Vuetify class names and generated aria references"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Targeted-only filter",
+                                             "preferred":  [
+                                                               "getByRole(\u0027switch\u0027, { name: \u0027Targeted only\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Generated input IDs and ripple-element selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Apply action",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Apply\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Button ordinal indexes"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Analytics tables",
+                                             "preferred":  [
+                                                               "getByRole(\u0027heading\u0027, { name: \u0027QR City Summary\u0027 })",
+                                                               "getByRole(\u0027heading\u0027, { name: \u0027IP City Summary\u0027 })",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027Applications\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Table row indexes when identifying business columns"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The verified ADM route is /apply/analytics and its page title and heading are QR Apply Analytics.",
+                                             "evidence":  "Browser tab, URL and accessibility snapshot.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The default observed grouping was QR city.",
+                                             "evidence":  "The Group by control initially displayed QR city and the initial request used group_by=qr_city.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The page supports grouping analytics by either QR city or IP city.",
+                                             "evidence":  "Live listbox options, changed table headers and successful requests for both group_by values.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The detailed table presents Clicks, Applications, Summary Statuses and Summary Steps for each date and selected city grouping.",
+                                             "evidence":  "Live table headers and rows.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "A second table summarizes the selected date range without a Date column.",
+                                             "evidence":  "Observed QR City Summary and IP City Summary tables.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The page displays Total registrations, Targeted, Non-targeted and Targeted share KPI cards.",
+                                             "evidence":  "Live accessibility snapshot.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The analytics endpoint returns grouped rows with city, date, click and application counts, status/step summaries and opposite-city counts.",
+                                             "evidence":  "HTTP 200 response from /users/apply-analytics inspected without retaining personal data.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The page-level service/facility selectors both displayed Hawaii during observation, but the analytics requests did not include an observed facility or service query parameter.",
+                                             "evidence":  "Navigation snapshot and analytics request URLs.",
+                                             "confidence":  "MEDIUM"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; ADM is the primary baseline and no earlier baseline was supplied.",
+                                                  "currentFact":  "The live ADM behavior recorded in this result establishes the current QR Apply Analytics baseline.",
+                                                  "evidence":  "Direct observation of the authenticated ADM page and its successful analytics requests."
+                                              }
+                                          ],
+                   "anomalies":  [
+
+                                 ],
+                   "changesFromPrevious":  [
+                                               {
+                                                   "type":  "NEW",
+                                                   "fact":  "A verified ADM baseline observation was created for QR Apply Analytics.",
+                                                   "evidence":  "No previous module baseline was supplied; current evidence came from the live ADM page."
+                                               }
+                                           ],
+                   "uncertainties":  [
+                                         "The exact behavior, file name and schema of Download CSV were not tested because initiating a download was unnecessary for the safe read-only crawl.",
+                                         "Empty or invalid date-range validation was not exercised, so required-date rules and error messages could not be proven.",
+                                         "The displayed total registration count increased by one during the observation window; concurrent live activity is a plausible explanation, but the cause was not proven.",
+                                         "Whether the surrounding Hawaii service/facility context affects this module could not be proven from the observed analytics requests because they carried no visible context parameter.",
+                                         "The targeted-only filter\u0027s precise server-side inclusion criteria were not inferable beyond the observed targeted_only=1 request parameter."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM currently provides a read-only QR Apply Analytics page at /apply/analytics with date filtering, QR-city/IP-city grouping, targeted-only filtering, KPI cards, daily detail, aggregate city summaries and CSV export. Live UI changes were backed by successful GET requests to /users/apply-analytics; no business data was mutated."
+               }
+}

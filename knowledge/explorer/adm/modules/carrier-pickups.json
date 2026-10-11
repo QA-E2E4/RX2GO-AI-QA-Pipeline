@@ -1,0 +1,463 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Carrier Pickups",
+    "moduleSlug":  "carrier-pickups",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:02:57.9167735+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Carrier Pickups",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/clients/pickups",
+                   "endUrl":  "https://adm.rx2go.ai/carrier-pickups",
+                   "pagePurpose":  "View and search carrier pickup records, including their client, carrier status, delivery window, rate, confirmation, and available record actions.",
+                   "routes":  [
+                                  {
+                                      "name":  "Carrier Pickups",
+                                      "url":  "https://adm.rx2go.ai/carrier-pickups",
+                                      "howToOpen":  "Use the Main navigation link named Carrier Pickups, observed with href /carrier-pickups.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Service area",
+                                        "type":  "select",
+                                        "purpose":  "Select the active service-area context.",
+                                        "locatorHints":  [
+                                                             "combobox containing the selected option Hawaii"
+                                                         ],
+                                        "notes":  "Hawaii was selected during observation. Other visible options included New York, Los Angeles, Massachusetts, Florida, Ohio, Texas, and Delaware."
+                                    },
+                                    {
+                                        "name":  "Local service context",
+                                        "type":  "select",
+                                        "purpose":  "Select a subordinate context within the active service area.",
+                                        "locatorHints":  [
+                                                             "second navigation combobox"
+                                                         ],
+                                        "notes":  "Hawaii was selected; Long Ilend was the other visible option."
+                                    },
+                                    {
+                                        "name":  "Back to orders",
+                                        "type":  "button",
+                                        "purpose":  "Provides navigation back toward orders.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Back to orders\u0027 })"
+                                                         ],
+                                        "notes":  "Visible in the page header; not activated to avoid leaving the module."
+                                    },
+                                    {
+                                        "name":  "Add pickup",
+                                        "type":  "button",
+                                        "purpose":  "Starts the carrier-pickup creation flow.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: /Add pickup/ })",
+                                                             "button name attribute add-pickup"
+                                                         ],
+                                        "notes":  "Visible in the header. No pickup was created; the form surface could not be safely confirmed because the Playwright click attempt timed out before activation."
+                                    },
+                                    {
+                                        "name":  "All",
+                                        "type":  "tab",
+                                        "purpose":  "Shows carrier pickups from all status groups.",
+                                        "locatorHints":  [
+                                                             "getByText(/All.*12/)"
+                                                         ],
+                                        "notes":  "Displayed a count of 12 during observation."
+                                    },
+                                    {
+                                        "name":  "Waiting for Carrier",
+                                        "type":  "tab",
+                                        "purpose":  "Filters records whose carrier status is unresolved or waiting.",
+                                        "locatorHints":  [
+                                                             "getByText(\u0027Waiting for Carrier\u0027)"
+                                                         ],
+                                        "notes":  "No count was displayed during observation. The request model identifies this status value as unknown."
+                                    },
+                                    {
+                                        "name":  "Scheduled",
+                                        "type":  "tab",
+                                        "purpose":  "Filters the list to scheduled carrier pickups.",
+                                        "locatorHints":  [
+                                                             "getByText(/Scheduled.*5/)"
+                                                         ],
+                                        "notes":  "Displayed a count of 5."
+                                    },
+                                    {
+                                        "name":  "Cancelled",
+                                        "type":  "tab",
+                                        "purpose":  "Filters the list to cancelled carrier pickups.",
+                                        "locatorHints":  [
+                                                             "getByText(/Cancelled.*7/)"
+                                                         ],
+                                        "notes":  "Displayed a count of 7."
+                                    },
+                                    {
+                                        "name":  "Search",
+                                        "type":  "input",
+                                        "purpose":  "Searches carrier pickup records.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, { name: \u0027Search...\u0027 })"
+                                                         ],
+                                        "notes":  "Submitting a synthetic no-match value produced an Orders not found! table state and POST requests with the search value in the filters object. The field was cleared after observation."
+                                    },
+                                    {
+                                        "name":  "Carrier pickup table",
+                                        "type":  "table",
+                                        "purpose":  "Lists carrier pickup operational data.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027table\u0027)",
+                                                             "getByRole(\u0027columnheader\u0027, { name: \u0027ID\u0027 })"
+                                                         ],
+                                        "notes":  "Observed columns: ID, Client, Status, Carrier, Created at, Date to Deliver, Time to Deliver, Rate, Confirmation, and Actions."
+                                    },
+                                    {
+                                        "name":  "Rows per page",
+                                        "type":  "select",
+                                        "purpose":  "Changes the number of carrier pickup records requested per page.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027combobox\u0027) near text \u0027Rows per page\u0027"
+                                                         ],
+                                        "notes":  "Options observed: 5, 10, 25, 50, 100, 200, and 500. The initial selection was 50; selecting 10 was reflected as request limit 10."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Main navigation while on Pickups",
+                                          "action":  "Open Carrier Pickups using the observed /carrier-pickups route",
+                                          "to":  "Carrier Pickups list",
+                                          "evidence":  "The resulting URL was https://adm.rx2go.ai/carrier-pickups, with page title Carrier Pickups | Rx2Go and heading Carrier Pickups."
+                                      },
+                                      {
+                                          "from":  "Carrier Pickups list",
+                                          "action":  "Enter a synthetic no-match term in Search",
+                                          "to":  "Filtered empty-result state",
+                                          "evidence":  "The table displayed Orders not found!, and the getList request contained the synthetic value in filters.search.value."
+                                      },
+                                      {
+                                          "from":  "Filtered empty-result state",
+                                          "action":  "Clear Search",
+                                          "to":  "Carrier Pickups list query reset",
+                                          "evidence":  "The Search textbox accepted an empty value without leaving /carrier-pickups."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullCarrierPickups.php?action=getList",
+                                               "trigger":  "Initial page load, search submission, and list configuration changes",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieves the carrier pickup list using ordering, filters, requested columns, limit, and offset.",
+                                               "importantFields":  [
+                                                                       "order",
+                                                                       "filters",
+                                                                       "search",
+                                                                       "status",
+                                                                       "columns",
+                                                                       "limit",
+                                                                       "offset",
+                                                                       "id",
+                                                                       "client_name",
+                                                                       "carrier",
+                                                                       "created_at",
+                                                                       "min_datetime",
+                                                                       "time_to_deliver",
+                                                                       "rate",
+                                                                       "confirmation",
+                                                                       "actions"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullCarrierPickups.php?action=calcCounts",
+                                               "trigger":  "Initial page load and search submission",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Calculates list counters grouped by carrier pickup status.",
+                                               "importantFields":  [
+                                                                       "countBy",
+                                                                       "filters",
+                                                                       "search",
+                                                                       "status",
+                                                                       "items",
+                                                                       "all",
+                                                                       "unknown",
+                                                                       "scheduled",
+                                                                       "canceled"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=1",
+                                               "trigger":  "Carrier Pickups page load",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads hub or service-context data associated with the active facility.",
+                                               "importantFields":  [
+                                                                       "facility"
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/v1/common/get-facilities",
+                                               "trigger":  "Carrier Pickups page load",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads available facility context.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Carrier pickup",
+                                                              "Client"
+                                                          ],
+                                             "relationship":  "Each carrier pickup row has a Client column associating the pickup with a client account.",
+                                             "evidence":  "Live table headers and populated rows."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Carrier pickup",
+                                                              "Carrier"
+                                                          ],
+                                             "relationship":  "A carrier pickup has a carrier-related status and a Carrier column; records may be in Waiting for Carrier, Scheduled, or canceled states.",
+                                             "evidence":  "Status controls, table columns, and the API status filter model."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Carrier pickup",
+                                                              "Delivery window"
+                                                          ],
+                                             "relationship":  "Each populated pickup can carry a delivery date and time range.",
+                                             "evidence":  "Date to Deliver and Time to Deliver columns contained dates and time windows."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Carrier pickup",
+                                                              "Facility/service area"
+                                                          ],
+                                             "relationship":  "The page is loaded under selected facility and service-area context.",
+                                             "evidence":  "Two navigation comboboxes were visible with Hawaii selected, and facility/hub requests occurred during page load."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Open carrier pickup operations",
+                                         "steps":  [
+                                                       "Locate Carrier Pickups in the Main navigation",
+                                                       "Open /carrier-pickups",
+                                                       "Review status counters and the carrier pickup table"
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session was active",
+                                                                       "A service-area context was selected"
+                                                                   ],
+                                         "resultObserved":  "The Carrier Pickups list loaded with 12 total records represented by 5 Scheduled and 7 Cancelled counter values.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Search carrier pickups",
+                                         "steps":  [
+                                                       "Enter a value in the Search... textbox",
+                                                       "Allow the search request to run or submit with Enter",
+                                                       "Review the filtered table"
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Carrier Pickups list was loaded"
+                                                                   ],
+                                         "resultObserved":  "A synthetic unmatched value produced an Orders not found! row; clearing the textbox reset the query input.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Change page size",
+                                         "steps":  [
+                                                       "Open the Rows per page combobox",
+                                                       "Select 10"
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Carrier Pickups list was loaded"
+                                                                   ],
+                                         "resultObserved":  "The selector showed 10 and a subsequent list request used limit 10 with offset 0.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Search",
+                                                       "observedRule":  "A nonmatching search value returns an empty-result row labeled Orders not found! rather than navigating away or producing an error.",
+                                                       "evidence":  "Live table snapshot after submitting a synthetic no-match search term."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Rows per page",
+                                                       "observedRule":  "The control offers only the observed fixed choices 5, 10, 25, 50, 100, 200, and 500.",
+                                                       "evidence":  "Live combobox options."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Status filter",
+                                                       "observedRule":  "The request model recognizes all, unknown, scheduled, and canceled status values.",
+                                                       "evidence":  "Observed request bodies for getList and calcCounts."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Page heading",
+                                             "preferred":  [
+                                                               "getByRole(\u0027heading\u0027, { name: \u0027Carrier Pickups\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated accessibility references"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Add pickup",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: /Add pickup/ })",
+                                                               "button name attribute add-pickup"
+                                                           ],
+                                             "avoid":  [
+                                                           "icon glyph text",
+                                                           "generated accessibility references"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Search",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Search...\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "generic header container selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Carrier pickup table",
+                                             "preferred":  [
+                                                               "getByRole(\u0027table\u0027)",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027Confirmation\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "row-position selectors tied to current data"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Rows per page",
+                                             "preferred":  [
+                                                               "getByRole(\u0027combobox\u0027) scoped near text \u0027Rows per page\u0027"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated component IDs"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Status counters",
+                                             "preferred":  [
+                                                               "getByText(/Waiting for Carrier/)",
+                                                               "getByText(/Scheduled.*5/)",
+                                                               "getByText(/Cancelled.*7/)"
+                                                           ],
+                                             "avoid":  [
+                                                           "nth-based matches against status chips inside table rows"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Carrier Pickups is a distinct Main navigation capability at /carrier-pickups, separate from /clients/pickups.",
+                                             "evidence":  "Both links were simultaneously present in the live Main navigation, and /carrier-pickups loaded the Carrier Pickups page.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The live list exposes carrier pickup identity, client, status, carrier, creation time, delivery date, delivery time, rate, confirmation, and actions.",
+                                             "evidence":  "Live table column headers.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "At observation time, the All counter was 12, Scheduled was 5, and Cancelled was 7; Waiting for Carrier showed no numeric count.",
+                                             "evidence":  "Live status-counter controls.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Populated records displayed both zero and nonzero rates, delivery dates, delivery time ranges, and carrier confirmation identifiers.",
+                                             "evidence":  "Live populated table rows; specific client and confirmation values were omitted from stored knowledge.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The module fetches its list and status counts using separate POST requests.",
+                                             "evidence":  "200 responses from getList and calcCounts on initial load and search.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The observed ADM context was Hawaii at both visible service-context levels.",
+                                             "evidence":  "Selected values in the two navigation comboboxes.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; this observation establishes the ADM baseline.",
+                                                  "currentFact":  "Carrier Pickups is live at /carrier-pickups with status counters, search, tabular operational details, page-size control, and list/count APIs.",
+                                                  "evidence":  "Current live ADM page and network observations."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The status filter is labeled Cancelled, while populated table rows display Canceled.",
+                                         "evidence":  "Live status control text versus live Status column values.",
+                                         "impact":  "Exact-text QA automation or terminology assertions may need to account for both spellings."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+
+                                           ],
+                   "uncertainties":  [
+                                         "The Add pickup form, its fields, and its validation were not confirmed because the safe Playwright activation attempt timed out before the button was activated.",
+                                         "The unlabeled per-row action icons were not activated, so their edit, cancel, or detail behavior remains unverified.",
+                                         "The destination of Back to orders was not verified because leaving the discovered module was unnecessary.",
+                                         "No Waiting for Carrier records were visible in the observed context, so row presentation for that status was not confirmed.",
+                                         "No previous ADM Carrier Pickups baseline was supplied, so change classification against an earlier baseline is unavailable."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM Carrier Pickups is verified at /carrier-pickups under the Main navigation and active service-area context. It provides status counters, server-backed search, a detailed carrier-pickup table, and configurable page size. The observed ADM dataset had 12 records: 5 Scheduled and 7 Cancelled. No business data was mutated."
+               }
+}

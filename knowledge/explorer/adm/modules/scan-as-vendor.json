@@ -1,0 +1,348 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Scan | As Vendor",
+    "moduleSlug":  "scan-as-vendor",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:27:40.6564084+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Scan | As Vendor",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/scanner/unlock-for-driver",
+                   "endUrl":  "https://adm.rx2go.ai/scanner/as-driver",
+                   "pagePurpose":  "Provides a vendor-oriented barcode scanning interface. The live page contains a barcode entry field and an On/Off option controlling automatic submission after a scan.",
+                   "routes":  [
+                                  {
+                                      "name":  "Scan | As Vendor",
+                                      "url":  "https://adm.rx2go.ai/scanner/as-driver",
+                                      "howToOpen":  "Open the Main navigation link named \"Scan | As Vendor\", whose observed href is /scanner/as-driver.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Barcode Numbers",
+                                        "type":  "input",
+                                        "purpose":  "Accepts barcode numbers for the vendor-oriented scanning workflow.",
+                                        "locatorHints":  [
+                                                             "role=textbox, name=Barcode Numbers...",
+                                                             "placeholder=Barcode Numbers..."
+                                                         ],
+                                        "notes":  "Observed as an enabled, editable text input. It has no required attribute, name, id, aria-label, or autocomplete attribute. No barcode was entered or submitted."
+                                    },
+                                    {
+                                        "name":  "Auto Submit on Scan",
+                                        "type":  "other",
+                                        "purpose":  "Controls whether scanning automatically submits the entered barcode.",
+                                        "locatorHints":  [
+                                                             "text=Auto Submit on Scan",
+                                                             "label=Off",
+                                                             "label=On"
+                                                         ],
+                                        "notes":  "Implemented as two enabled radio inputs sharing the name auto_submit. The On option was selected when the page loaded."
+                                    },
+                                    {
+                                        "name":  "Off",
+                                        "type":  "other",
+                                        "purpose":  "Disables automatic submission after scanning.",
+                                        "locatorHints":  [
+                                                             "label=Off"
+                                                         ],
+                                        "notes":  "Observed radio input id auto_off, value off, unchecked."
+                                    },
+                                    {
+                                        "name":  "On",
+                                        "type":  "other",
+                                        "purpose":  "Enables automatic submission after scanning.",
+                                        "locatorHints":  [
+                                                             "label=On"
+                                                         ],
+                                        "notes":  "Observed radio input id auto_on, value on, checked."
+                                    },
+                                    {
+                                        "name":  "Facility selector",
+                                        "type":  "select",
+                                        "purpose":  "Selects the active facility context used by the application.",
+                                        "locatorHints":  [
+                                                             "role=combobox, first occurrence"
+                                                         ],
+                                        "notes":  "Hawaii was selected. Eight options were present. The control had no accessible label, name, or id."
+                                    },
+                                    {
+                                        "name":  "Hub selector",
+                                        "type":  "select",
+                                        "purpose":  "Selects a hub within the active facility context.",
+                                        "locatorHints":  [
+                                                             "role=combobox, second occurrence"
+                                                         ],
+                                        "notes":  "Hawaii was selected. Two options were present. The control had no accessible label, name, or id."
+                                    },
+                                    {
+                                        "name":  "Scan | As Vendor navigation link",
+                                        "type":  "link",
+                                        "purpose":  "Opens the Scan | As Vendor module.",
+                                        "locatorHints":  [
+                                                             "role=link, name=Scan | As Vendor"
+                                                         ],
+                                        "notes":  "Observed href /scanner/as-driver and aria-current=page on the active route."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Existing authenticated ADM tab on Scan | Unlock Vendor",
+                                          "action":  "Navigate to the discovered URL https://adm.rx2go.ai/scanner/as-driver",
+                                          "to":  "Scan | As Vendor",
+                                          "evidence":  "The resulting URL was /scanner/as-driver, the document title was \"Scan | As Vendor | Rx2Go\", and the page heading was \"Scan | As Vendor\"."
+                                      },
+                                      {
+                                          "from":  "Main navigation",
+                                          "action":  "Open the link named \"Scan | As Vendor\"",
+                                          "to":  "Scan | As Vendor",
+                                          "evidence":  "The live navigation link had href /scanner/as-driver and was marked aria-current=page with active router classes."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=1",
+                                               "trigger":  "Load the Scan | As Vendor page with the current facility context.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads hubs associated with the selected facility.",
+                                               "importantFields":  [
+                                                                       "action",
+                                                                       "facility"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/v1/common/get-facilities",
+                                               "trigger":  "Load the Scan | As Vendor page.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads the facilities available to the current authenticated context.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Facility",
+                                                              "Hub"
+                                                          ],
+                                             "relationship":  "The hub choices are loaded for the active facility.",
+                                             "evidence":  "Page load issued GET /ajax/PullFacilityHub.php?action=getHubs\u0026facility=1; the UI displayed a facility selector followed by a hub selector."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Barcode scan",
+                                                              "Auto Submit setting"
+                                                          ],
+                                             "relationship":  "The Auto Submit on Scan setting controls whether a scan is automatically submitted.",
+                                             "evidence":  "The barcode input is presented beside the On/Off radio group labeled \"Auto Submit on Scan\"."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Open vendor-oriented scanner",
+                                         "steps":  [
+                                                       "Use the Main navigation entry named \"Scan | As Vendor\" or open /scanner/as-driver.",
+                                                       "Confirm the Scan | As Vendor heading and active navigation state.",
+                                                       "Verify the active facility and hub context.",
+                                                       "Use the Barcode Numbers field for scanning."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session was active.",
+                                                                       "A facility and hub context were selected.",
+                                                                       "The barcode input was enabled."
+                                                                   ],
+                                         "resultObserved":  "The scanner page loaded with the barcode input available and Auto Submit on Scan set to On.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Barcode Numbers",
+                                                       "observedRule":  "The input is not marked required at the DOM level.",
+                                                       "evidence":  "Live inspection showed required=false on the enabled text input."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Auto Submit on Scan",
+                                                       "observedRule":  "The setting provides mutually exclusive On and Off values through a shared radio group.",
+                                                       "evidence":  "Both radio inputs used name auto_submit; On was checked and Off was unchecked."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Barcode Numbers input",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Barcode Numbers...\u0027 })",
+                                                               "getByPlaceholder(\u0027Barcode Numbers...\u0027)"
+                                                           ],
+                                             "avoid":  [
+                                                           "CSS based on page layout or generated component classes"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Scan | As Vendor navigation link",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Scan | As Vendor\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Positional sidebar selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Auto Submit On option",
+                                             "preferred":  [
+                                                               "getByLabel(\u0027On\u0027)"
+                                                           ],
+                                             "avoid":  [
+                                                           "Clicking the surrounding generic text node"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Auto Submit Off option",
+                                             "preferred":  [
+                                                               "getByLabel(\u0027Off\u0027)"
+                                                           ],
+                                             "avoid":  [
+                                                           "Clicking the surrounding generic text node"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Facility and hub selectors",
+                                             "preferred":  [
+                                                               "getByRole(\u0027combobox\u0027).first() for facility",
+                                                               "getByRole(\u0027combobox\u0027).nth(1) for hub"
+                                                           ],
+                                             "avoid":  [
+                                                           "Generated element references",
+                                                           "Assuming an accessible label that is not currently present"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The ADM route /scanner/as-driver is live and displays the Scan | As Vendor module.",
+                                             "evidence":  "Observed URL, document title, heading, and active Main navigation link.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The module presents one editable Barcode Numbers text input.",
+                                             "evidence":  "Accessibility snapshot and DOM inspection of the input.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Auto Submit on Scan was set to On when observed.",
+                                             "evidence":  "The auto_on radio was checked and auto_off was unchecked.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The live session had Hawaii selected in both the facility and hub selectors.",
+                                             "evidence":  "Both comboboxes reported Hawaii as selected.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Loading the page requested the available facilities and the hubs for facility 1.",
+                                             "evidence":  "Observed successful GET requests to /v1/common/get-facilities and /ajax/PullFacilityHub.php?action=getHubs\u0026facility=1.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "NEW",
+                                                  "area":  "route",
+                                                  "baselineFact":  "N/A; ADM is being recorded as the primary baseline.",
+                                                  "currentFact":  "The live ADM route is /scanner/as-driver and its title and heading identify it as Scan | As Vendor.",
+                                                  "evidence":  "Live ADM URL, title, heading, and active navigation state."
+                                              },
+                                              {
+                                                  "type":  "NEW",
+                                                  "area":  "control",
+                                                  "baselineFact":  "N/A; ADM is being recorded as the primary baseline.",
+                                                  "currentFact":  "The page contains a Barcode Numbers input and an On/Off Auto Submit on Scan radio group.",
+                                                  "evidence":  "Live accessibility snapshot and DOM inspection."
+                                              },
+                                              {
+                                                  "type":  "NEW",
+                                                  "area":  "relationship",
+                                                  "baselineFact":  "N/A; ADM is being recorded as the primary baseline.",
+                                                  "currentFact":  "Hub context is loaded using the selected facility.",
+                                                  "evidence":  "Successful getHubs request included facility=1 while facility and hub selectors were visible."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The page logged a timed-out Telnyx WebSocket connection followed by socket error and close messages.",
+                                         "evidence":  "Live browser console contained three errors involving wss://rtc.telnyx.com/ while the scanner page remained rendered.",
+                                         "impact":  "May add unrelated console noise during scanner QA or affect shared calling functionality; no scanner impact was proven."
+                                     },
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The facility and hub selectors lacked accessible labels, names, and ids in the inspected DOM.",
+                                         "evidence":  "Live DOM inspection returned null for name, id, and aria-label on both selectors.",
+                                         "impact":  "Semantic automation must currently distinguish the selectors by position, which is less stable."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+                                               {
+                                                   "type":  "NEW",
+                                                   "fact":  "ADM baseline observation established for Scan | As Vendor at /scanner/as-driver.",
+                                                   "evidence":  "The route was reached and inspected live on ADM."
+                                               },
+                                               {
+                                                   "type":  "NEW",
+                                                   "fact":  "Barcode entry and Auto Submit controls were documented.",
+                                                   "evidence":  "Accessibility snapshot and DOM inspection."
+                                               },
+                                               {
+                                                   "type":  "NEW",
+                                                   "fact":  "Facility-to-hub context loading was documented.",
+                                                   "evidence":  "Live selectors and successful facility/hub API requests."
+                                               }
+                                           ],
+                   "uncertainties":  [
+                                         "No barcode was entered or submitted because a scan could modify order or vendor-related business state.",
+                                         "The response bodies were not inspected, so the exact response field shapes for facilities and hubs were not proven.",
+                                         "No scanner-specific request was triggered; the endpoint and result behavior for a submitted barcode remain unverified.",
+                                         "Empty, malformed, unknown, duplicate, and multi-barcode validation behavior was not tested because submission safety could not be established.",
+                                         "Changing facility, hub, or Auto Submit state was avoided, so persistence behavior and downstream request behavior remain unverified.",
+                                         "No child result page, success state, error modal, or scan-history surface was reachable without submitting a barcode."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM currently exposes Scan | As Vendor at /scanner/as-driver through the Main navigation. The page provides a Barcode Numbers input and an Auto Submit on Scan radio setting that was On when observed. Facility and hub context were both selected as Hawaii, with live requests loading facilities and facility-specific hubs. No barcode was submitted and no business data was mutated."
+               }
+}

@@ -1,4 +1,4 @@
-﻿Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Windows.Forms
 
 [System.Windows.Forms.Application]::SetUnhandledExceptionMode(
     [System.Windows.Forms.UnhandledExceptionMode]::CatchException
@@ -14,6 +14,23 @@
         }
     } catch {}
 
+    if ($env:RX2GO_QUEUE_WORKER -eq '1') {
+        try {
+            $statusPath = [string]$env:RX2GO_QUEUE_STATUS_FILE
+            if ($statusPath) {
+                $dir = Split-Path $statusPath -Parent
+                if ($dir) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+                $payload = [ordered]@{
+                    schemaVersion = 1; jobId = [string]$env:RX2GO_QUEUE_JOB_ID; taskKey = [string]$env:RX2GO_QUEUE_TASK_KEY;
+                    environment = [string]$env:RX2GO_QUEUE_ENV; pid = $PID; status = 'FINISHED'; phase = 'ERROR';
+                    detail = [string]$eventArgs.Exception.Message; final = $true; result = 'ERROR'; updatedAt = (Get-Date).ToString('o')
+                }
+                [System.IO.File]::WriteAllText($statusPath, ($payload | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding($false)))
+            }
+        } catch {}
+        return
+    }
+
     [System.Windows.Forms.MessageBox]::Show(
         "Внутренняя ошибка Launcher:`r`n`r`n$($eventArgs.Exception.Message)`r`n`r`nОшибка записана в лог. Chrome не закрыт автоматически.",
         'Rx2GO AI QA',
@@ -27,6 +44,20 @@ Add-Type -AssemblyName Microsoft.VisualBasic
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 $script:ProjectRoot = $PSScriptRoot
+
+# Queue Worker mode is an isolated child Launcher process started by the Jira Queue.
+# Each worker gets its own copied project root, reports, browser/CDP session and agent state.
+$script:QueueWorkerMode = ($env:RX2GO_QUEUE_WORKER -eq '1')
+$script:QueueWorkerJobId = [string]$env:RX2GO_QUEUE_JOB_ID
+$script:QueueWorkerTaskKey = [string]$env:RX2GO_QUEUE_TASK_KEY
+$script:QueueWorkerEnvironment = [string]$env:RX2GO_QUEUE_ENV
+$script:QueueWorkerStatusFile = [string]$env:RX2GO_QUEUE_STATUS_FILE
+$script:QueueWorkerParentRoot = [string]$env:RX2GO_QUEUE_PARENT_ROOT
+$script:QueueWorkerSlot = [string]$env:RX2GO_QUEUE_WORKER_SLOT
+$script:QueueWorkerFinalWritten = $false
+$script:QueueWorkerFinalResult = $null
+$script:QueueWorkerStarted = $false
+$script:QueueWorkerStartedAt = $null
 
 # Stable credential storage. DPAPI/Export-Clixml binds the password to the
 # current Windows user instead of to one unpacked Launcher folder.
@@ -77,24 +108,30 @@ $script:ChatGPTAuthTimer = $null
 $script:ProjectRulesFile = Join-Path $PSScriptRoot 'knowledge\project-rules.json'
 $script:KnowledgePaths = @(
     'knowledge','jira-cases','scenarios','tests','pages','api','agents','scripts','docs',
+    'fixtures','utils','.github',
     'Rx2GO-QA-Launcher.ps1','LauncherBootstrap.ps1','run.ps1','setup.ps1',
     'START QA.bat','START QA DEBUG.bat',
     'CHECK CODEX.bat','CHECK PLAYWRIGHT CONFIG.bat','CHECK RX2GO LOGIN.bat','CHECK TEST ENVIRONMENT.bat',
     'INSTALL CODEX.bat','INSTALL CODEX.ps1','CONFIGURE BROWSERSTACK MCP.bat',
     'README.md','JIRA-WORKFLOW.md','LAUNCHER.md',
-    'playwright.config.ts','package.json','tsconfig.json','.gitignore','.env.example','VERSION'
+    'playwright.config.ts','package.json','package-lock.json','tsconfig.json','.gitignore','.env.example','VERSION'
 )
-$script:DefaultGitRemote = 'https://github.com/Gamazzz/rx2go-ai-qa.git'
+$script:DefaultGitRemote = 'git@github.com:QA-E2E4/rx2go-ai-qa.git'
 $script:GitBusy = $false
 
 $script:JiraFetchedSource = $null
 $script:JiraGeneratedSpec = $null
 $script:LoadedJiraIssue = $null
 $script:LoadedJiraIssueKey = $null
+$script:JiraImportedEdited = $false
+$script:SuppressJiraImportedEditEvent = $false
+$script:IntegrityGuardVerified = $false
 $script:JiraGenerationError = $null
 $script:JiraGenerationLog = $null
 
 $script:LastAgentError = $null
+$script:LastAgentFailureKind = $null
+$script:LastFixtureRecoveryInterruption = $null
 $script:AgentRunDir = $null
 $script:AgentJiraAnalysis = $null
 $script:AgentTestDesign = $null
@@ -104,6 +141,43 @@ $script:AgentReviewerSpec = $null
 $script:AgentMcpExecution = $null
 $script:AgentMcpExecutionRaw = $null
 $script:FailureTriage = $null
+$script:LastKnowledgeRetrieval = $null
+$script:LastKnowledgeContext = ''
+$script:KnowledgeRemoteRef = $null
+$script:LastKnowledgeLearning = $null
+$script:LastKnowledgeLearningFile = $null
+$script:LastAutoGitSync = $null
+$script:AutoGitAfterJiraRun = (-not $script:QueueWorkerMode)
+$script:TestDataMutationAlwaysAllowed = $true
+$script:SmartCoverageDesign = $null
+$script:TaskUnderstandingContract = $null
+$script:TaskUnderstandingGate = $null
+$script:KnowledgeReadWarningShown = $false
+$script:LastKnowledgeReadStatus = $null
+$script:LastKnowledgeWriteWarning = $null
+$script:KnowledgeExplorerRunning = $false
+$script:KnowledgeExplorerStopRequested = $false
+$script:KnowledgeExplorerRunDir = $null
+$script:KnowledgeExplorerLastResult = $null
+$script:KnowledgeExplorerStaleDays = 14
+$script:KnowledgeSaveState = 'UNKNOWN'
+$script:KnowledgeSaveDetails = 'Статус GitHub ещё не проверен.'
+$script:KnowledgeSaveLastSuccess = $null
+$script:KnowledgeExplorerProjectMap = $null
+$script:KnowledgeExplorerProjectMapEnvironment = ''
+
+# Jira Queue manager state (parent Launcher only).
+$script:QueueRoot = Join-Path $script:LocalDataRoot 'queue'
+$script:QueueWorkersRoot = Join-Path $script:QueueRoot 'workers'
+$script:QueueJobsRoot = Join-Path $script:QueueRoot 'jobs'
+$script:QueueStateFile = Join-Path $script:QueueRoot 'queue-state.json'
+$script:QueueItems = New-Object System.Collections.ArrayList
+$script:QueueRunning = $false
+$script:QueuePaused = $false
+$script:QueueMaxParallel = 3
+$script:QueueTimer = $null
+$script:QueueLastEvent = ''
+$script:QueueUsageLimitWarningShown = $false
 $script:JiraScreenshotPaths = @()
 $script:JiraScreenshotMaxCount = 8
 $script:PlaywrightMcpReady = $false
@@ -119,51 +193,131 @@ function Test-GitInstalled {
     return $null -ne (Get-Command git -ErrorAction SilentlyContinue)
 }
 
-function Invoke-Git([string[]]$Arguments, [int]$TimeoutMs = 20000) {
+
+function Invoke-Git([string[]]$Arguments, [int]$TimeoutMs = 60000) {
     if (-not (Test-GitInstalled)) {
-        return [pscustomobject]@{ ExitCode = 127; Output = 'Git не установлен'; Error = 'Git не установлен' }
+        return [pscustomobject]@{
+            ExitCode = 127
+            Output = 'Git не установлен'
+            Error = 'Git не установлен'
+        }
     }
+
     try {
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = 'git.exe'
         $psi.Arguments = ($Arguments | ForEach-Object {
-            if ($_ -match '[\s"]') { '"' + ($_ -replace '"','\\"') + '"' } else { $_ }
+            if ($_ -match '[\s"]') {
+                '"' + ($_ -replace '"','\\"') + '"'
+            }
+            else {
+                $_
+            }
         }) -join ' '
+
         $psi.WorkingDirectory = $script:ProjectRoot
         $psi.UseShellExecute = $false
         $psi.CreateNoWindow = $true
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
+
         $p = New-Object System.Diagnostics.Process
         $p.StartInfo = $psi
+
         [void]$p.Start()
-        if (-not $p.WaitForExit($TimeoutMs)) {
-            try { $p.Kill() } catch { }
-            return [pscustomobject]@{ ExitCode = 124; Output = ''; Error = 'Git command timeout' }
+
+        # Critical: begin asynchronous reads BEFORE waiting for process exit.
+        # Waiting first can deadlock if git fills stdout/stderr pipe buffers.
+        $stdoutTask = $p.StandardOutput.ReadToEndAsync()
+        $stderrTask = $p.StandardError.ReadToEndAsync()
+
+        $watch = [System.Diagnostics.Stopwatch]::StartNew()
+
+        while (-not $p.HasExited -and $watch.ElapsedMilliseconds -lt $TimeoutMs) {
+            try {
+                [System.Windows.Forms.Application]::DoEvents()
+            }
+            catch {
+                # Queue workers / non-UI contexts may not need message pumping.
+            }
+
+            Start-Sleep -Milliseconds 50
         }
-        $out = $p.StandardOutput.ReadToEnd().Trim()
-        $err = $p.StandardError.ReadToEnd().Trim()
-        return [pscustomobject]@{ ExitCode = $p.ExitCode; Output = $out; Error = $err }
+
+        if (-not $p.HasExited) {
+            try { $p.Kill() } catch {}
+
+            try { [void]$p.WaitForExit(2000) } catch {}
+
+            $partialOut = ''
+            $partialErr = ''
+
+            try {
+                if ($stdoutTask.Wait(1500)) {
+                    $partialOut = ([string]$stdoutTask.Result).Trim()
+                }
+            } catch {}
+
+            try {
+                if ($stderrTask.Wait(1500)) {
+                    $partialErr = ([string]$stderrTask.Result).Trim()
+                }
+            } catch {}
+
+            return [pscustomobject]@{
+                ExitCode = 124
+                Output = $partialOut
+                Error = if ($partialErr) {
+                    "Git command timeout after $TimeoutMs ms. $partialErr"
+                }
+                else {
+                    "Git command timeout after $TimeoutMs ms"
+                }
+            }
+        }
+
+        # Required after asynchronous redirection on .NET Framework so all
+        # output events/tasks are drained before reading final results.
+        try { $p.WaitForExit() } catch {}
+
+        $out = ''
+        $err = ''
+
+        try { $out = ([string]$stdoutTask.Result).Trim() } catch {}
+        try { $err = ([string]$stderrTask.Result).Trim() } catch {}
+
+        return [pscustomobject]@{
+            ExitCode = $p.ExitCode
+            Output = $out
+            Error = $err
+        }
     }
     catch {
-        return [pscustomobject]@{ ExitCode = 1; Output = ''; Error = $_.Exception.Message }
+        return [pscustomobject]@{
+            ExitCode = 1
+            Output = ''
+            Error = $_.Exception.Message
+        }
     }
 }
 
 
 function Get-KnowledgeGitStatusLines {
-    $args = New-Object System.Collections.Generic.List[string]
-    $args.Add('status')
-    $args.Add('--porcelain')
-    $args.Add('--')
+    $args = New-Object System.Collections.ArrayList
+    [void]$args.Add('status')
+    [void]$args.Add('--porcelain')
+    [void]$args.Add('--')
 
     foreach ($path in $script:KnowledgePaths) {
-        $args.Add([string]$path)
+        [void]$args.Add([string]$path)
     }
 
     $result = Invoke-Git @($args)
 
-    if ($result.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($result.Output)) {
+    if (
+        $result.ExitCode -ne 0 -or
+        [string]::IsNullOrWhiteSpace($result.Output)
+    ) {
         return @()
     }
 
@@ -186,12 +340,13 @@ function Get-AllGitStatusLines {
     )
 }
 
+
 function Get-KnowledgeGitPathArgs {
-    $paths = New-Object System.Collections.Generic.List[string]
+    $paths = New-Object System.Collections.ArrayList
 
     foreach ($path in $script:KnowledgePaths) {
         if (-not [string]::IsNullOrWhiteSpace([string]$path)) {
-            $paths.Add([string]$path)
+            [void]$paths.Add([string]$path)
         }
     }
 
@@ -199,12 +354,653 @@ function Get-KnowledgeGitPathArgs {
 }
 
 
+
+function Set-KnowledgeSaveState {
+    param(
+        [ValidateSet('UNKNOWN','SAVED','LOCAL_ONLY','SAVING','ERROR')]
+        [string]$State,
+        [string]$Details = ''
+    )
+
+    $script:KnowledgeSaveState = $State
+    $script:KnowledgeSaveDetails = [string]$Details
+
+    if ($State -eq 'SAVED') {
+        $script:KnowledgeSaveLastSuccess = Get-Date
+    }
+
+    if ($knowledgeSaveStatusValue) {
+        switch ($State) {
+            'SAVED' {
+                $knowledgeSaveStatusValue.Text = '✅ ЗНАНИЯ СОХРАНЕНЫ В GITHUB'
+                $knowledgeSaveStatusValue.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
+            }
+            'LOCAL_ONLY' {
+                $knowledgeSaveStatusValue.Text = '🟡 ЕСТЬ ЛОКАЛЬНЫЕ ЗНАНИЯ — НЕ ОТПРАВЛЕНЫ'
+                $knowledgeSaveStatusValue.ForeColor = [System.Drawing.Color]::FromArgb(161,98,7)
+            }
+            'SAVING' {
+                $knowledgeSaveStatusValue.Text = '🔄 СОХРАНЯЮ ЗНАНИЯ В GITHUB…'
+                $knowledgeSaveStatusValue.ForeColor = [System.Drawing.Color]::FromArgb(37,99,235)
+            }
+            'ERROR' {
+                $knowledgeSaveStatusValue.Text = '❌ СОХРАНЕНИЕ ЗНАНИЙ НЕ ПОДТВЕРЖДЕНО'
+                $knowledgeSaveStatusValue.ForeColor = [System.Drawing.Color]::Firebrick
+            }
+            default {
+                $knowledgeSaveStatusValue.Text = '⚪ СТАТУС ЗНАНИЙ НЕ ПРОВЕРЕН'
+                $knowledgeSaveStatusValue.ForeColor = [System.Drawing.Color]::DimGray
+            }
+        }
+    }
+
+    if ($knowledgeSaveDetailsLabel) {
+        $detailText = [string]$Details
+
+        if ($State -eq 'SAVED' -and $script:KnowledgeSaveLastSuccess) {
+            $detailText += "  •  Проверено: $($script:KnowledgeSaveLastSuccess.ToString('dd.MM.yyyy HH:mm:ss'))"
+        }
+
+        $knowledgeSaveDetailsLabel.Text = $detailText
+    }
+
+    try {
+        [System.Windows.Forms.Application]::DoEvents()
+    }
+    catch { }
+}
+
+
+function Get-KnowledgeSaveVerification {
+    param([switch]$VerifyRemote)
+
+    $git = Get-GitState
+    $managedChanges = 0
+    $ahead = $null
+    $remoteVerified = $false
+    $message = ''
+
+    if (-not $git.Repository) {
+        return [pscustomobject]@{
+            Repository=$false
+            ManagedChanges=0
+            Ahead=$null
+            RemoteVerified=$false
+            Saved=$false
+            Message='Git repository недоступен.'
+        }
+    }
+
+    $managedChanges = @(Get-KnowledgeGitStatusLines).Count
+
+    if ($managedChanges -gt 0) {
+        return [pscustomobject]@{
+            Repository=$true
+            ManagedChanges=$managedChanges
+            Ahead=$null
+            RemoteVerified=$false
+            Saved=$false
+            Message="Есть $managedChanges локальных управляемых изменений."
+        }
+    }
+
+    if (-not $VerifyRemote) {
+        return [pscustomobject]@{
+            Repository=$true
+            ManagedChanges=0
+            Ahead=$null
+            RemoteVerified=$false
+            Saved=$false
+            Message='Локальных knowledge-изменений нет, но GitHub ещё не проверен.'
+        }
+    }
+
+    if (-not (Set-KnowledgeOriginToSsh)) {
+        return [pscustomobject]@{
+            Repository=$true
+            ManagedChanges=0
+            Ahead=$null
+            RemoteVerified=$false
+            Saved=$false
+            Message='Не удалось проверить GitHub: SSH origin не настроен.'
+        }
+    }
+
+    $privateKey = Get-GitHubSshPrivateKeyPath
+
+    if (-not (Test-Path $privateKey)) {
+        return [pscustomobject]@{
+            Repository=$true
+            ManagedChanges=0
+            Ahead=$null
+            RemoteVerified=$false
+            Saved=$false
+            Message='Не удалось подтвердить сохранение: SSH key не настроен.'
+        }
+    }
+
+    $auth = Invoke-SshGitHubAuthCheck
+
+    if (-not $auth.Success) {
+        return [pscustomobject]@{
+            Repository=$true
+            ManagedChanges=0
+            Ahead=$null
+            RemoteVerified=$false
+            Saved=$false
+            Message="Не удалось подтвердить сохранение: GitHub SSH недоступен. $($auth.Message)"
+        }
+    }
+
+    $git = Get-GitState
+    $branch = [string]$git.Branch
+
+    if ([string]::IsNullOrWhiteSpace($branch) -or $branch -eq 'detached') {
+        return [pscustomobject]@{
+            Repository=$true
+            ManagedChanges=0
+            Ahead=$null
+            RemoteVerified=$false
+            Saved=$false
+            Message='Не удалось подтвердить сохранение: Git HEAD detached.'
+        }
+    }
+
+    $remoteBranch = Invoke-Git @(
+        'ls-remote',
+        '--exit-code',
+        '--heads',
+        'origin',
+        $branch
+    ) 30000
+
+    if ($remoteBranch.ExitCode -ne 0) {
+        return [pscustomobject]@{
+            Repository=$true
+            ManagedChanges=0
+            Ahead=1
+            RemoteVerified=$true
+            Saved=$false
+            Message="В GitHub ещё нет origin/$branch или ветка недоступна."
+        }
+    }
+
+    $fetch = Invoke-Git @(
+        'fetch',
+        'origin',
+        $branch
+    ) 60000
+
+    if ($fetch.ExitCode -ne 0) {
+        return [pscustomobject]@{
+            Repository=$true
+            ManagedChanges=0
+            Ahead=$null
+            RemoteVerified=$false
+            Saved=$false
+            Message="Не удалось проверить GitHub после fetch: $($fetch.Error) $($fetch.Output)"
+        }
+    }
+
+    $remoteRef = "origin/$branch"
+    $aheadRaw = (Invoke-Git @(
+        'rev-list',
+        '--count',
+        "$remoteRef..HEAD"
+    ) 15000).Output
+
+    $behindRaw = (Invoke-Git @(
+        'rev-list',
+        '--count',
+        "HEAD..$remoteRef"
+    ) 15000).Output
+
+    $aheadValue = 0
+    $behindValue = 0
+    [void][int]::TryParse([string]$aheadRaw, [ref]$aheadValue)
+    [void][int]::TryParse([string]$behindRaw, [ref]$behindValue)
+
+    $remoteVerified = $true
+    $ahead = $aheadValue
+
+    if ($aheadValue -gt 0 -and $behindValue -gt 0) {
+        $message = "Локальная база и GitHub разошлись: local +$aheadValue / remote +$behindValue. Нужна синхронизация."
+    }
+    elseif ($aheadValue -gt 0) {
+        $message = "Есть $aheadValue локальный commit(ов), которые ещё не отправлены в GitHub."
+    }
+    elseif ($behindValue -gt 0) {
+        $message = "GitHub содержит $behindValue новый commit(ов). Локальная база требует обновления."
+    }
+    else {
+        $message = 'Все управляемые знания присутствуют в GitHub.'
+    }
+
+    return [pscustomobject]@{
+        Repository=$true
+        ManagedChanges=0
+        Ahead=$ahead
+        Behind=$behindValue
+        RemoteVerified=$remoteVerified
+        Saved=($aheadValue -eq 0 -and $behindValue -eq 0)
+        Message=$message
+    }
+}
+
+
+function Refresh-KnowledgeSaveState {
+    param([switch]$VerifyRemote)
+
+    if ($script:KnowledgeSaveState -eq 'SAVING') {
+        return
+    }
+
+    try {
+        $verification = Get-KnowledgeSaveVerification -VerifyRemote:$VerifyRemote
+
+        if ($verification.ManagedChanges -gt 0) {
+            Set-KnowledgeSaveState `
+                -State LOCAL_ONLY `
+                -Details $verification.Message
+            return
+        }
+
+        if ($VerifyRemote) {
+            if ($verification.Saved -and $verification.RemoteVerified) {
+                Set-KnowledgeSaveState `
+                    -State SAVED `
+                    -Details 'GitHub подтверждён: локальных неотправленных знаний нет.'
+            }
+            elseif ($verification.RemoteVerified -and $verification.Ahead -gt 0) {
+                Set-KnowledgeSaveState `
+                    -State LOCAL_ONLY `
+                    -Details $verification.Message
+            }
+            else {
+                Set-KnowledgeSaveState `
+                    -State ERROR `
+                    -Details $verification.Message
+            }
+
+            return
+        }
+
+        # Local-only refresh must never claim SAVED by itself.
+        # Keep a previously remote-verified green state until local changes appear.
+        if ($script:KnowledgeSaveState -eq 'SAVED') {
+            return
+        }
+
+        Set-KnowledgeSaveState `
+            -State UNKNOWN `
+            -Details 'Локально изменений знаний нет. Для зелёного статуса нужна проверка GitHub.'
+    }
+    catch {
+        Set-KnowledgeSaveState `
+            -State ERROR `
+            -Details "Ошибка проверки Knowledge: $($_.Exception.Message)"
+    }
+}
+
+
+function Save-AllKnowledgeToGitHub {
+    if ($script:GitBusy) {
+        Set-KnowledgeSaveState `
+            -State ERROR `
+            -Details 'Git сейчас занят другой операцией.'
+        return
+    }
+
+    try {
+        Set-KnowledgeSaveState `
+            -State SAVING `
+            -Details 'Автоматически: add → commit → safe sync → push → финальная проверка GitHub.'
+
+        Set-KnowledgeActionStatus `
+            -Text 'Сохраняю знания в GitHub…' `
+            -Kind Info
+
+        $git = Get-GitState
+
+        if (-not $git.Repository) {
+            Initialize-KnowledgeGit
+            $git = Get-GitState
+        }
+
+        if (-not $git.Repository) {
+            throw 'Git repository не удалось подготовить.'
+        }
+
+        # Step 1: commit managed knowledge/project changes if they exist.
+        if ($git.ManagedDirty) {
+            Commit-KnowledgeChanges
+
+            $afterCommit = Get-GitState
+
+            if ($afterCommit.ManagedDirty) {
+                throw 'Не удалось создать локальный commit управляемых знаний.'
+            }
+        }
+
+        # Step 2: fetch / safe pull / push using the existing guarded SSH sync.
+        Sync-KnowledgeRepository
+
+        # Step 3: never trust the operation label; verify the final GitHub state.
+        $verification = Get-KnowledgeSaveVerification -VerifyRemote
+
+        if (
+            $verification.Saved -and
+            $verification.RemoteVerified -and
+            $verification.ManagedChanges -eq 0 -and
+            $verification.Ahead -eq 0
+        ) {
+            Set-KnowledgeSaveState `
+                -State SAVED `
+                -Details 'Все управляемые знания сохранены и подтверждены в GitHub.'
+
+            Set-KnowledgeActionStatus `
+                -Text 'Знания сохранены в GitHub ✓' `
+                -Kind Success
+
+            [System.Windows.Forms.MessageBox]::Show(
+                "Готово.`r`n`r`nВсе управляемые знания сохранены в GitHub и это подтверждено повторной проверкой.",
+                'Rx2GO QA — Knowledge',
+                'OK',
+                'Information'
+            ) | Out-Null
+        }
+        elseif ($verification.ManagedChanges -gt 0 -or $verification.Ahead -gt 0) {
+            Set-KnowledgeSaveState `
+                -State LOCAL_ONLY `
+                -Details $verification.Message
+
+            Set-KnowledgeActionStatus `
+                -Text $verification.Message `
+                -Kind Warning
+        }
+        else {
+            Set-KnowledgeSaveState `
+                -State ERROR `
+                -Details $verification.Message
+
+            Set-KnowledgeActionStatus `
+                -Text $verification.Message `
+                -Kind Error
+        }
+
+        Refresh-KnowledgeUI -PreserveActionText
+    }
+    catch {
+        Set-KnowledgeSaveState `
+            -State ERROR `
+            -Details $_.Exception.Message
+
+        Set-KnowledgeActionStatus `
+            -Text "Не удалось сохранить знания в GitHub: $($_.Exception.Message)" `
+            -Kind Error
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Знания НЕ подтверждены как сохранённые в GitHub.`r`n`r`n$($_.Exception.Message)",
+            'Rx2GO QA — Knowledge',
+            'OK',
+            'Warning'
+        ) | Out-Null
+    }
+}
+
+function Test-ManagedGitPath {
+    param([string]$Path)
+
+    $normalized = ([string]$Path).Replace('\','/').Trim()
+
+    if ([string]::IsNullOrWhiteSpace($normalized)) {
+        return $false
+    }
+
+    foreach ($managedPath in @($script:KnowledgePaths)) {
+        $managed = ([string]$managedPath).Replace('\','/').TrimEnd('/')
+
+        if (
+            [string]::Equals(
+                $normalized,
+                $managed,
+                [System.StringComparison]::OrdinalIgnoreCase
+            ) -or
+            $normalized.StartsWith(
+                $managed + '/',
+                [System.StringComparison]::OrdinalIgnoreCase
+            )
+        ) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+
+function Get-GitStatusEntryPath {
+    param([string]$RawLine)
+
+    if ([string]::IsNullOrWhiteSpace($RawLine)) {
+        return ''
+    }
+
+    $path = if ($RawLine.Length -gt 3) {
+        $RawLine.Substring(3).Trim()
+    }
+    else {
+        ''
+    }
+
+    if ($path -match '\s+->\s+') {
+        $path = ($path -split '\s+->\s+')[-1].Trim()
+    }
+
+    return $path.Trim('"')
+}
+
+
+function Get-OtherGitStatusEntries {
+    $entries = New-Object System.Collections.ArrayList
+
+    foreach ($line in @(Get-AllGitStatusLines)) {
+        $path = Get-GitStatusEntryPath -RawLine ([string]$line)
+
+        if ([string]::IsNullOrWhiteSpace($path)) {
+            continue
+        }
+
+        if (Test-ManagedGitPath -Path $path) {
+            continue
+        }
+
+        $statusCode = if ($line.Length -ge 2) {
+            $line.Substring(0,2)
+        }
+        else {
+            ''
+        }
+
+        $isUntracked = ($statusCode -eq '??')
+
+        [void]$entries.Add([pscustomobject]@{
+            Raw = [string]$line
+            StatusCode = $statusCode
+            Path = $path
+            IsUntracked = $isUntracked
+            IsTrackedChange = (-not $isUntracked)
+        })
+    }
+
+    return @($entries)
+}
+
+
+function Format-GitStatusEntryList {
+    param(
+        $Entries,
+        [int]$MaxItems = 12
+    )
+
+    $lines = New-Object System.Collections.ArrayList
+    $items = @($Entries)
+    $shown = 0
+
+    foreach ($entry in $items) {
+        if ($shown -ge $MaxItems) {
+            break
+        }
+
+        $kind = if ([bool]$entry.IsUntracked) {
+            'untracked'
+        }
+        else {
+            "tracked $([string]$entry.StatusCode)"
+        }
+
+        [void]$lines.Add("• $([string]$entry.Path)  [$kind]")
+        $shown++
+    }
+
+    if ($items.Count -gt $shown) {
+        [void]$lines.Add("… ещё $($items.Count - $shown)")
+    }
+
+    if ($lines.Count -eq 0) {
+        return 'Нет.'
+    }
+
+    return (@($lines) -join "`r`n")
+}
+
+
+function Show-GitLocalChanges {
+    $git = Get-GitState
+
+    if (-not $git.Repository) {
+        [System.Windows.Forms.MessageBox]::Show(
+            'Git repository не настроен.',
+            'Rx2GO QA — Git changes',
+            'OK',
+            'Information'
+        ) | Out-Null
+        return
+    }
+
+    $managed = @(Get-KnowledgeGitStatusLines)
+    $other = @(Get-OtherGitStatusEntries)
+
+    $managedText = if ($managed.Count -gt 0) {
+        @(
+            $managed |
+                Select-Object -First 12 |
+                ForEach-Object { "• $_" }
+        ) -join "`r`n"
+    }
+    else {
+        'Нет.'
+    }
+
+    if ($managed.Count -gt 12) {
+        $managedText += "`r`n… ещё $($managed.Count - 12)"
+    }
+
+    $otherText = Format-GitStatusEntryList -Entries $other -MaxItems 16
+
+    $message = @"
+Управляемые Launcher изменения: $($managed.Count)
+
+$managedText
+
+Вне управляемого списка: $($other.Count)
+
+$otherText
+
+Untracked-файлы сами по себе больше не блокируют безопасный Pull.
+Tracked-изменения вне управляемого списка блокируют Pull, чтобы их не потерять.
+"@
+
+    [System.Windows.Forms.MessageBox]::Show(
+        $message,
+        'Rx2GO QA — локальные Git изменения',
+        'OK',
+        'Information'
+    ) | Out-Null
+}
+
+
+function Set-KnowledgeSshStatus {
+    param(
+        [string]$Text,
+        [ValidateSet('Info','Success','Warning','Error')]
+        [string]$Kind = 'Info'
+    )
+
+    if (-not $knowledgeSshStatusValue) {
+        return
+    }
+
+    $knowledgeSshStatusValue.Text = $Text
+
+    switch ($Kind) {
+        'Success' {
+            $knowledgeSshStatusValue.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
+        }
+        'Warning' {
+            $knowledgeSshStatusValue.ForeColor = [System.Drawing.Color]::FromArgb(161,98,7)
+        }
+        'Error' {
+            $knowledgeSshStatusValue.ForeColor = [System.Drawing.Color]::Firebrick
+        }
+        default {
+            $knowledgeSshStatusValue.ForeColor = [System.Drawing.Color]::FromArgb(37,99,235)
+        }
+    }
+
+    try {
+        [System.Windows.Forms.Application]::DoEvents()
+    }
+    catch { }
+}
+
+
+function Get-GitHubSshUserFromMessage {
+    param([string]$Message)
+
+    if ([string]::IsNullOrWhiteSpace($Message)) {
+        return ''
+    }
+
+    $match = [regex]::Match(
+        $Message,
+        '(?i)\bHi\s+([^!\s]+)!'
+    )
+
+    if ($match.Success) {
+        return [string]$match.Groups[1].Value
+    }
+
+    return ''
+}
+
+
 function Get-GitState {
     if (-not (Test-GitInstalled)) {
         return [pscustomobject]@{
-            Installed=$false; Repository=$false; Branch='—'; Remote='—';
-            Dirty=$false; Changes=0; ManagedDirty=$false; ManagedChanges=0; OtherChanges=0;
-            LastCommit='—'; Status='Git не установлен'
+            Installed=$false
+            Repository=$false
+            Branch='—'
+            Remote='—'
+            Dirty=$false
+            Changes=0
+            ManagedDirty=$false
+            ManagedChanges=0
+            OtherChanges=0
+            OtherTrackedChanges=0
+            OtherUntrackedChanges=0
+            LastCommit='—'
+            Status='Git не установлен'
         }
     }
 
@@ -212,42 +1008,2372 @@ function Get-GitState {
 
     if ($inside.ExitCode -ne 0 -or $inside.Output -ne 'true') {
         return [pscustomobject]@{
-            Installed=$true; Repository=$false; Branch='—'; Remote='—';
-            Dirty=$false; Changes=0; ManagedDirty=$false; ManagedChanges=0; OtherChanges=0;
-            LastCommit='—'; Status='Репозиторий не инициализирован'
+            Installed=$true
+            Repository=$false
+            Branch='—'
+            Remote='—'
+            Dirty=$false
+            Changes=0
+            ManagedDirty=$false
+            ManagedChanges=0
+            OtherChanges=0
+            OtherTrackedChanges=0
+            OtherUntrackedChanges=0
+            LastCommit='—'
+            Status='Репозиторий не инициализирован'
         }
     }
 
     $branch = (Invoke-Git @('branch','--show-current')).Output
-    if (-not $branch) { $branch = 'detached' }
+    if (-not $branch) {
+        $branch = 'detached'
+    }
 
     $remote = (Invoke-Git @('remote','get-url','origin')).Output
-    if (-not $remote) { $remote = 'не настроен' }
+    if (-not $remote) {
+        $remote = 'не настроен'
+    }
 
     $allLines = @(Get-AllGitStatusLines)
     $managedLines = @(Get-KnowledgeGitStatusLines)
+    $otherEntries = @(Get-OtherGitStatusEntries)
 
     $allCount = $allLines.Count
     $managedCount = $managedLines.Count
-    $otherCount = [Math]::Max(0, ($allCount - $managedCount))
+    $otherCount = $otherEntries.Count
+
+    $otherTracked = @(
+        $otherEntries |
+            Where-Object { [bool]$_.IsTrackedChange }
+    ).Count
+
+    $otherUntracked = @(
+        $otherEntries |
+            Where-Object { [bool]$_.IsUntracked }
+    ).Count
 
     $lastCommit = (Invoke-Git @('log','-1','--pretty=format:%h %s')).Output
-    if (-not $lastCommit) { $lastCommit = 'коммитов пока нет' }
+    if (-not $lastCommit) {
+        $lastCommit = 'коммитов пока нет'
+    }
+
+    $status = if ($managedCount -gt 0) {
+        "Изменения проекта: $managedCount"
+    }
+    elseif ($otherTracked -gt 0) {
+        "Вне управляемых файлов: tracked $otherTracked"
+    }
+    elseif ($otherUntracked -gt 0) {
+        "Вне управляемых файлов: untracked $otherUntracked"
+    }
+    else {
+        'Synced locally'
+    }
 
     return [pscustomobject]@{
-        Installed=$true; Repository=$true; Branch=$branch; Remote=$remote;
-        Dirty=($allCount -gt 0); Changes=$allCount;
-        ManagedDirty=($managedCount -gt 0); ManagedChanges=$managedCount; OtherChanges=$otherCount;
-        LastCommit=$lastCommit;
-        Status=$(if ($managedCount -gt 0) {
-            "Изменения проекта: $managedCount"
-        }
-        elseif ($otherCount -gt 0) {
-            "Вне управляемых файлов: $otherCount"
+        Installed=$true
+        Repository=$true
+        Branch=$branch
+        Remote=$remote
+        Dirty=($allCount -gt 0)
+        Changes=$allCount
+        ManagedDirty=($managedCount -gt 0)
+        ManagedChanges=$managedCount
+        OtherChanges=$otherCount
+        OtherTrackedChanges=$otherTracked
+        OtherUntrackedChanges=$otherUntracked
+        LastCommit=$lastCommit
+        Status=$status
+    }
+}
+
+function Get-KnowledgeExplorerModuleDefinitions {
+    return @(
+        [pscustomobject]@{ Name='Orders'; Slug='orders'; Hint='Orders / Order Detail / batch / Activity History' },
+        [pscustomobject]@{ Name='Scanner'; Slug='scanner'; Hint='Scanner / Order Editor / order creation / delivery method' },
+        [pscustomobject]@{ Name='Tickets Queue'; Slug='tickets-queue'; Hint='Tickets Queue / Ticket Dashboard / Workout / Related tickets' },
+        [pscustomobject]@{ Name='Dispatcher'; Slug='dispatcher'; Hint='Dispatcher Queue / Delivery Details' },
+        [pscustomobject]@{ Name='QAQC'; Slug='qaqc'; Hint='QAQC Queue / Delivery method / order review' },
+        [pscustomobject]@{ Name='Routes / Gigs'; Slug='routes-gigs'; Hint='Routes / Gigs / Activity History / order-route relationship' },
+        [pscustomobject]@{ Name='Copays'; Slug='copays'; Hint='Copays / order copay / payment-related UI' },
+        [pscustomobject]@{ Name='Chat'; Slug='chat'; Hint='Route chat / Show Chat / message history' }
+    )
+}
+
+
+function Get-KnowledgeExplorerModeKey {
+    param([string]$DisplayName)
+
+    switch -Regex ($DisplayName) {
+        '^Быстрый' { return 'quick' }
+        '^Глубокий' { return 'deep' }
+        '^Полный проект' { return 'full-project' }
+        '^Изучить модуль' { return 'module' }
+        '^Изучить workflow' { return 'workflow' }
+        '^Обновить' { return 'refresh' }
+        default { return 'quick' }
+    }
+}
+
+
+
+function ConvertTo-KnowledgeExplorerSafeSlug {
+    param([string]$Text)
+
+    $value = ([string]$Text).Trim().ToLowerInvariant()
+
+    $translit = @{
+        'а'='a'; 'б'='b'; 'в'='v'; 'г'='g'; 'д'='d'; 'е'='e'; 'ё'='e'
+        'ж'='zh'; 'з'='z'; 'и'='i'; 'й'='y'; 'к'='k'; 'л'='l'; 'м'='m'
+        'н'='n'; 'о'='o'; 'п'='p'; 'р'='r'; 'с'='s'; 'т'='t'; 'у'='u'
+        'ф'='f'; 'х'='h'; 'ц'='c'; 'ч'='ch'; 'ш'='sh'; 'щ'='sch'; 'ъ'=''
+        'ы'='y'; 'ь'=''; 'э'='e'; 'ю'='yu'; 'я'='ya'
+    }
+
+    $builder = New-Object System.Text.StringBuilder
+
+    foreach ($char in $value.ToCharArray()) {
+        $s = [string]$char
+
+        if ($translit.ContainsKey($s)) {
+            [void]$builder.Append([string]$translit[$s])
         }
         else {
-            'Synced locally'
+            [void]$builder.Append($s)
+        }
+    }
+
+    $slug = $builder.ToString()
+    $slug = $slug -replace '[^a-z0-9]+','-'
+    $slug = $slug.Trim('-')
+
+    if ([string]::IsNullOrWhiteSpace($slug)) {
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+
+        try {
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes([string]$Text)
+            $hash = $sha.ComputeHash($bytes)
+            $hex = -join ($hash | ForEach-Object { $_.ToString('x2') })
+            $slug = "module-$($hex.Substring(0,8))"
+        }
+        finally {
+            $sha.Dispose()
+        }
+    }
+
+    if ($slug.Length -gt 64) {
+        $slug = $slug.Substring(0,64).Trim('-')
+    }
+
+    return $slug
+}
+
+
+function Get-KnowledgeExplorerProjectMapFile {
+    param([string]$Environment)
+
+    $envFolder = Get-KnowledgeExplorerEnvironmentFolder -Environment $Environment
+    $dir = Join-Path $script:ProjectRoot "knowledge\explorer\$envFolder"
+
+    New-Item `
+        -ItemType Directory `
+        -Path $dir `
+        -Force | Out-Null
+
+    return (Join-Path $dir 'project-map.json')
+}
+
+
+function Save-KnowledgeExplorerProjectMap {
+    param(
+        [string]$Environment,
+        $Parsed
+    )
+
+    $path = Get-KnowledgeExplorerProjectMapFile -Environment $Environment
+
+    $record = [ordered]@{
+        schemaVersion = 1
+        sourceClass = 'LIVE_PROJECT_MAP'
+        source = "Playwright MCP / Rx2GO $Environment"
+        environment = ([string]$Environment).ToUpperInvariant()
+        observedAt = (Get-Date).ToString('o')
+        deploymentHierarchy = 'BRANCH -> HOT -> ADM'
+        requirementAuthority = $false
+        result = $Parsed
+    }
+
+    Write-Utf8NoBomFile `
+        -Path $path `
+        -Content ($record | ConvertTo-Json -Depth 16)
+
+    return $path
+}
+
+
+function Get-KnowledgeExplorerProjectMapPrompt {
+    param([string]$Environment)
+
+    $environment = ([string]$Environment).ToUpperInvariant()
+    $layer = Get-KnowledgeExplorerLayerType -Environment $environment
+    $baseline = Get-KnowledgeExplorerBaselineEnvironment -Environment $environment
+
+    return @"
+You are Rx2GO Project Mapper.
+
+GOAL:
+Before Knowledge Explorer studies modules, discover the ACTUAL accessible Rx2GO application structure for the current authenticated user.
+
+ENVIRONMENT:
+$environment
+
+KNOWLEDGE LAYER:
+$layer
+
+BASELINE:
+$(if ($baseline) { $baseline } else { 'NONE — ADM is primary baseline' })
+
+STRICT TOOL RULES:
+- Use ONLY `playwright/browser_*` MCP tools.
+- Work in the EXISTING authenticated Rx2GO Chrome session.
+- Do NOT close the browser or current tab.
+- Do NOT navigate outside rx2go.ai.
+- Read-only discovery only. Never create/update/delete/transition business data.
+- Start with browser_tabs + browser_snapshot.
+- Discover navigation from the LIVE UI. Do not rely on a predefined module list.
+- Expand/click safe navigation groups as needed.
+- You may open pages, tabs, filters, accordions, and non-mutating menus.
+- Return to navigation and continue until all accessible first-level product sections are mapped.
+- If a menu item opens a detail/list page representing a distinct business capability, include it as a module.
+- Exclude logout, profile/account-only controls, documentation links, external links, browser controls, pure separators, and duplicate aliases to the same capability.
+- If two menu labels clearly open the same route/capability, return one canonical module and list aliases.
+- Do not record secrets, tokens, cookies, auth headers, personal customer/patient data.
+
+IMPORTANT:
+- This is a PROJECT MAP, not a product requirement document.
+- Existing observed behavior is not automatically expected behavior.
+- Suspicious UI behavior does not become a confirmed bug.
+
+RETURN ONLY valid JSON:
+{
+  "mcpUsed": true,
+  "environment": "$environment",
+  "status": "COMPLETE|PARTIAL|BLOCKED",
+  "startUrl": "actual URL",
+  "endUrl": "actual URL",
+  "navigationModel": "sidebar|topbar|mixed|other",
+  "modules": [
+    {
+      "name": "canonical visible module name",
+      "group": "navigation group/section or Main",
+      "entryUrl": "actual observed URL",
+      "howToOpen": "observed navigation action",
+      "aliases": ["alternate visible names if any"],
+      "purposeHint": "short observed purpose",
+      "safeToExploreReadOnly": true,
+      "requiresSpecificContext": false,
+      "contextHint": "facility/client/service/order/ticket context if visibly required",
+      "confidence": "HIGH|MEDIUM|LOW"
+    }
+  ],
+  "navigationGroups": [
+    {
+      "name": "group name",
+      "items": ["visible module names"]
+    }
+  ],
+  "excludedItems": [
+    {
+      "name": "visible item",
+      "reason": "logout/profile/external/duplicate/non-product/etc"
+    }
+  ],
+  "uncertainties": ["what could not be proven safely"],
+  "summary": "short project map summary"
+}
+
+FINAL SELF-CHECK:
+- mcpUsed must be true.
+- environment must be $environment.
+- modules must be deduplicated by capability, not just label.
+- COMPLETE only if all currently accessible main navigation groups were inspected.
+- Do not include invented routes or hidden modules that were not observed live.
+"@
+}
+
+
+function Test-KnowledgeExplorerProjectMap {
+    param(
+        $Parsed,
+        [string]$Environment
+    )
+
+    if (-not $Parsed) {
+        return [pscustomobject]@{
+            Success=$false
+            Error='Project Mapper returned no JSON.'
+        }
+    }
+
+    if (-not [bool]$Parsed.mcpUsed) {
+        return [pscustomobject]@{
+            Success=$false
+            Error='Project Mapper did not confirm Playwright MCP usage.'
+        }
+    }
+
+    $environment = ([string]$Environment).ToUpperInvariant()
+
+    if ([string]$Parsed.environment -ne $environment) {
+        return [pscustomobject]@{
+            Success=$false
+            Error="Project Mapper environment mismatch: expected $environment, received $([string]$Parsed.environment)."
+        }
+    }
+
+    $status = ([string]$Parsed.status).ToUpperInvariant()
+
+    if ($status -notin @('COMPLETE','PARTIAL','BLOCKED')) {
+        return [pscustomobject]@{
+            Success=$false
+            Error="Project Mapper returned unknown status '$status'."
+        }
+    }
+
+    $modules = @($Parsed.modules | Where-Object { $_ })
+
+    if ($status -ne 'BLOCKED' -and $modules.Count -eq 0) {
+        return [pscustomobject]@{
+            Success=$false
+            Error='Project Mapper found no modules.'
+        }
+    }
+
+    $seen = @{}
+
+    foreach ($module in $modules) {
+        $name = ([string]$module.name).Trim()
+
+        if ([string]::IsNullOrWhiteSpace($name)) {
+            return [pscustomobject]@{
+                Success=$false
+                Error='Project Mapper returned a module without name.'
+            }
+        }
+
+        $key = $name.ToLowerInvariant()
+
+        if ($seen.ContainsKey($key)) {
+            return [pscustomobject]@{
+                Success=$false
+                Error="Project Mapper returned duplicate module '$name'."
+            }
+        }
+
+        $seen[$key] = $true
+    }
+
+    return [pscustomobject]@{
+        Success=$true
+        Error=''
+    }
+}
+
+
+function Convert-ProjectMapToExplorerModules {
+    param($ProjectMap)
+
+    $result = New-Object System.Collections.ArrayList
+    $usedSlugs = @{}
+
+    foreach ($module in @($ProjectMap.modules | Where-Object { $_ })) {
+        $name = ([string]$module.name).Trim()
+        $slug = ConvertTo-KnowledgeExplorerSafeSlug -Text $name
+
+        $baseSlug = $slug
+        $suffix = 2
+
+        while ($usedSlugs.ContainsKey($slug)) {
+            $slug = "$baseSlug-$suffix"
+            $suffix++
+        }
+
+        $usedSlugs[$slug] = $true
+
+        $hintParts = New-Object System.Collections.ArrayList
+
+        if ($module.group) {
+            [void]$hintParts.Add("Group: $([string]$module.group)")
+        }
+
+        if ($module.entryUrl) {
+            [void]$hintParts.Add("Observed entry URL: $([string]$module.entryUrl)")
+        }
+
+        if ($module.purposeHint) {
+            [void]$hintParts.Add("Purpose: $([string]$module.purposeHint)")
+        }
+
+        if ($module.contextHint) {
+            [void]$hintParts.Add("Context: $([string]$module.contextHint)")
+        }
+
+        [void]$result.Add([pscustomobject]@{
+            Name = $name
+            Slug = $slug
+            Hint = (@($hintParts) -join ' | ')
+            EntryUrl = [string]$module.entryUrl
+            Group = [string]$module.group
+            RequiresSpecificContext = [bool]$module.requiresSpecificContext
+            ContextHint = [string]$module.contextHint
+            Discovered = $true
         })
+    }
+
+    return @($result)
+}
+
+
+function Invoke-KnowledgeExplorerProjectMapper {
+    param([string]$Environment)
+
+    Set-KnowledgeExplorerStatus `
+        -Text "Этап 1/2: строю карту всего проекта $Environment…" `
+        -Kind Info
+
+    $prompt = Get-KnowledgeExplorerProjectMapPrompt -Environment $Environment
+
+    $raw = Invoke-CodexAgent `
+        -AgentSlug "knowledge-project-mapper-$($Environment.ToLowerInvariant())" `
+        -Prompt $prompt `
+        -TimeoutSec 600 `
+        -ReasoningEffort 'medium'
+
+    if (-not $raw) {
+        return [pscustomobject]@{
+            Success=$false
+            StopAll=(
+                [string]$script:LastAgentFailureKind -eq 'CODEX_USAGE_LIMIT' -or
+                (Test-CodexUsageLimitText -Text ([string]$script:LastAgentError))
+            )
+            Error=[string]$script:LastAgentError
+        }
+    }
+
+    if (-not (Test-LastAgentUsedPlaywrightMcpSuccessfully -MinimumCompletedCalls 3)) {
+        return [pscustomobject]@{
+            Success=$false
+            StopAll=$false
+            Error=[string]$script:LastAgentError
+        }
+    }
+
+    $parsed = Convert-AgentJson $raw
+
+    if (-not $parsed) {
+        return [pscustomobject]@{
+            Success=$false
+            StopAll=$false
+            Error=[string]$script:LastAgentError
+        }
+    }
+
+    $validation = Test-KnowledgeExplorerProjectMap `
+        -Parsed $parsed `
+        -Environment $Environment
+
+    if (-not $validation.Success) {
+        return [pscustomobject]@{
+            Success=$false
+            StopAll=$false
+            Error=[string]$validation.Error
+        }
+    }
+
+    $mapFile = Save-KnowledgeExplorerProjectMap `
+        -Environment $Environment `
+        -Parsed $parsed
+
+    $script:KnowledgeExplorerProjectMap = $parsed
+    $script:KnowledgeExplorerProjectMapEnvironment = ([string]$Environment).ToUpperInvariant()
+
+    $modules = @(Convert-ProjectMapToExplorerModules -ProjectMap $parsed)
+
+    Write-KnowledgeExplorerLog "Project Map → $($modules.Count) модулей"
+    Write-KnowledgeExplorerLog "Карта сохранена → $mapFile"
+
+    foreach ($module in $modules) {
+        Write-KnowledgeExplorerLog "  • $($module.Name) | $($module.EntryUrl)"
+    }
+
+    return [pscustomobject]@{
+        Success=$true
+        StopAll=$false
+        Error=''
+        Parsed=$parsed
+        Modules=$modules
+        File=$mapFile
+    }
+}
+
+function Get-KnowledgeExplorerBaselineEnvironment {
+    param([string]$Environment)
+
+    switch (([string]$Environment).ToUpperInvariant()) {
+        'HOT' { return 'ADM' }
+        'BRANCH' { return 'HOT' }
+        default { return '' }
+    }
+}
+
+
+function Get-KnowledgeExplorerLayerType {
+    param([string]$Environment)
+
+    switch (([string]$Environment).ToUpperInvariant()) {
+        'ADM' { return 'ADM_BASELINE' }
+        'HOT' { return 'HOT_DELTA' }
+        'BRANCH' { return 'BRANCH_TEMPORARY_DELTA' }
+        default { return 'UNKNOWN' }
+    }
+}
+
+
+function Get-KnowledgeExplorerEnvironmentFolder {
+    param([string]$Environment)
+
+    switch (([string]$Environment).ToUpperInvariant()) {
+        'ADM' { return 'adm' }
+        'HOT' { return 'hot' }
+        'BRANCH' { return 'branch' }
+        default { return 'unknown' }
+    }
+}
+
+
+function Get-KnowledgeExplorerModuleFile {
+    param(
+        [string]$Environment,
+        [string]$Slug
+    )
+
+    $envFolder = Get-KnowledgeExplorerEnvironmentFolder -Environment $Environment
+    $dir = Join-Path $script:ProjectRoot "knowledge\explorer\$envFolder\modules"
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+
+    return (Join-Path $dir "$Slug.json")
+}
+
+
+function Get-KnowledgeExplorerWorkflowFile {
+    param(
+        [string]$Environment,
+        [string]$ModuleSlug,
+        [string]$Target
+    )
+
+    $safeTarget = ([string]$Target).Trim().ToLowerInvariant()
+    $safeTarget = $safeTarget -replace '[^a-z0-9а-яё]+','-'
+    $safeTarget = $safeTarget.Trim('-')
+
+    if ([string]::IsNullOrWhiteSpace($safeTarget)) {
+        $safeTarget = 'primary-workflow'
+    }
+
+    if ($safeTarget.Length -gt 50) {
+        $safeTarget = $safeTarget.Substring(0,50).Trim('-')
+    }
+
+    $envFolder = Get-KnowledgeExplorerEnvironmentFolder -Environment $Environment
+    $dir = Join-Path $script:ProjectRoot "knowledge\explorer\$envFolder\workflows"
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+
+    return (Join-Path $dir "$ModuleSlug-$safeTarget.json")
+}
+
+
+function Initialize-KnowledgeExplorerStorage {
+    foreach ($environment in @('ADM','HOT','BRANCH')) {
+        $envFolder = Get-KnowledgeExplorerEnvironmentFolder -Environment $environment
+
+        foreach ($suffix in @('modules','workflows')) {
+            New-Item `
+                -ItemType Directory `
+                -Path (Join-Path $script:ProjectRoot "knowledge\explorer\$envFolder\$suffix") `
+                -Force | Out-Null
+        }
+    }
+
+    # v0.12.34 stored HOT observations directly under explorer/modules + workflows.
+    # Migrate them once into the HOT delta layer without deleting legacy files.
+    foreach ($kind in @('modules','workflows')) {
+        $legacy = Join-Path $script:ProjectRoot "knowledge\explorer\$kind"
+        $target = Join-Path $script:ProjectRoot "knowledge\explorer\hot\$kind"
+
+        if (Test-Path $legacy) {
+            foreach ($file in @(
+                Get-ChildItem `
+                    -Path $legacy `
+                    -File `
+                    -Filter '*.json' `
+                    -ErrorAction SilentlyContinue
+            )) {
+                $dest = Join-Path $target $file.Name
+
+                if (-not (Test-Path $dest)) {
+                    try {
+                        Copy-Item `
+                            -Path $file.FullName `
+                            -Destination $dest `
+                            -Force
+                    }
+                    catch { }
+                }
+            }
+        }
+    }
+}
+
+
+function Write-KnowledgeExplorerLog {
+    param([string]$Text)
+
+    $stamp = Get-Date -Format 'HH:mm:ss'
+    $line = "$stamp  $Text"
+
+    if ($knowledgeExplorerLogBox) {
+        $knowledgeExplorerLogBox.AppendText($line + "`r`n")
+        $knowledgeExplorerLogBox.SelectionStart = $knowledgeExplorerLogBox.TextLength
+        $knowledgeExplorerLogBox.ScrollToCaret()
+    }
+
+    if ($script:KnowledgeExplorerRunDir) {
+        try {
+            Add-Content `
+                -Path (Join-Path $script:KnowledgeExplorerRunDir 'knowledge-explorer.log') `
+                -Value $line `
+                -Encoding UTF8
+        }
+        catch { }
+    }
+
+    try {
+        Append-AgentLog "KNOWLEDGE EXPLORER → $Text"
+    }
+    catch { }
+
+    try {
+        [System.Windows.Forms.Application]::DoEvents()
+    }
+    catch { }
+}
+
+
+function Set-KnowledgeExplorerStatus {
+    param(
+        [string]$Text,
+        [ValidateSet('Info','Success','Warning','Error')]
+        [string]$Kind = 'Info'
+    )
+
+    if ($knowledgeExplorerStatusLabel) {
+        $knowledgeExplorerStatusLabel.Text = $Text
+
+        switch ($Kind) {
+            'Success' { $knowledgeExplorerStatusLabel.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72) }
+            'Warning' { $knowledgeExplorerStatusLabel.ForeColor = [System.Drawing.Color]::FromArgb(161,98,7) }
+            'Error' { $knowledgeExplorerStatusLabel.ForeColor = [System.Drawing.Color]::Firebrick }
+            default { $knowledgeExplorerStatusLabel.ForeColor = [System.Drawing.Color]::FromArgb(37,99,235) }
+        }
+    }
+
+    Write-KnowledgeExplorerLog $Text
+}
+
+
+function Update-KnowledgeExplorerEnvironmentUi {
+    if (-not $knowledgeExplorerEnvironmentCombo) {
+        return
+    }
+
+    $environment = ([string]$knowledgeExplorerEnvironmentCombo.SelectedItem).ToUpperInvariant()
+
+    if ([string]::IsNullOrWhiteSpace($environment)) {
+        $environment = 'ADM'
+    }
+
+    $baseline = Get-KnowledgeExplorerBaselineEnvironment -Environment $environment
+    $layer = Get-KnowledgeExplorerLayerType -Environment $environment
+
+    if ($knowledgeExplorerBaselineValueLabel) {
+        $knowledgeExplorerBaselineValueLabel.Text = if ($baseline) {
+            "$baseline  → сравнение"
+        }
+        else {
+            '—  основная база'
+        }
+    }
+
+    if ($knowledgeExplorerStartButton) {
+        $knowledgeExplorerStartButton.Text = "▶ ИЗУЧИТЬ $environment"
+    }
+
+    $needAdmCode = ($environment -eq 'ADM')
+
+    if ($knowledgeAdmDailyPasswordBox) {
+        $knowledgeAdmDailyPasswordBox.Enabled = $needAdmCode
+        $knowledgeAdmDailyPasswordBox.BackColor = if ($needAdmCode) {
+            [System.Drawing.Color]::White
+        }
+        else {
+            [System.Drawing.Color]::FromArgb(241,245,249)
+        }
+    }
+
+    if ($knowledgeAdmDailyPasswordLabel) {
+        $knowledgeAdmDailyPasswordLabel.Enabled = $needAdmCode
+    }
+
+    if ($knowledgeExplorerStatusLabel -and -not $script:KnowledgeExplorerRunning) {
+        $knowledgeExplorerStatusLabel.Text = switch ($environment) {
+            'ADM' { 'ADM = основная база знаний / baseline.' }
+            'HOT' { 'HOT = delta относительно ADM.' }
+            'BRANCH' { 'BRANCH = временная delta относительно HOT; auto-push отключён.' }
+            default { "$layer" }
+        }
+    }
+}
+
+
+
+function Update-KnowledgeExplorerModeUi {
+    if (-not $knowledgeExplorerModeCombo) {
+        return
+    }
+
+    $mode = Get-KnowledgeExplorerModeKey `
+        -DisplayName ([string]$knowledgeExplorerModeCombo.SelectedItem)
+
+    if ($knowledgeExplorerModuleCombo) {
+        $knowledgeExplorerModuleCombo.Enabled = ($mode -in @('module','workflow'))
+    }
+
+    if ($knowledgeExplorerTargetBox) {
+        $knowledgeExplorerTargetBox.Enabled = ($mode -eq 'workflow')
+    }
+
+    if ($knowledgeExplorerModuleLabel) {
+        $knowledgeExplorerModuleLabel.Text = if ($mode -in @('module','workflow')) {
+            'Модуль'
+        }
+        elseif ($mode -eq 'full-project') {
+            'Модуль'
+        }
+        else {
+            'Модуль'
+        }
+    }
+
+    if ($knowledgeExplorerStatusLabel -and -not $script:KnowledgeExplorerRunning) {
+        $environment = if ($knowledgeExplorerEnvironmentCombo) {
+            ([string]$knowledgeExplorerEnvironmentCombo.SelectedItem).ToUpperInvariant()
+        }
+        else {
+            'ADM'
+        }
+
+        if ($mode -eq 'full-project') {
+            $knowledgeExplorerStatusLabel.Text = "Полный проект: сначала карта всего доступного меню $environment, затем глубокое изучение каждого найденного модуля."
+        }
+        elseif ($mode -eq 'deep') {
+            $knowledgeExplorerStatusLabel.Text = 'Глубокий crawl: изучаются 8 приоритетных модулей; выбор «Модуль» не используется.'
+        }
+        elseif ($mode -eq 'quick') {
+            $knowledgeExplorerStatusLabel.Text = 'Быстрый crawl: изучаются 8 приоритетных модулей; выбор «Модуль» не используется.'
+        }
+        elseif ($mode -eq 'module') {
+            $knowledgeExplorerStatusLabel.Text = 'Будет подробно изучен только выбранный модуль.'
+        }
+        elseif ($mode -eq 'workflow') {
+            $knowledgeExplorerStatusLabel.Text = 'Будет изучен выбранный workflow внутри выбранного модуля.'
+        }
+    }
+}
+
+function Get-KnowledgeExplorerExistingContext {
+    param(
+        [string]$Environment,
+        [string]$ModuleSlug
+    )
+
+    $path = Get-KnowledgeExplorerModuleFile `
+        -Environment $Environment `
+        -Slug $ModuleSlug
+
+    if (-not (Test-Path $path)) {
+        return 'NO PREVIOUS KNOWLEDGE FOR THIS ENVIRONMENT.'
+    }
+
+    try {
+        $raw = Get-Content -Raw -Path $path -ErrorAction Stop
+
+        if ($raw.Length -gt 18000) {
+            return $raw.Substring(0,18000) + "`n[TRUNCATED]"
+        }
+
+        return $raw
+    }
+    catch {
+        return 'PREVIOUS KNOWLEDGE COULD NOT BE READ.'
+    }
+}
+
+
+function Get-KnowledgeExplorerBaselineContext {
+    param(
+        [string]$Environment,
+        [string]$ModuleSlug
+    )
+
+    $baseline = Get-KnowledgeExplorerBaselineEnvironment -Environment $Environment
+
+    if ([string]::IsNullOrWhiteSpace($baseline)) {
+        return [pscustomobject]@{
+            Environment=''
+            Available=$false
+            Context='NO BASELINE — CURRENT ENVIRONMENT IS ADM BASELINE.'
+        }
+    }
+
+    $path = Get-KnowledgeExplorerModuleFile `
+        -Environment $baseline `
+        -Slug $ModuleSlug
+
+    if (-not (Test-Path $path)) {
+        return [pscustomobject]@{
+            Environment=$baseline
+            Available=$false
+            Context="BASELINE $baseline HAS NOT BEEN EXPLORED FOR THIS MODULE YET."
+        }
+    }
+
+    try {
+        $raw = Get-Content -Raw -Path $path -ErrorAction Stop
+
+        if ($raw.Length -gt 22000) {
+            $raw = $raw.Substring(0,22000) + "`n[TRUNCATED]"
+        }
+
+        return [pscustomobject]@{
+            Environment=$baseline
+            Available=$true
+            Context=$raw
+        }
+    }
+    catch {
+        return [pscustomobject]@{
+            Environment=$baseline
+            Available=$false
+            Context="BASELINE $baseline COULD NOT BE READ."
+        }
+    }
+}
+
+
+function Get-KnowledgeExplorerModulesForRun {
+    param(
+        [string]$Mode,
+        [string]$SelectedModuleName,
+        [string]$Environment
+    )
+
+    $all = @(Get-KnowledgeExplorerModuleDefinitions)
+
+    if ($Mode -in @('module','workflow')) {
+        return @(
+            $all |
+                Where-Object { [string]$_.Name -eq [string]$SelectedModuleName } |
+                Select-Object -First 1
+        )
+    }
+
+    if ($Mode -eq 'refresh') {
+        $cutoff = (Get-Date).AddDays(-1 * [int]$script:KnowledgeExplorerStaleDays)
+        $stale = New-Object System.Collections.ArrayList
+
+        foreach ($module in $all) {
+            $path = Get-KnowledgeExplorerModuleFile `
+                -Environment $Environment `
+                -Slug ([string]$module.Slug)
+
+            $baseline = Get-KnowledgeExplorerBaselineEnvironment -Environment $Environment
+            $baselineMissing = $false
+
+            if ($baseline) {
+                $baselinePath = Get-KnowledgeExplorerModuleFile `
+                    -Environment $baseline `
+                    -Slug ([string]$module.Slug)
+
+                $baselineMissing = -not (Test-Path $baselinePath)
+            }
+
+            if (-not (Test-Path $path)) {
+                [void]$stale.Add($module)
+                continue
+            }
+
+            if ($baselineMissing) {
+                [void]$stale.Add($module)
+                continue
+            }
+
+            try {
+                $doc = Get-Content -Raw -Path $path | ConvertFrom-Json -ErrorAction Stop
+                $observedAt = [datetime]$doc.observedAt
+
+                if ($observedAt -lt $cutoff) {
+                    [void]$stale.Add($module)
+                }
+            }
+            catch {
+                [void]$stale.Add($module)
+            }
+        }
+
+        return @($stale)
+    }
+
+    return $all
+}
+
+
+function Get-KnowledgeExplorerPrompt {
+    param(
+        [string]$Mode,
+        $Module,
+        [string]$WorkflowTarget,
+        [string]$Environment
+    )
+
+    $environment = ([string]$Environment).ToUpperInvariant()
+    $baselineInfo = Get-KnowledgeExplorerBaselineContext `
+        -Environment $environment `
+        -ModuleSlug ([string]$Module.Slug)
+
+    $baseline = [string]$baselineInfo.Environment
+    $baselineAvailable = [bool]$baselineInfo.Available
+    $layer = Get-KnowledgeExplorerLayerType -Environment $environment
+
+    $existing = if ($Mode -eq 'refresh') {
+        Get-KnowledgeExplorerExistingContext `
+            -Environment $environment `
+            -ModuleSlug ([string]$Module.Slug)
+    }
+    else {
+        'NOT REQUESTED FOR THIS MODE.'
+    }
+
+    $modeRules = switch ($Mode) {
+        'quick' {
+@"
+MODE: QUICK STRUCTURE CRAWL
+- Aim for 6-12 meaningful Playwright MCP calls for this module.
+- Map navigation, current URL/routes, purpose, visible controls, tables/filters and stable locator hints.
+- Do not mutate Rx2GO data.
+- Do not open every record; sample only what is required to understand the module.
+"@
+        }
+        'deep' {
+@"
+MODE: DEEP READ-ONLY CRAWL
+- Aim for 15-30 meaningful Playwright MCP calls for this module.
+- Map UI + navigation + non-mutating Network/API behavior + data relationships.
+- You may change filters, tabs, pagination and open/close cards/modals.
+- Do not create/update/delete/transition business or test entities.
+"@
+        }
+        'full-project' {
+@"
+MODE: FULL PROJECT MODULE CRAWL
+- This module was discovered by the live Project Mapper.
+- Aim for 12-25 meaningful Playwright MCP calls for this module.
+- Explore the complete safe read-only surface of THIS discovered capability:
+  navigation, child pages/tabs, controls, filters, tables, non-mutating Network/API, relationships, validation hints and stable semantic selectors.
+- Follow internal child links only while they remain part of this business capability.
+- Do not recursively start studying unrelated modules; Project Mapper controls project-level coverage.
+- Do not create/update/delete/transition business data.
+"@
+        }
+        'module' {
+@"
+MODE: SELECTED MODULE DEEP CRAWL
+- Explore only the selected module in detail.
+- Map its normal user flow, controls, filters, child pages, UI state, stable selectors and safe Network/API observations.
+- Do not mutate entities.
+"@
+        }
+        'workflow' {
+@"
+MODE: WORKFLOW EXPLORATION
+WORKFLOW TARGET: $WorkflowTarget
+- Understand the requested workflow end-to-end.
+- Prefer read-only observation first.
+- Fresh isolated QA test data MAY be created/updated/deleted only when the workflow cannot be understood read-only.
+- Mark any fresh data clearly with `KNOWLEDGE EXPLORER` where the UI provides a safe field.
+- Never modify an unmarked pre-existing business/customer entity.
+- Cleanup current-run QA fixtures when safe and when evidence is already captured.
+"@
+        }
+        'refresh' {
+@"
+MODE: REFRESH STALE KNOWLEDGE
+- Re-check previous knowledge for $environment against the current live UI.
+- Do not trust old selectors/routes blindly.
+- Mark changed/removed/new facts explicitly.
+- Read-only: do not mutate entities.
+
+PREVIOUS $environment KNOWLEDGE:
+$existing
+"@
+        }
+        default {
+            'MODE: QUICK STRUCTURE CRAWL'
+        }
+    }
+
+    $comparisonRules = if ($environment -eq 'ADM') {
+@"
+KNOWLEDGE ROLE:
+- ADM is the PRIMARY / STABLE KNOWLEDGE BASELINE.
+- Do not compare ADM against HOT or BRANCH.
+- Store what is currently verified on ADM.
+- A feature seen only on HOT or BRANCH must NOT be added to ADM baseline until it is actually observed on ADM.
+"@
+    }
+    else {
+@"
+KNOWLEDGE ROLE:
+- $environment is NOT the primary baseline.
+- Compare current $environment against BASELINE $baseline.
+- BASELINE AVAILABLE: $baselineAvailable
+- If baseline is unavailable, still explore current $environment but return status PARTIAL and baselineAvailable=false.
+- Do not silently treat a $environment-only behavior as a common/project rule.
+- Record SAME / NEW / CHANGED / REMOVED differences explicitly.
+
+BASELINE $baseline KNOWLEDGE:
+$($baselineInfo.Context)
+"@
+    }
+
+    $branchRules = if ($environment -eq 'BRANCH') {
+@"
+BRANCH TEMPORARY RULE:
+- This is temporary development-branch knowledge.
+- It may help current branch testing but must never replace HOT or ADM baseline.
+- Mark temporary=true.
+"@
+    }
+    else {
+        ''
+    }
+
+    return @"
+You are Rx2GO Knowledge Explorer.
+
+GOAL:
+Build reliable structured QA knowledge for Rx2GO while preserving the deployment hierarchy:
+
+BRANCH -> HOT -> ADM
+
+KNOWLEDGE AUTHORITY:
+- ADM = primary/stable baseline.
+- HOT = delta compared with ADM.
+- BRANCH = temporary delta compared with HOT.
+- A HOT PASS does NOT automatically change ADM baseline.
+- ADM baseline changes only after the behavior is actually observed/verified on ADM.
+
+ENVIRONMENT:
+$environment
+
+KNOWLEDGE LAYER:
+$layer
+
+BASELINE ENVIRONMENT:
+$(if ($baseline) { $baseline } else { 'NONE' })
+
+MODULE:
+$($Module.Name)
+
+MODULE HINT:
+$($Module.Hint)
+
+DISCOVERED ENTRY URL:
+$(if ($Module.PSObject.Properties.Name -contains 'EntryUrl') { [string]$Module.EntryUrl } else { '' })
+
+DISCOVERED NAVIGATION GROUP:
+$(if ($Module.PSObject.Properties.Name -contains 'Group') { [string]$Module.Group } else { '' })
+
+DISCOVERED CONTEXT REQUIREMENT:
+$(if ($Module.PSObject.Properties.Name -contains 'ContextHint') { [string]$Module.ContextHint } else { '' })
+
+FULL-PROJECT DISCOVERY RULE:
+- If this module came from Project Mapper, use its observed entry URL/navigation as a starting hint, but verify it live.
+- Do not substitute a predefined module with a similarly named page.
+- If the discovered module requires facility/client/service/business context, verify the current context before storing observations.
+
+$comparisonRules
+
+$branchRules
+
+STRICT TOOL RULES:
+- Use ONLY `playwright/browser_*` MCP tools.
+- Do NOT use bundled Browser, Chrome, Computer Use, node_repl or shell tools.
+- Work in the EXISTING authenticated Rx2GO Chrome session.
+- Do NOT close the browser or tab.
+- Do NOT navigate outside rx2go.ai.
+- Start with browser_tabs + browser_snapshot.
+- Use live UI evidence; do not invent routes, fields, selectors or API endpoints.
+
+KNOWLEDGE SAFETY:
+- You are OBSERVING the product, not defining product requirements.
+- An observed current behavior is an OBSERVED_FACT, never automatically an expected requirement.
+- Jira requirements are NOT part of this exploration.
+- If you notice suspicious behavior, record it only as OBSERVED_ANOMALY_NOT_REQUIREMENT.
+- Do not call something a confirmed bug merely because it looks odd.
+- Store uncertainty instead of guessing.
+- Prefer stable semantic locator hints (role/name/label/text/test-id) over brittle CSS/XPath.
+- Never record secrets, passwords, tokens, auth headers, cookies or personal customer data.
+- Do not copy large response bodies. Record endpoint purpose/shape and relevant fields only.
+- Avoid storing actual patient/customer names, phones, addresses or prescriptions.
+
+$modeRules
+
+RETURN ONLY valid JSON:
+{
+  "mcpUsed": true,
+  "environment": "$environment",
+  "knowledgeLayer": "$layer",
+  "baselineEnvironment": "$(if ($baseline) { $baseline } else { 'NONE' })",
+  "baselineAvailable": $(if ($environment -eq 'ADM') { '$false' } elseif ($baselineAvailable) { '$true' } else { '$false' }),
+  "temporary": $(if ($environment -eq 'BRANCH') { '$true' } else { '$false' }),
+  "module": "$($Module.Name)",
+  "status": "COMPLETE|PARTIAL|BLOCKED",
+  "startUrl": "actual URL",
+  "endUrl": "actual URL",
+  "pagePurpose": "what this module/page is for based on live observation",
+
+  "routes": [
+    {
+      "name": "human route/page name",
+      "url": "actual observed URL",
+      "howToOpen": "observed navigation",
+      "confidence": "HIGH|MEDIUM|LOW"
+    }
+  ],
+
+  "controls": [
+    {
+      "name": "visible control",
+      "type": "button|input|select|table|tab|link|modal|other",
+      "purpose": "observed purpose",
+      "locatorHints": ["role/name/label/text/test-id only"],
+      "notes": "observed behavior"
+    }
+  ],
+
+  "navigation": [
+    {
+      "from": "page/state",
+      "action": "actual action",
+      "to": "page/state",
+      "evidence": "what was observed"
+    }
+  ],
+
+  "apiObservations": [
+    {
+      "method": "GET|POST|PUT|PATCH|DELETE|UNKNOWN",
+      "path": "/observed/path",
+      "trigger": "UI action that caused it",
+      "statusCodesObserved": [200],
+      "purpose": "what it appears to do from evidence",
+      "importantFields": ["field names only"],
+      "confidence": "HIGH|MEDIUM|LOW"
+    }
+  ],
+
+  "relationships": [
+    {
+      "entities": ["entity A","entity B"],
+      "relationship": "observed relationship",
+      "evidence": "UI/API evidence"
+    }
+  ],
+
+  "workflows": [
+    {
+      "name": "observed workflow",
+      "steps": ["step 1","step 2"],
+      "preconditionsObserved": ["observed precondition"],
+      "resultObserved": "observed final state",
+      "mutationUsed": false
+    }
+  ],
+
+  "validationRulesObserved": [
+    {
+      "fieldOrAction": "control/action",
+      "observedRule": "only what was actually observed",
+      "evidence": "live evidence"
+    }
+  ],
+
+  "selectorHints": [
+    {
+      "element": "semantic element",
+      "preferred": ["getByRole(...)", "getByLabel(...)", "data-testid if present"],
+      "avoid": ["brittle hint if relevant"]
+    }
+  ],
+
+  "observedFacts": [
+    {
+      "factType": "OBSERVED_FACT",
+      "fact": "current live fact",
+      "evidence": "URL/control/API/snapshot evidence",
+      "confidence": "HIGH|MEDIUM|LOW"
+    }
+  ],
+
+  "baselineComparison": [
+    {
+      "type": "SAME|NEW|CHANGED|REMOVED|UNKNOWN",
+      "area": "route|control|api|workflow|validation|relationship|other",
+      "baselineFact": "what baseline says or N/A",
+      "currentFact": "what current environment shows",
+      "evidence": "current live evidence"
+    }
+  ],
+
+  "anomalies": [
+    {
+      "classification": "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+      "description": "what looked inconsistent",
+      "evidence": "live evidence",
+      "impact": "possible QA impact"
+    }
+  ],
+
+  "changesFromPrevious": [
+    {
+      "type": "NEW|CHANGED|REMOVED|UNCHANGED",
+      "fact": "fact",
+      "evidence": "current evidence"
+    }
+  ],
+
+  "uncertainties": ["what could not be proven safely"],
+  "mutationsCreated": ["fresh QA-only entity id/name if workflow mode created one"],
+  "summary": "short useful module summary"
+}
+
+FINAL SELF-CHECK:
+- environment must be $environment.
+- knowledgeLayer must be $layer.
+- module must be `$($Module.Name)`.
+- mcpUsed must be true.
+- status COMPLETE only if the module was actually reached and observed.
+- For HOT/BRANCH, COMPLETE requires baseline comparison when baselineAvailable=true.
+- For HOT/BRANCH with missing baseline, status must be PARTIAL.
+- Never convert observed behavior into expected requirements.
+"@
+}
+
+
+function Test-KnowledgeExplorerResult {
+    param(
+        $Parsed,
+        $Module,
+        [string]$Environment
+    )
+
+    if (-not $Parsed) {
+        return [pscustomobject]@{ Success=$false; Error='Explorer returned no JSON.' }
+    }
+
+    $environment = ([string]$Environment).ToUpperInvariant()
+    $layer = Get-KnowledgeExplorerLayerType -Environment $environment
+    $baseline = Get-KnowledgeExplorerBaselineEnvironment -Environment $environment
+
+    if (-not [bool]$Parsed.mcpUsed) {
+        return [pscustomobject]@{ Success=$false; Error='Explorer did not confirm Playwright MCP usage.' }
+    }
+
+    if ([string]$Parsed.environment -ne $environment) {
+        return [pscustomobject]@{
+            Success=$false
+            Error="Wrong environment in Explorer output: expected $environment, received $([string]$Parsed.environment)"
+        }
+    }
+
+    if ([string]$Parsed.knowledgeLayer -ne $layer) {
+        return [pscustomobject]@{
+            Success=$false
+            Error="Wrong knowledge layer: expected $layer, received $([string]$Parsed.knowledgeLayer)"
+        }
+    }
+
+    if ([string]$Parsed.module -ne [string]$Module.Name) {
+        return [pscustomobject]@{
+            Success=$false
+            Error="Explorer module mismatch: expected '$($Module.Name)', received '$([string]$Parsed.module)'."
+        }
+    }
+
+    $status = ([string]$Parsed.status).ToUpperInvariant()
+
+    if ($status -notin @('COMPLETE','PARTIAL','BLOCKED')) {
+        return [pscustomobject]@{ Success=$false; Error="Unknown Explorer status '$status'." }
+    }
+
+    if ($environment -eq 'ADM') {
+        if ([string]$Parsed.baselineEnvironment -ne 'NONE') {
+            return [pscustomobject]@{
+                Success=$false
+                Error='ADM is the baseline and must not declare HOT/BRANCH as its baseline.'
+            }
+        }
+
+        if ([bool]$Parsed.temporary) {
+            return [pscustomobject]@{
+                Success=$false
+                Error='ADM baseline cannot be marked temporary.'
+            }
+        }
+    }
+    else {
+        if ([string]$Parsed.baselineEnvironment -ne $baseline) {
+            return [pscustomobject]@{
+                Success=$false
+                Error="Wrong baseline: $environment must compare with $baseline."
+            }
+        }
+
+        $baselinePath = Get-KnowledgeExplorerModuleFile `
+            -Environment $baseline `
+            -Slug ([string]$Module.Slug)
+
+        $baselineExists = Test-Path $baselinePath
+
+        if ($baselineExists -and -not [bool]$Parsed.baselineAvailable) {
+            return [pscustomobject]@{
+                Success=$false
+                Error="Baseline $baseline exists but Explorer did not use it."
+            }
+        }
+
+        if (-not $baselineExists -and $status -eq 'COMPLETE') {
+            return [pscustomobject]@{
+                Success=$false
+                Error="Cannot mark $environment COMPLETE without baseline $baseline. Use PARTIAL."
+            }
+        }
+
+        if (
+            [bool]$Parsed.baselineAvailable -and
+            @($Parsed.baselineComparison | Where-Object { $_ }).Count -eq 0
+        ) {
+            return [pscustomobject]@{
+                Success=$false
+                Error="$environment baseline comparison is empty."
+            }
+        }
+    }
+
+    if ($environment -eq 'BRANCH' -and -not [bool]$Parsed.temporary) {
+        return [pscustomobject]@{
+            Success=$false
+            Error='BRANCH observations must be marked temporary=true.'
+        }
+    }
+
+    return [pscustomobject]@{ Success=$true; Error='' }
+}
+
+
+function Save-KnowledgeExplorerResult {
+    param(
+        [string]$Mode,
+        $Module,
+        [string]$WorkflowTarget,
+        [string]$Environment,
+        $Parsed
+    )
+
+    Initialize-KnowledgeExplorerStorage
+
+    $targetPath = if ($Mode -eq 'workflow') {
+        Get-KnowledgeExplorerWorkflowFile `
+            -Environment $Environment `
+            -ModuleSlug ([string]$Module.Slug) `
+            -Target $WorkflowTarget
+    }
+    else {
+        Get-KnowledgeExplorerModuleFile `
+            -Environment $Environment `
+            -Slug ([string]$Module.Slug)
+    }
+
+    $baseline = Get-KnowledgeExplorerBaselineEnvironment -Environment $Environment
+    $layer = Get-KnowledgeExplorerLayerType -Environment $Environment
+
+    $record = [ordered]@{
+        schemaVersion = 2
+        sourceClass = 'LIVE_OBSERVATION'
+        source = "Playwright MCP / Rx2GO $Environment"
+        environment = ([string]$Environment).ToUpperInvariant()
+        knowledgeLayer = $layer
+        baselineEnvironment = if ($baseline) { $baseline } else { 'NONE' }
+        primaryBaseline = (([string]$Environment).ToUpperInvariant() -eq 'ADM')
+        temporary = (([string]$Environment).ToUpperInvariant() -eq 'BRANCH')
+        module = [string]$Module.Name
+        moduleSlug = [string]$Module.Slug
+        mode = $Mode
+        workflowTarget = if ($Mode -eq 'workflow') { [string]$WorkflowTarget } else { '' }
+        observedAt = (Get-Date).ToString('o')
+        freshnessDays = [int]$script:KnowledgeExplorerStaleDays
+        requirementAuthority = $false
+        warning = 'Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.'
+        deploymentHierarchy = 'BRANCH -> HOT -> ADM'
+        promotionRule = 'HOT knowledge does not become ADM baseline until re-observed on ADM.'
+        result = $Parsed
+    }
+
+    Write-Utf8NoBomFile `
+        -Path $targetPath `
+        -Content ($record | ConvertTo-Json -Depth 18)
+
+    $relative = $targetPath.Substring($script:ProjectRoot.Length) -replace '^[\\/]+',''
+    Write-KnowledgeExplorerLog "Сохранено → $relative"
+
+    return $targetPath
+}
+
+
+
+function Update-KnowledgeExplorerIndex {
+    Initialize-KnowledgeExplorerStorage
+
+    $environmentSummaries = New-Object System.Collections.ArrayList
+    $persistentTotal = 0
+
+    foreach ($environment in @('ADM','HOT')) {
+        $entriesBySlug = @{}
+
+        # Start with predefined priority modules so they remain visible before a full crawl.
+        foreach ($definition in @(Get-KnowledgeExplorerModuleDefinitions)) {
+            $entriesBySlug[[string]$definition.Slug] = [ordered]@{
+                name = [string]$definition.Name
+                slug = [string]$definition.Slug
+                status = 'NOT_EXPLORED'
+                lastObservedAt = ''
+                mode = ''
+                summary = ''
+                differenceCount = 0
+                discoveredByProjectMap = $false
+                file = "knowledge/explorer/$($environment.ToLowerInvariant())/modules/$($definition.Slug).json"
+            }
+        }
+
+        $mapPath = Get-KnowledgeExplorerProjectMapFile -Environment $environment
+        $mappedModuleCount = 0
+        $mapObservedAt = ''
+
+        if (Test-Path $mapPath) {
+            try {
+                $mapDoc = Get-Content -Raw -Path $mapPath | ConvertFrom-Json -ErrorAction Stop
+                $mapObservedAt = [string]$mapDoc.observedAt
+
+                foreach ($mapped in @($mapDoc.result.modules | Where-Object { $_ })) {
+                    $slug = ConvertTo-KnowledgeExplorerSafeSlug -Text ([string]$mapped.name)
+
+                    if (-not $entriesBySlug.ContainsKey($slug)) {
+                        $entriesBySlug[$slug] = [ordered]@{
+                            name = [string]$mapped.name
+                            slug = $slug
+                            status = 'DISCOVERED'
+                            lastObservedAt = ''
+                            mode = ''
+                            summary = [string]$mapped.purposeHint
+                            differenceCount = 0
+                            discoveredByProjectMap = $true
+                            file = "knowledge/explorer/$($environment.ToLowerInvariant())/modules/$slug.json"
+                        }
+                    }
+                    else {
+                        $entriesBySlug[$slug].discoveredByProjectMap = $true
+                    }
+
+                    $mappedModuleCount++
+                }
+            }
+            catch { }
+        }
+
+        $moduleDir = Join-Path `
+            $script:ProjectRoot `
+            "knowledge\explorer\$($environment.ToLowerInvariant())\modules"
+
+        foreach ($file in @(
+            Get-ChildItem `
+                -Path $moduleDir `
+                -File `
+                -Filter '*.json' `
+                -ErrorAction SilentlyContinue
+        )) {
+            try {
+                $doc = Get-Content -Raw -Path $file.FullName | ConvertFrom-Json -ErrorAction Stop
+                $slug = [string]$doc.moduleSlug
+
+                if ([string]::IsNullOrWhiteSpace($slug)) {
+                    $slug = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+                }
+
+                if (-not $entriesBySlug.ContainsKey($slug)) {
+                    $entriesBySlug[$slug] = [ordered]@{
+                        name = [string]$doc.module
+                        slug = $slug
+                        status = 'NOT_EXPLORED'
+                        lastObservedAt = ''
+                        mode = ''
+                        summary = ''
+                        differenceCount = 0
+                        discoveredByProjectMap = $true
+                        file = "knowledge/explorer/$($environment.ToLowerInvariant())/modules/$slug.json"
+                    }
+                }
+
+                $entriesBySlug[$slug].name = [string]$doc.module
+                $entriesBySlug[$slug].status = [string]$doc.result.status
+                $entriesBySlug[$slug].lastObservedAt = [string]$doc.observedAt
+                $entriesBySlug[$slug].mode = [string]$doc.mode
+                $entriesBySlug[$slug].summary = [string]$doc.result.summary
+                $entriesBySlug[$slug].differenceCount = @(
+                    $doc.result.baselineComparison |
+                        Where-Object {
+                            ([string]$_.type).ToUpperInvariant() -in @('NEW','CHANGED','REMOVED')
+                        }
+                ).Count
+            }
+            catch {
+                $slug = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+
+                if ($entriesBySlug.ContainsKey($slug)) {
+                    $entriesBySlug[$slug].status = 'INVALID'
+                }
+            }
+        }
+
+        $entries = @(
+            $entriesBySlug.Values |
+                ForEach-Object { [pscustomobject]$_ } |
+                Sort-Object name
+        )
+
+        $explored = @(
+            $entries |
+                Where-Object {
+                    $_.status -in @('COMPLETE','PARTIAL','BLOCKED')
+                }
+        ).Count
+
+        $persistentTotal += $explored
+
+        [void]$environmentSummaries.Add([pscustomobject]@{
+            environment = $environment
+            role = if ($environment -eq 'ADM') { 'PRIMARY_BASELINE' } else { 'DELTA_VS_ADM' }
+            baseline = if ($environment -eq 'ADM') { 'NONE' } else { 'ADM' }
+            projectMapAvailable = (Test-Path $mapPath)
+            projectMapObservedAt = $mapObservedAt
+            mappedModules = $mappedModuleCount
+            exploredModules = $explored
+            totalKnownModules = $entries.Count
+            modules = $entries
+        })
+    }
+
+    $index = [ordered]@{
+        schemaVersion = 3
+        deploymentHierarchy = 'BRANCH -> HOT -> ADM'
+        primaryBaseline = 'ADM'
+        generatedAt = (Get-Date).ToString('o')
+        staleAfterDays = [int]$script:KnowledgeExplorerStaleDays
+        exploredModules = $persistentTotal
+        environments = @($environmentSummaries)
+        note = 'Project Mapper can dynamically extend the module catalog beyond the predefined priority modules. BRANCH remains excluded from the persistent global index.'
+    }
+
+    $indexPath = Join-Path $script:ProjectRoot 'knowledge\explorer\index.json'
+
+    Write-Utf8NoBomFile `
+        -Path $indexPath `
+        -Content ($index | ConvertTo-Json -Depth 14)
+
+    # Local-only BRANCH index — dynamic modules included.
+    $branchEntries = New-Object System.Collections.ArrayList
+    $branchDir = Join-Path $script:ProjectRoot 'knowledge\explorer\branch\modules'
+
+    foreach ($file in @(
+        Get-ChildItem `
+            -Path $branchDir `
+            -File `
+            -Filter '*.json' `
+            -ErrorAction SilentlyContinue
+    )) {
+        try {
+            $doc = Get-Content -Raw -Path $file.FullName | ConvertFrom-Json -ErrorAction Stop
+
+            [void]$branchEntries.Add([pscustomobject]@{
+                name = [string]$doc.module
+                slug = [string]$doc.moduleSlug
+                status = [string]$doc.result.status
+                lastObservedAt = [string]$doc.observedAt
+                differenceCount = @(
+                    $doc.result.baselineComparison |
+                        Where-Object {
+                            ([string]$_.type).ToUpperInvariant() -in @('NEW','CHANGED','REMOVED')
+                        }
+                ).Count
+            })
+        }
+        catch { }
+    }
+
+    $branchMapPath = Get-KnowledgeExplorerProjectMapFile -Environment 'BRANCH'
+    $branchIndexPath = Join-Path $script:ProjectRoot 'knowledge\explorer\branch\index.json'
+
+    Write-Utf8NoBomFile `
+        -Path $branchIndexPath `
+        -Content (([ordered]@{
+            schemaVersion = 2
+            environment = 'BRANCH'
+            baseline = 'HOT'
+            temporary = $true
+            generatedAt = (Get-Date).ToString('o')
+            projectMapAvailable = (Test-Path $branchMapPath)
+            exploredModules = @($branchEntries).Count
+            modules = @($branchEntries)
+        }) | ConvertTo-Json -Depth 12)
+
+    return [pscustomobject]$index
+}
+
+function Invoke-KnowledgeExplorerModule {
+    param(
+        [string]$Mode,
+        $Module,
+        [string]$WorkflowTarget,
+        [string]$Environment
+    )
+
+    Set-KnowledgeExplorerStatus `
+        -Text "Изучаю $Environment → $($Module.Name)…" `
+        -Kind Info
+
+    $prompt = Get-KnowledgeExplorerPrompt `
+        -Mode $Mode `
+        -Module $Module `
+        -WorkflowTarget $WorkflowTarget `
+        -Environment $Environment
+
+    $reasoning = if ($Mode -eq 'workflow') { 'medium' } else { 'low' }
+
+    $timeout = switch ($Mode) {
+        'quick' { 300 }
+        'deep' { 480 }
+        'full-project' { 480 }
+        'module' { 420 }
+        'workflow' { 600 }
+        'refresh' { 360 }
+        default { 360 }
+    }
+
+    $raw = Invoke-CodexAgent `
+        -AgentSlug "knowledge-explorer-$($Environment.ToLowerInvariant())-$($Module.Slug)-$Mode" `
+        -Prompt $prompt `
+        -TimeoutSec $timeout `
+        -ReasoningEffort $reasoning
+
+    if (-not $raw) {
+        if (
+            [string]$script:LastAgentFailureKind -eq 'CODEX_USAGE_LIMIT' -or
+            (Test-CodexUsageLimitText -Text ([string]$script:LastAgentError))
+        ) {
+            return [pscustomobject]@{
+                Success=$false
+                StopAll=$true
+                Error=(Get-CodexFailureUserMessage `
+                    -FailureKind 'CODEX_USAGE_LIMIT' `
+                    -ErrorText ([string]$script:LastAgentError))
+            }
+        }
+
+        return [pscustomobject]@{
+            Success=$false
+            StopAll=$false
+            Error=[string]$script:LastAgentError
+        }
+    }
+
+    if (-not (Test-LastAgentUsedPlaywrightMcpSuccessfully -MinimumCompletedCalls 2)) {
+        return [pscustomobject]@{
+            Success=$false
+            StopAll=$false
+            Error=[string]$script:LastAgentError
+        }
+    }
+
+    $parsed = Convert-AgentJson $raw
+
+    if (-not $parsed) {
+        return [pscustomobject]@{
+            Success=$false
+            StopAll=$false
+            Error=[string]$script:LastAgentError
+        }
+    }
+
+    $validation = Test-KnowledgeExplorerResult `
+        -Parsed $parsed `
+        -Module $Module `
+        -Environment $Environment
+
+    if (-not $validation.Success) {
+        return [pscustomobject]@{
+            Success=$false
+            StopAll=$false
+            Error=[string]$validation.Error
+        }
+    }
+
+    $saved = Save-KnowledgeExplorerResult `
+        -Mode $Mode `
+        -Module $Module `
+        -WorkflowTarget $WorkflowTarget `
+        -Environment $Environment `
+        -Parsed $parsed
+
+    return [pscustomobject]@{
+        Success=$true
+        StopAll=$false
+        Error=''
+        Parsed=$parsed
+        File=$saved
+    }
+}
+
+
+function Invoke-KnowledgeExplorerGitSync {
+    param([string]$Environment)
+
+    $environment = ([string]$Environment).ToUpperInvariant()
+
+    if ($environment -eq 'BRANCH') {
+        return [pscustomobject]@{
+            Success=$true
+            Message='BRANCH knowledge сохранён локально как temporary delta. Auto commit/push отключён.'
+        }
+    }
+
+    if ($script:GitBusy) {
+        return [pscustomobject]@{
+            Success=$false
+            Message='Git занят. Explorer knowledge сохранён локально.'
+        }
+    }
+
+    $script:GitBusy = $true
+
+    try {
+        if (-not (Test-GitInstalled)) {
+            return [pscustomobject]@{
+                Success=$false
+                Message='Git не установлен. Explorer knowledge сохранён локально.'
+            }
+        }
+
+        Initialize-KnowledgeGit -Silent
+        $git = Get-GitState
+
+        if (-not $git.Repository) {
+            return [pscustomobject]@{
+                Success=$false
+                Message='Git repository недоступен. Explorer knowledge сохранён локально.'
+            }
+        }
+
+        if (-not (Set-KnowledgeOriginToSsh)) {
+            return [pscustomobject]@{
+                Success=$false
+                Message='SSH origin не настроен. Explorer knowledge сохранён локально.'
+            }
+        }
+
+        $preStaged = Invoke-Git @('diff','--cached','--name-only') 15000
+
+        if (
+            $preStaged.ExitCode -eq 0 -and
+            -not [string]::IsNullOrWhiteSpace([string]$preStaged.Output)
+        ) {
+            $foreignStaged = @(
+                $preStaged.Output -split "`r?`n" |
+                    Where-Object {
+                        $_ -and
+                        $_ -notmatch '^(knowledge/explorer/|knowledge\\explorer\\)'
+                    }
+            )
+
+            if ($foreignStaged.Count -gt 0) {
+                return [pscustomobject]@{
+                    Success=$false
+                    Message='Есть уже staged-файлы вне Knowledge Explorer. Auto commit пропущен, чтобы не смешивать изменения.'
+                }
+            }
+        }
+
+        $envFolder = Get-KnowledgeExplorerEnvironmentFolder -Environment $environment
+
+        $add = Invoke-Git @(
+            'add','-A','--',
+            "knowledge/explorer/$envFolder",
+            'knowledge/explorer/index.json'
+        ) 120000
+
+        if ($add.ExitCode -ne 0) {
+            return [pscustomobject]@{
+                Success=$false
+                Message=("git add Explorer failed: $($add.Error) $($add.Output)").Trim()
+            }
+        }
+
+        $staged = Invoke-Git @(
+            'diff','--cached','--name-only','--',
+            "knowledge/explorer/$envFolder",
+            'knowledge/explorer/index.json'
+        ) 15000
+
+        if (
+            $staged.ExitCode -ne 0 -or
+            [string]::IsNullOrWhiteSpace([string]$staged.Output)
+        ) {
+            return [pscustomobject]@{
+                Success=$true
+                Message="Knowledge Explorer ${environment}: новых изменений для Git нет."
+            }
+        }
+
+        $role = if ($environment -eq 'ADM') { 'baseline' } else { 'delta-vs-ADM' }
+        $message = "Knowledge Explorer $environment $role " + (Get-Date -Format 'yyyy-MM-dd HH:mm')
+
+        $commit = Invoke-Git @('commit','-m',$message) 60000
+
+        if ($commit.ExitCode -ne 0) {
+            $combined = (([string]$commit.Error) + "`n" + ([string]$commit.Output)).Trim()
+
+            if ($combined -notmatch '(?i)nothing to commit') {
+                return [pscustomobject]@{
+                    Success=$false
+                    Message="Explorer git commit failed: $combined"
+                }
+            }
+        }
+
+        $privateKey = Get-GitHubSshPrivateKeyPath
+
+        if (-not (Test-Path $privateKey)) {
+            return [pscustomobject]@{
+                Success=$false
+                Message='Explorer knowledge закоммичен локально; SSH key для push не настроен.'
+            }
+        }
+
+        $auth = Invoke-SshGitHubAuthCheck
+
+        if (-not $auth.Success) {
+            return [pscustomobject]@{
+                Success=$false
+                Message="Explorer knowledge закоммичен локально; GitHub SSH не готов: $($auth.Message)"
+            }
+        }
+
+        $git = Get-GitState
+        $branch = [string]$git.Branch
+
+        if ([string]::IsNullOrWhiteSpace($branch) -or $branch -eq 'detached') {
+            return [pscustomobject]@{
+                Success=$false
+                Message='Explorer knowledge закоммичен локально; HEAD detached, push пропущен.'
+            }
+        }
+
+        $push = Invoke-Git @('push','origin',$branch) 90000
+
+        if ($push.ExitCode -ne 0) {
+            $combined = (([string]$push.Error) + "`n" + ([string]$push.Output)).Trim()
+
+            return [pscustomobject]@{
+                Success=$false
+                Message="Explorer knowledge закоммичен локально; push failed: $combined"
+            }
+        }
+
+        return [pscustomobject]@{
+            Success=$true
+            Message="Knowledge Explorer $environment → GitHub push PASS ($branch)."
+        }
+    }
+    catch {
+        return [pscustomobject]@{
+            Success=$false
+            Message="Explorer Git exception: $($_.Exception.Message)"
+        }
+    }
+    finally {
+        $script:GitBusy = $false
+    }
+}
+
+
+function Stop-KnowledgeExplorer {
+    if (-not $script:KnowledgeExplorerRunning) {
+        return
+    }
+
+    $script:KnowledgeExplorerStopRequested = $true
+
+    Set-KnowledgeExplorerStatus `
+        -Text 'Остановка запрошена. Explorer завершит текущий модуль и остановится.' `
+        -Kind Warning
+
+    if ($knowledgeExplorerStopButton) {
+        $knowledgeExplorerStopButton.Enabled = $false
+    }
+}
+
+
+function Open-KnowledgeExplorerFolder {
+    Initialize-KnowledgeExplorerStorage
+
+    $environment = if ($knowledgeExplorerEnvironmentCombo) {
+        ([string]$knowledgeExplorerEnvironmentCombo.SelectedItem).ToUpperInvariant()
+    }
+    else {
+        'ADM'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($environment)) {
+        $environment = 'ADM'
+    }
+
+    $envFolder = Get-KnowledgeExplorerEnvironmentFolder -Environment $environment
+    $path = Join-Path $script:ProjectRoot "knowledge\explorer\$envFolder"
+
+    try {
+        Start-Process explorer.exe -ArgumentList "`"$path`""
+    }
+    catch {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Не удалось открыть папку:`r`n$path`r`n`r`n$($_.Exception.Message)",
+            'Rx2GO QA — Knowledge Explorer',
+            'OK',
+            'Warning'
+        ) | Out-Null
+    }
+}
+
+
+function Start-KnowledgeExplorer {
+    if ($script:KnowledgeExplorerRunning) {
+        return
+    }
+
+    if ($script:JiraRunActive) {
+        [System.Windows.Forms.MessageBox]::Show(
+            'Сейчас выполняется Jira Smart QA. Дождись завершения перед запуском Knowledge Explorer.',
+            'Rx2GO QA — Knowledge Explorer',
+            'OK',
+            'Warning'
+        ) | Out-Null
+        return
+    }
+
+    if ($script:QueueRunning) {
+        [System.Windows.Forms.MessageBox]::Show(
+            'Сейчас работает Jira Queue. Останови/поставь очередь на паузу перед Knowledge Explorer, чтобы не смешивать браузерные сессии.',
+            'Rx2GO QA — Knowledge Explorer',
+            'OK',
+            'Warning'
+        ) | Out-Null
+        return
+    }
+
+    $environment = ([string]$knowledgeExplorerEnvironmentCombo.SelectedItem).ToUpperInvariant()
+
+    if ($environment -notin @('ADM','HOT','BRANCH')) {
+        $environment = 'ADM'
+    }
+
+    $mode = Get-KnowledgeExplorerModeKey `
+        -DisplayName ([string]$knowledgeExplorerModeCombo.SelectedItem)
+
+    $selectedModule = [string]$knowledgeExplorerModuleCombo.SelectedItem
+    $workflowTarget = ([string]$knowledgeExplorerTargetBox.Text).Trim()
+
+    if ($mode -in @('module','workflow')) {
+        if ([string]::IsNullOrWhiteSpace($selectedModule)) {
+            [System.Windows.Forms.MessageBox]::Show(
+                'Выбери модуль для Knowledge Explorer.',
+                'Rx2GO QA — Knowledge Explorer',
+                'OK',
+                'Warning'
+            ) | Out-Null
+            return
+        }
+    }
+
+    if (
+        $environment -eq 'ADM' -and
+        [string]::IsNullOrWhiteSpace([string](Get-SharedAdmDailyPassword))
+    ) {
+        Set-KnowledgeExplorerStatus `
+            -Text 'ADM: введи суточный пароль из Telegram в поле «ADM код Telegram».' `
+            -Kind Warning
+
+        if ($knowledgeAdmDailyPasswordBox) {
+            $knowledgeAdmDailyPasswordBox.Focus()
+        }
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Для изучения ADM нужен первый фактор авторизации.`r`n`r`nЛогин: admin`r`nПароль: сегодняшний суточный код из Telegram.`r`n`r`nВведи код прямо в поле «ADM код Telegram» на этой странице и снова нажми «ИЗУЧИТЬ ADM».",
+            'Rx2GO QA — ADM авторизация',
+            'OK',
+            'Warning'
+        ) | Out-Null
+
+        return
+    }
+
+    Initialize-KnowledgeExplorerStorage
+
+    $modules = @()
+
+    if ($mode -ne 'full-project') {
+        $modules = @(
+            Get-KnowledgeExplorerModulesForRun `
+                -Mode $mode `
+                -SelectedModuleName $selectedModule `
+                -Environment $environment
+        )
+
+        if ($modules.Count -eq 0) {
+            Set-KnowledgeExplorerStatus `
+                -Text "Для $environment устаревших модулей старше $($script:KnowledgeExplorerStaleDays) дней нет." `
+                -Kind Success
+            return
+        }
+    }
+
+    if (-not (Ensure-PlaywrightDependencies)) {
+        Set-KnowledgeExplorerStatus `
+            -Text "Playwright dependencies недоступны: $($script:LastAgentError)" `
+            -Kind Error
+        return
+    }
+
+    $script:KnowledgeExplorerRunning = $true
+    $script:KnowledgeExplorerStopRequested = $false
+
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $script:KnowledgeExplorerRunDir = Join-Path `
+        $script:ProjectRoot `
+        "reports\knowledge-explorer\$($environment.ToLowerInvariant())\$stamp"
+
+    New-Item `
+        -ItemType Directory `
+        -Path $script:KnowledgeExplorerRunDir `
+        -Force | Out-Null
+
+    if ($knowledgeExplorerStartButton) {
+        $knowledgeExplorerStartButton.Enabled = $false
+    }
+
+    if ($knowledgeExplorerStopButton) {
+        $knowledgeExplorerStopButton.Enabled = $true
+    }
+
+    if ($knowledgeExplorerEnvironmentCombo) {
+        $knowledgeExplorerEnvironmentCombo.Enabled = $false
+    }
+
+    if ($knowledgeAdmDailyPasswordBox) {
+        $knowledgeAdmDailyPasswordBox.Enabled = $false
+    }
+
+    if ($knowledgeExplorerProgress) {
+        $knowledgeExplorerProgress.Minimum = 0
+
+        if ($mode -eq 'full-project') {
+            $knowledgeExplorerProgress.Maximum = 1
+        }
+        else {
+            $knowledgeExplorerProgress.Maximum = [Math]::Max(1,$modules.Count)
+        }
+
+        $knowledgeExplorerProgress.Value = 0
+    }
+
+    if ($knowledgeExplorerLogBox) {
+        $knowledgeExplorerLogBox.Clear()
+    }
+
+    $oldTask = $script:CurrentJiraTask
+    $oldIssueKey = $script:LoadedJiraIssueKey
+
+    $script:CurrentJiraTask = [pscustomobject]@{
+        Key="KNOWLEDGE-EXPLORER-$environment"
+    }
+    $script:LoadedJiraIssueKey = "KNOWLEDGE-EXPLORER-$environment"
+
+    try {
+        $baseline = Get-KnowledgeExplorerBaselineEnvironment -Environment $environment
+        $roleText = if ($environment -eq 'ADM') {
+            'PRIMARY BASELINE'
+        }
+        elseif ($environment -eq 'HOT') {
+            'DELTA VS ADM'
+        }
+        else {
+            'TEMP DELTA VS HOT'
+        }
+
+        $launchText = if ($mode -eq 'full-project') {
+            "Запускаю $environment ($roleText). Сначала Project Mapper построит карту доступных модулей."
+        }
+        else {
+            "Запускаю $environment ($roleText). Модулей: $($modules.Count)."
+        }
+
+        Set-KnowledgeExplorerStatus `
+            -Text $launchText `
+            -Kind Info
+
+        if ($baseline) {
+            Write-KnowledgeExplorerLog "Baseline: $baseline"
+        }
+        else {
+            Write-KnowledgeExplorerLog 'Baseline: ADM itself'
+        }
+
+        if (-not (Bootstrap-PersistentBrowserSession -Environment $environment)) {
+            Set-KnowledgeExplorerStatus `
+                -Text "Не удалось открыть/авторизовать ${environment}: $($script:LastAgentError)" `
+                -Kind Error
+            return
+        }
+
+        if (-not (Invoke-PlaywrightMcpSessionPreflight -Environment $environment)) {
+            Set-KnowledgeExplorerStatus `
+                -Text "Playwright MCP не подключился к ${environment}: $($script:LastAgentError)" `
+                -Kind Error
+            return
+        }
+
+        if ($mode -eq 'full-project') {
+            $mapResult = Invoke-KnowledgeExplorerProjectMapper `
+                -Environment $environment
+
+            if (-not $mapResult.Success) {
+                Set-KnowledgeExplorerStatus `
+                    -Text "Не удалось построить карту проекта: $($mapResult.Error)" `
+                    -Kind Error
+
+                if ($mapResult.StopAll) {
+                    $script:KnowledgeExplorerStopRequested = $true
+                }
+
+                return
+            }
+
+            $modules = @($mapResult.Modules)
+
+            if ($modules.Count -eq 0) {
+                Set-KnowledgeExplorerStatus `
+                    -Text 'Project Mapper не нашёл доступных продуктовых модулей.' `
+                    -Kind Warning
+                return
+            }
+
+            if ($knowledgeExplorerProgress) {
+                $knowledgeExplorerProgress.Maximum = $modules.Count + 1
+                $knowledgeExplorerProgress.Value = 1
+            }
+
+            Set-KnowledgeExplorerStatus `
+                -Text "Этап 2/2: карта готова — найдено $($modules.Count) модулей. Начинаю полный crawl." `
+                -Kind Info
+        }
+
+        $completed = 0
+        $partial = 0
+        $blocked = 0
+        $failed = 0
+
+        foreach ($module in $modules) {
+            if ($script:KnowledgeExplorerStopRequested) {
+                break
+            }
+
+            $result = Invoke-KnowledgeExplorerModule `
+                -Mode $mode `
+                -Module $module `
+                -WorkflowTarget $workflowTarget `
+                -Environment $environment
+
+            if ($result.Success) {
+                $status = ([string]$result.Parsed.status).ToUpperInvariant()
+
+                switch ($status) {
+                    'COMPLETE' { $completed++ }
+                    'PARTIAL' { $partial++ }
+                    'BLOCKED' { $blocked++ }
+                }
+
+                $differenceCount = @(
+                    $result.Parsed.baselineComparison |
+                        Where-Object {
+                            ([string]$_.type).ToUpperInvariant() -in @('NEW','CHANGED','REMOVED')
+                        }
+                ).Count
+
+                if ($baseline) {
+                    Write-KnowledgeExplorerLog "$($module.Name) → $status • differences vs ${baseline}: $differenceCount"
+                }
+                else {
+                    Write-KnowledgeExplorerLog "$($module.Name) → $status • ADM baseline updated"
+                }
+            }
+            else {
+                $failed++
+                Write-KnowledgeExplorerLog "$($module.Name) → ERROR | $($result.Error)"
+
+                if ($result.StopAll) {
+                    Set-KnowledgeExplorerStatus `
+                        -Text $result.Error `
+                        -Kind Warning
+
+                    $script:KnowledgeExplorerStopRequested = $true
+                }
+            }
+
+            if ($knowledgeExplorerProgress) {
+                $next = [Math]::Min(
+                    $knowledgeExplorerProgress.Maximum,
+                    $knowledgeExplorerProgress.Value + 1
+                )
+
+                $knowledgeExplorerProgress.Value = $next
+            }
+
+            [void](Update-KnowledgeExplorerIndex)
+            Refresh-KnowledgeUI -PreserveActionText
+
+            try {
+                [System.Windows.Forms.Application]::DoEvents()
+            }
+            catch { }
+        }
+
+        $index = Update-KnowledgeExplorerIndex
+        $script:KnowledgeExplorerLastResult = $index
+
+        if ($script:KnowledgeExplorerStopRequested) {
+            Set-KnowledgeExplorerStatus `
+                -Text "Explorer $environment остановлен. COMPLETE $completed • PARTIAL $partial • BLOCKED $blocked • ERROR $failed." `
+                -Kind Warning
+        }
+        else {
+            $finishPrefix = if ($mode -eq 'full-project') {
+                "Полный проект $environment завершён"
+            }
+            else {
+                "Explorer $environment завершён"
+            }
+
+            Set-KnowledgeExplorerStatus `
+                -Text "${finishPrefix}: COMPLETE $completed • PARTIAL $partial • BLOCKED $blocked • ERROR $failed." `
+                -Kind Success
+        }
+
+        $gitResult = Invoke-KnowledgeExplorerGitSync -Environment $environment
+        Write-KnowledgeExplorerLog $gitResult.Message
+
+        if (-not $gitResult.Success) {
+            Set-KnowledgeActionStatus `
+                -Text $gitResult.Message `
+                -Kind Warning
+
+            Set-KnowledgeSaveState `
+                -State LOCAL_ONLY `
+                -Details $gitResult.Message
+        }
+        else {
+            Set-KnowledgeActionStatus `
+                -Text $gitResult.Message `
+                -Kind Success
+
+            if ($environment -eq 'BRANCH') {
+                if ($knowledgeSaveDetailsLabel) {
+                    $knowledgeSaveDetailsLabel.Text = 'BRANCH Explorer knowledge временное и остаётся локально; ADM/HOT GitHub knowledge не меняется.'
+                }
+            }
+            else {
+                try {
+                    Refresh-KnowledgeSaveState -VerifyRemote
+                }
+                catch { }
+            }
+        }
+
+        Refresh-KnowledgeUI -PreserveActionText
+    }
+    catch {
+        Set-KnowledgeExplorerStatus `
+            -Text "Knowledge Explorer exception: $($_.Exception.Message)" `
+            -Kind Error
+    }
+    finally {
+        $script:CurrentJiraTask = $oldTask
+        $script:LoadedJiraIssueKey = $oldIssueKey
+        $script:KnowledgeExplorerRunning = $false
+
+        if ($knowledgeExplorerStartButton) {
+            $knowledgeExplorerStartButton.Enabled = $true
+        }
+
+        if ($knowledgeExplorerStopButton) {
+            $knowledgeExplorerStopButton.Enabled = $false
+        }
+
+        if ($knowledgeExplorerEnvironmentCombo) {
+            $knowledgeExplorerEnvironmentCombo.Enabled = $true
+        }
+
+        if ($knowledgeAdmDailyPasswordBox) {
+            $knowledgeAdmDailyPasswordBox.Enabled = $true
+        }
+
+        Update-KnowledgeExplorerEnvironmentUi
+        Write-KnowledgeExplorerLog 'Chrome оставлен открытым.'
     }
 }
 
@@ -256,10 +3382,33 @@ function Get-KnowledgeStats {
     $jiraDir = Join-Path $script:ProjectRoot 'jira-cases'
     $scenarioDir = Join-Path $script:ProjectRoot 'scenarios'
     $testsDir = Join-Path $script:ProjectRoot 'tests'
+    $learnedDir = Join-Path $script:ProjectRoot 'knowledge\learned'
     $jira = if (Test-Path $jiraDir) { @(Get-ChildItem $jiraDir -File -Filter '*.md' -ErrorAction SilentlyContinue).Count } else { 0 }
     $scenarios = if (Test-Path $scenarioDir) { @(Get-ChildItem $scenarioDir -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -in @('.yaml','.yml','.json') }).Count } else { 0 }
     $tests = if (Test-Path $testsDir) { @(Get-ChildItem $testsDir -File -Recurse -Filter '*.spec.ts' -ErrorAction SilentlyContinue).Count } else { 0 }
-    return [pscustomobject]@{ Rules=$rules; JiraCases=$jira; Scenarios=$scenarios; Tests=$tests }
+    $learned = if (Test-Path $learnedDir) { @(Get-ChildItem $learnedDir -File -Recurse -Filter '*.json' -ErrorAction SilentlyContinue).Count } else { 0 }
+
+    $explorerIndex = Join-Path $script:ProjectRoot 'knowledge\explorer\index.json'
+    $exploredModules = 0
+
+    if (Test-Path $explorerIndex) {
+        try {
+            $explorerDoc = Get-Content -Raw -Path $explorerIndex | ConvertFrom-Json -ErrorAction Stop
+            $exploredModules = [int]$explorerDoc.exploredModules
+        }
+        catch {
+            $exploredModules = 0
+        }
+    }
+
+    return [pscustomobject]@{
+        Rules=$rules
+        JiraCases=$jira
+        Scenarios=$scenarios
+        Tests=$tests
+        Learned=$learned
+        ExploredModules=$exploredModules
+    }
 }
 
 function Get-RecentKnowledgeFiles {
@@ -307,7 +3456,7 @@ function Get-GitHubSshPublicKeyPath {
 }
 
 function Get-KnowledgeSshOrigin {
-    return 'git@github.com:Gamazzz/rx2go-ai-qa.git'
+    return 'git@github.com:QA-E2E4/rx2go-ai-qa.git'
 }
 
 function Test-SshInstalled {
@@ -656,6 +3805,10 @@ function Configure-KnowledgeGitHubSsh {
             -Text 'Настраиваю GitHub через SSH…' `
             -Kind Info
 
+        Set-KnowledgeSshStatus `
+            -Text 'SSH: CHECKING…' `
+            -Kind Info
+
         if (-not (Ensure-GitHubSshKey)) {
             return $false
         }
@@ -672,15 +3825,33 @@ function Configure-KnowledgeGitHubSsh {
         $check = Invoke-SshGitHubAuthCheck
 
         if ($check.Success) {
+            $sshUser = Get-GitHubSshUserFromMessage -Message ([string]$check.Message)
+
             Set-KnowledgeActionStatus `
                 -Text 'GitHub SSH подключён ✓  Браузер не используется.' `
                 -Kind Success
+
+            $sshStatusText = if ($sshUser) {
+                "SSH: ✓ CONNECTED • $sshUser"
+            }
+            else {
+                'SSH: ✓ CONNECTED'
+            }
+
+            Set-KnowledgeSshStatus `
+                -Text $sshStatusText `
+                -Kind Success
+
             return $true
         }
 
         if ($check.NeedsKeyRegistration) {
             Set-KnowledgeActionStatus `
                 -Text 'SSH key создан. Добавь public key в GitHub один раз.' `
+                -Kind Warning
+
+            Set-KnowledgeSshStatus `
+                -Text 'SSH: ⚠ KEY NOT REGISTERED' `
                 -Kind Warning
 
             Show-GitHubSshRegistrationInstructions
@@ -694,6 +3865,10 @@ function Configure-KnowledgeGitHubSsh {
 
         Set-KnowledgeActionStatus `
             -Text "GitHub SSH не подключён: $reason" `
+            -Kind Error
+
+        Set-KnowledgeSshStatus `
+            -Text 'SSH: ✕ ERROR' `
             -Kind Error
 
         return $false
@@ -789,8 +3964,11 @@ function Connect-KnowledgeGitHub {
     return (Configure-KnowledgeGitHubSsh)
 }
 
+
 function Test-KnowledgeGitHubConnection {
-    if ($script:GitBusy) { return }
+    if ($script:GitBusy) {
+        return
+    }
 
     $script:GitBusy = $true
     $needsSetup = $false
@@ -800,8 +3978,18 @@ function Test-KnowledgeGitHubConnection {
             -Text 'Проверяю GitHub через SSH…' `
             -Kind Info
 
+        Set-KnowledgeSshStatus `
+            -Text 'SSH: CHECKING…' `
+            -Kind Info
+
         if (-not (Test-GitInstalled)) {
-            Set-KnowledgeActionStatus -Text 'Git не установлен.' -Kind Error
+            Set-KnowledgeActionStatus `
+                -Text 'Git не установлен.' `
+                -Kind Error
+
+            Set-KnowledgeSshStatus `
+                -Text 'SSH: — Git unavailable' `
+                -Kind Error
 
             [System.Windows.Forms.MessageBox]::Show(
                 'Git не установлен. Установи Git for Windows и повтори проверку.',
@@ -818,6 +4006,10 @@ function Test-KnowledgeGitHubConnection {
                 -Text 'Windows OpenSSH Client не найден.' `
                 -Kind Error
 
+            Set-KnowledgeSshStatus `
+                -Text 'SSH: ✕ OpenSSH not found' `
+                -Kind Error
+
             [System.Windows.Forms.MessageBox]::Show(
                 "Не найден ssh.exe.`r`n`r`nУстанови Optional Feature → OpenSSH Client в Windows.",
                 'Rx2GO QA — GitHub SSH',
@@ -832,6 +4024,15 @@ function Test-KnowledgeGitHubConnection {
 
         if (-not (Test-Path $privateKey)) {
             $needsSetup = $true
+
+            Set-KnowledgeSshStatus `
+                -Text 'SSH: ⚠ KEY NOT FOUND' `
+                -Kind Warning
+
+            Set-KnowledgeActionStatus `
+                -Text 'SSH key ещё не создан.' `
+                -Kind Warning
+
             return
         }
 
@@ -839,6 +4040,11 @@ function Test-KnowledgeGitHubConnection {
             Set-KnowledgeActionStatus `
                 -Text 'Не удалось переключить origin на SSH.' `
                 -Kind Error
+
+            Set-KnowledgeSshStatus `
+                -Text 'SSH: ✕ origin setup failed' `
+                -Kind Error
+
             return
         }
 
@@ -850,6 +4056,10 @@ function Test-KnowledgeGitHubConnection {
             if ($auth.NeedsKeyRegistration) {
                 Set-KnowledgeActionStatus `
                     -Text 'SSH key существует, но ещё не добавлен в GitHub.' `
+                    -Kind Warning
+
+                Set-KnowledgeSshStatus `
+                    -Text 'SSH: ⚠ KEY NOT REGISTERED' `
                     -Kind Warning
 
                 Show-GitHubSshRegistrationInstructions
@@ -865,13 +4075,32 @@ function Test-KnowledgeGitHubConnection {
                 -Text "GitHub SSH недоступен: $reason" `
                 -Kind Error
 
+            Set-KnowledgeSshStatus `
+                -Text 'SSH: ✕ AUTH FAILED' `
+                -Kind Error
+
             return
         }
 
-        $remoteCheck = Invoke-Git @('ls-remote','--heads','origin') 30000
+        $sshUser = Get-GitHubSshUserFromMessage -Message ([string]$auth.Message)
+
+        $remoteCheck = Invoke-Git @(
+            'ls-remote','--heads','origin'
+        ) 30000
 
         if ($remoteCheck.ExitCode -eq 0) {
             $timestamp = Get-Date -Format 'HH:mm:ss'
+
+            $sshStatusText = if ($sshUser) {
+                "SSH: ✓ CONNECTED • $sshUser • repo OK • $timestamp"
+            }
+            else {
+                "SSH: ✓ CONNECTED • repo OK • $timestamp"
+            }
+
+            Set-KnowledgeSshStatus `
+                -Text $sshStatusText `
+                -Kind Success
 
             Set-KnowledgeActionStatus `
                 -Text "GitHub SSH доступен ✓  origin: $(Get-KnowledgeSshOrigin)  |  ${timestamp}" `
@@ -882,7 +4111,8 @@ function Test-KnowledgeGitHubConnection {
 
         $reason = if ($remoteCheck.Error) {
             [string]$remoteCheck.Error
-        } else {
+        }
+        else {
             [string]$remoteCheck.Output
         }
 
@@ -890,11 +4120,19 @@ function Test-KnowledgeGitHubConnection {
             $reason = $reason.Substring(0,297) + '...'
         }
 
+        Set-KnowledgeSshStatus `
+            -Text 'SSH: ⚠ CONNECTED • repository unavailable' `
+            -Kind Warning
+
         Set-KnowledgeActionStatus `
             -Text "SSH авторизация есть, но repository недоступен: $reason" `
             -Kind Error
     }
     catch {
+        Set-KnowledgeSshStatus `
+            -Text 'SSH: ✕ CHECK ERROR' `
+            -Kind Error
+
         Set-KnowledgeActionStatus `
             -Text "Ошибка GitHub SSH: $($_.Exception.Message)" `
             -Kind Error
@@ -968,6 +4206,14 @@ function Refresh-KnowledgeUI {
         $knowledgeRegressionValue.Text = [string]$stats.Scenarios
         $knowledgeTestsValue.Text = [string]$stats.Tests
 
+        if ($knowledgeExplorerValue) {
+            $knowledgeExplorerValue.Text = [string]$stats.ExploredModules
+        }
+
+        if ($knowledgeIntroLabel) {
+            $knowledgeIntroLabel.Text = "GitHub SSH • Auto-Learning: $($stats.Learned) • Auto Commit + Push после Jira-теста: ON. Секреты, runtime, reports, screenshots и traces не отправляются."
+        }
+
         $git = Get-GitState
 
         if (-not $git.Installed) {
@@ -999,6 +4245,12 @@ function Refresh-KnowledgeUI {
         $knowledgeBranchValue.Text = $git.Branch
         $knowledgeRemoteValue.Text = $git.Remote
         $knowledgeCommitValue.Text = $git.LastCommit
+
+        if ($git.ManagedDirty -and $script:KnowledgeSaveState -ne 'SAVING') {
+            Set-KnowledgeSaveState `
+                -State LOCAL_ONLY `
+                -Details "Есть $($git.ManagedChanges) локальных управляемых изменений, которые ещё не подтверждены в GitHub."
+        }
 
         # Commit is always visible. Enable it only when there are local changes,
         # but keep it clickable for a fresh/no-commit repository as well.
@@ -1037,7 +4289,7 @@ function Refresh-KnowledgeUI {
             }
             elseif ($git.ManagedDirty) {
                 Set-KnowledgeActionStatus `
-                    -Text "$($git.ManagedChanges) изменений проекта. Нажми «Commit», затем «Synchronize»." `
+                    -Text "$($git.ManagedChanges) изменений проекта. Нажми «СОХРАНИТЬ ЗНАНИЯ В GITHUB»." `
                     -Kind Warning
             }
             elseif ($git.OtherChanges -gt 0) {
@@ -1047,8 +4299,8 @@ function Refresh-KnowledgeUI {
             }
             else {
                 Set-KnowledgeActionStatus `
-                    -Text 'Локальный Git чистый. Можно Synchronize с GitHub.' `
-                    -Kind Success
+                    -Text 'Локально чисто. Зелёный статус Knowledge появляется только после проверки GitHub.' `
+                    -Kind Info
             }
         }
     }
@@ -1060,41 +4312,74 @@ function Refresh-KnowledgeUI {
     }
 }
 
+
 function Initialize-KnowledgeGit([switch]$Silent) {
     if (-not (Test-GitInstalled)) {
         if (-not $Silent) {
-            [System.Windows.Forms.MessageBox]::Show('Git не установлен. Установи Git for Windows, затем снова открой Launcher.', 'Rx2GO QA', 'OK', 'Warning') | Out-Null
+            [System.Windows.Forms.MessageBox]::Show(
+                'Git не установлен. Установи Git for Windows, затем снова открой Launcher.',
+                'Rx2GO QA',
+                'OK',
+                'Warning'
+            ) | Out-Null
         }
         return
     }
+
     $git = Get-GitState
+
     if (-not $git.Repository) {
         $r = Invoke-Git @('init','-b','main')
+
         if ($r.ExitCode -ne 0) {
             if (-not $Silent) {
-                [System.Windows.Forms.MessageBox]::Show("Не удалось инициализировать Git: $($r.Error)", 'Rx2GO QA', 'OK', 'Error') | Out-Null
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Не удалось инициализировать Git: $($r.Error)",
+                    'Rx2GO QA',
+                    'OK',
+                    'Error'
+                ) | Out-Null
             }
             return
         }
     }
 
     $current = Get-GitState
+
     if ($current.Remote -eq 'не настроен') {
-        $add = Invoke-Git @('remote','add','origin',$script:DefaultGitRemote)
+        $add = Invoke-Git @(
+            'remote','add','origin',$script:DefaultGitRemote
+        )
+
         if ($add.ExitCode -ne 0) {
             if (-not $Silent) {
-                [System.Windows.Forms.MessageBox]::Show("Не удалось привязать GitHub автоматически:`r`n$($add.Error)", 'Rx2GO QA', 'OK', 'Error') | Out-Null
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Не удалось привязать GitHub автоматически:`r`n$($add.Error)",
+                    'Rx2GO QA',
+                    'OK',
+                    'Error'
+                ) | Out-Null
             }
             return
         }
-        if ($knowledgeSyncInfo) {
-            $knowledgeSyncInfo.Text = "GitHub подключён автоматически: $script:DefaultGitRemote"
-            $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
-        }
     }
+    elseif (
+        ([string]$current.Remote) -match '^https?://github\.com/(?:Gamazzz|QA-E2E4)/rx2go-ai-qa(?:\.git)?/?$'
+    ) {
+        # Old launcher versions initialized this repo with HTTPS.
+        # That can invoke Git Credential Manager and open browser OAuth.
+        [void](Invoke-Git @(
+            'remote','set-url','origin',$script:DefaultGitRemote
+        ) 10000)
+    }
+
+    if ($knowledgeSyncInfo) {
+        $knowledgeSyncInfo.Text = "GitHub origin: $script:DefaultGitRemote (SSH)"
+        $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::DimGray
+    }
+
     Refresh-KnowledgeUI
 }
-
 
 
 function Commit-KnowledgeChanges {
@@ -1121,16 +4406,16 @@ function Commit-KnowledgeChanges {
             throw 'Managed Git path list is empty.'
         }
 
-        $addArgs = New-Object System.Collections.Generic.List[string]
-        $addArgs.Add('add')
-        $addArgs.Add('-A')
-        $addArgs.Add('--')
+        $addArgs = New-Object System.Collections.ArrayList
+        [void]$addArgs.Add('add')
+        [void]$addArgs.Add('-A')
+        [void]$addArgs.Add('--')
 
         foreach ($path in $pathArgs) {
-            $addArgs.Add([string]$path)
+            [void]$addArgs.Add([string]$path)
         }
 
-        $addResult = Invoke-Git @($addArgs) 30000
+        $addResult = Invoke-Git @($addArgs) 120000
 
         if ($addResult.ExitCode -ne 0) {
             throw "git add failed: $($addResult.Error) $($addResult.Output)"
@@ -1201,8 +4486,12 @@ function Commit-KnowledgeChanges {
         }
 
         Set-KnowledgeActionStatus `
-            -Text "Commit создан ✓  Файлов: $($stagedFiles.Count). Теперь можно Synchronize." `
-            -Kind Success
+            -Text "Локальный Commit создан ✓  Файлов: $($stagedFiles.Count). В GitHub ещё не подтверждено." `
+            -Kind Warning
+
+        Set-KnowledgeSaveState `
+            -State LOCAL_ONLY `
+            -Details 'Создан только локальный commit. Для сохранения знаний нажми «СОХРАНИТЬ ЗНАНИЯ В GITHUB».'
     }
     catch {
         Set-KnowledgeActionStatus `
@@ -1230,7 +4519,7 @@ function Sync-KnowledgeRepository {
 
     if ($git.ManagedDirty) {
         [System.Windows.Forms.MessageBox]::Show(
-            "Есть $($git.ManagedChanges) несохранённых изменений проекта.`r`n`r`nСначала нажми «Commit», затем Synchronize.",
+            "Есть $($git.ManagedChanges) несохранённых изменений проекта.`r`n`r`nИспользуй основную кнопку «СОХРАНИТЬ ЗНАНИЯ В GITHUB».",
             'Rx2GO QA',
             'OK',
             'Warning'
@@ -1279,10 +4568,15 @@ function Sync-KnowledgeRepository {
     $script:GitBusy = $true
 
     try {
-        if ($git.OtherChanges -gt 0) {
+        if ($git.OtherTrackedChanges -gt 0) {
             Set-KnowledgeActionStatus `
-                -Text "Synchronize: $($git.OtherChanges) изменение(й) вне управляемых файлов не коммитятся; проверяю remote…" `
+                -Text "Synchronize: tracked вне Launcher — $($git.OtherTrackedChanges); проверяю remote…" `
                 -Kind Warning
+        }
+        elseif ($git.OtherUntrackedChanges -gt 0) {
+            Set-KnowledgeActionStatus `
+                -Text "Synchronize: untracked вне Launcher — $($git.OtherUntrackedChanges); они не блокируют safe pull." `
+                -Kind Info
         }
         else {
             Set-KnowledgeActionStatus `
@@ -1397,13 +4691,27 @@ function Sync-KnowledgeRepository {
         [void][int]::TryParse([string]$aheadRaw, [ref]$ahead)
 
         if ($behind -gt 0) {
-            if ($git.OtherChanges -gt 0) {
+            $otherEntries = @(Get-OtherGitStatusEntries)
+            $trackedOutside = @(
+                $otherEntries |
+                    Where-Object { [bool]$_.IsTrackedChange }
+            )
+            $untrackedOutside = @(
+                $otherEntries |
+                    Where-Object { [bool]$_.IsUntracked }
+            )
+
+            if ($trackedOutside.Count -gt 0) {
+                $trackedList = Format-GitStatusEntryList `
+                    -Entries $trackedOutside `
+                    -MaxItems 12
+
                 Set-KnowledgeActionStatus `
-                    -Text "Remote содержит $behind новых commit(ов), но есть $($git.OtherChanges) локальных изменений вне управляемых файлов. Pull остановлен для безопасности." `
+                    -Text "GitHub +$behind; tracked локальных файлов вне Launcher — $($trackedOutside.Count). Синхронизация приостановлена." `
                     -Kind Warning
 
                 [System.Windows.Forms.MessageBox]::Show(
-                    "GitHub содержит $behind новых commit(ов).`r`n`r`nТакже есть $($git.OtherChanges) локальных изменений вне управляемых файлов проекта.`r`n`r`nLauncher не делает Pull автоматически, чтобы случайно их не перезаписать.",
+                    "Сохранение знаний приостановлено.`r`n`r`nВ GitHub есть $behind новый commit(ов), а локально изменены TRACKED-файлы вне управляемого Launcher списка:`r`n`r`n$trackedList`r`n`r`nНичего не удалено и не перезаписано.`r`nНажми «Показать изменения», чтобы проверить эти файлы.",
                     'Rx2GO QA — безопасная синхронизация',
                     'OK',
                     'Warning'
@@ -1412,28 +4720,109 @@ function Sync-KnowledgeRepository {
                 return
             }
 
-            $pull = Invoke-Git @(
-                'pull','--ff-only','origin',$git.Branch
-            ) 60000
+            if ($ahead -gt 0) {
+                # Both sides contain commits: a fast-forward is impossible.
+                # Rebase only committed Launcher knowledge onto the latest remote.
+                # If a real conflict occurs, abort immediately to restore the exact
+                # pre-rebase local state. Never force-push.
+                Set-KnowledgeActionStatus `
+                    -Text "Локальная база и GitHub изменились одновременно. Безопасно объединяю историю…" `
+                    -Kind Info
 
-            if ($pull.ExitCode -ne 0) {
-                $reason = (
-                    ([string]$pull.Error) + "`n" +
-                    ([string]$pull.Output)
-                ).Trim()
+                $rebase = Invoke-Git @(
+                    'rebase',
+                    $remoteRef
+                ) 120000
+
+                if ($rebase.ExitCode -ne 0) {
+                    $conflicts = Invoke-Git @(
+                        'diff',
+                        '--name-only',
+                        '--diff-filter=U'
+                    ) 15000
+
+                    $conflictFiles = @(
+                        ([string]$conflicts.Output) -split "`r?`n" |
+                            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+                    )
+
+                    # Always return repository to its original state.
+                    [void](Invoke-Git @(
+                        'rebase',
+                        '--abort'
+                    ) 30000)
+
+                    $reason = (
+                        ([string]$rebase.Error) + "`n" +
+                        ([string]$rebase.Output)
+                    ).Trim()
+
+                    $conflictText = if ($conflictFiles.Count -gt 0) {
+                        @(
+                            $conflictFiles |
+                                Select-Object -First 12 |
+                                ForEach-Object { "• $_" }
+                        ) -join "`r`n"
+                    }
+                    else {
+                        'Git не вернул список конфликтующих файлов.'
+                    }
+
+                    Set-KnowledgeSaveState `
+                        -State LOCAL_ONLY `
+                        -Details 'Локальные знания сохранены, но автоматическое объединение с GitHub не завершено.'
+
+                    Set-KnowledgeActionStatus `
+                        -Text 'Истории Git разошлись, автоматическое объединение остановлено. Локальные данные сохранены.' `
+                        -Kind Warning
+
+                    [System.Windows.Forms.MessageBox]::Show(
+                        "Знания НЕ потеряны.`r`n`r`nЛокальная база и GitHub изменялись одновременно, и автоматическое объединение встретило конфликт.`r`n`r`nКонфликтующие файлы:`r`n$conflictText`r`n`r`nRebase автоматически отменён — локальная история восстановлена.`r`n`r`nТехническая причина:`r`n$reason",
+                        'Rx2GO QA — нужен ручной разбор Git',
+                        'OK',
+                        'Warning'
+                    ) | Out-Null
+
+                    return
+                }
 
                 Set-KnowledgeActionStatus `
-                    -Text "Pull по SSH не выполнен: $reason" `
-                    -Kind Error
+                    -Text "Истории безопасно объединены ✓  Локальные knowledge commit перенесены поверх origin/$($git.Branch)." `
+                    -Kind Success
+            }
+            else {
+                if ($untrackedOutside.Count -gt 0) {
+                    Set-KnowledgeActionStatus `
+                        -Text "GitHub +$behind; локально $($untrackedOutside.Count) untracked файл(ов). Выполняю безопасный fast-forward." `
+                        -Kind Info
+                }
 
-                [System.Windows.Forms.MessageBox]::Show(
-                    "git pull --ff-only не выполнен:`r`n`r`n$reason",
-                    'Rx2GO QA — Git SSH',
-                    'OK',
-                    'Warning'
-                ) | Out-Null
+                $pull = Invoke-Git @(
+                    'pull',
+                    '--ff-only',
+                    'origin',
+                    $git.Branch
+                ) 60000
 
-                return
+                if ($pull.ExitCode -ne 0) {
+                    $reason = (
+                        ([string]$pull.Error) + "`n" +
+                        ([string]$pull.Output)
+                    ).Trim()
+
+                    Set-KnowledgeActionStatus `
+                        -Text 'Не удалось получить изменения GitHub. Локальные данные не изменены.' `
+                        -Kind Error
+
+                    [System.Windows.Forms.MessageBox]::Show(
+                        "Синхронизация не выполнена, но локальные знания не потеряны.`r`n`r`n$reason",
+                        'Rx2GO QA — GitHub',
+                        'OK',
+                        'Warning'
+                    ) | Out-Null
+
+                    return
+                }
             }
         }
 
@@ -1482,6 +4871,11 @@ function Sync-KnowledgeRepository {
     finally {
         $script:GitBusy = $false
         Refresh-KnowledgeUI -PreserveActionText
+
+        try {
+            Refresh-KnowledgeSaveState -VerifyRemote
+        }
+        catch { }
     }
 }
 
@@ -2271,11 +5665,18 @@ function Load-JiraIssuePreview {
     Move-AdhocScreenshotsToIssue -IssueKey $issueKey
     Restore-JiraScreenshotsForIssue -IssueKey $issueKey
 
-    $jiraImportedBox.Text = Format-JiraIssueForPreview $issue
-    $jiraImportedBox.SelectionStart = 0
-    $jiraImportedBox.ScrollToCaret()
+    $script:SuppressJiraImportedEditEvent = $true
+    try {
+        $jiraImportedBox.Text = Format-JiraIssueForPreview $issue
+        $jiraImportedBox.SelectionStart = 0
+        $jiraImportedBox.ScrollToCaret()
+    }
+    finally {
+        $script:SuppressJiraImportedEditEvent = $false
+    }
+    $script:JiraImportedEdited = $false
 
-    $jiraImportedInfo.Text = "$issueKey загружена • Jira comments: $(@($issue.comments).Count)"
+    $jiraImportedInfo.Text = "$issueKey загружена • Jira comments: $(@($issue.comments).Count) • поле редактируемое"
     $jiraImportedInfo.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
 
     $jiraTaskStatus.Text = "Jira загружена: $issueKey"
@@ -2342,11 +5743,1069 @@ function Convert-AgentJson {
 }
 
 
+
+function Write-QueueWorkerStatus {
+    param(
+        [string]$Status,
+        [string]$Phase = '',
+        [string]$Detail = '',
+        [bool]$Final = $false,
+        [string]$Result = ''
+    )
+
+    if (-not $script:QueueWorkerMode) { return }
+    if ([string]::IsNullOrWhiteSpace($script:QueueWorkerStatusFile)) { return }
+
+    try {
+        $dir = Split-Path $script:QueueWorkerStatusFile -Parent
+        if ($dir) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+
+        $payload = [ordered]@{
+            schemaVersion = 1
+            jobId = $script:QueueWorkerJobId
+            taskKey = $script:QueueWorkerTaskKey
+            environment = $script:QueueWorkerEnvironment
+            workerSlot = $script:QueueWorkerSlot
+            pid = $PID
+            status = $Status
+            phase = $Phase
+            detail = $Detail
+            final = $Final
+            result = $Result
+            startedAt = if ($script:QueueWorkerStartedAt) { $script:QueueWorkerStartedAt.ToString('o') } else { $null }
+            updatedAt = (Get-Date).ToString('o')
+            workerRoot = $script:ProjectRoot
+            generatedSpec = if ($script:JiraGeneratedSpec) { [string]$script:JiraGeneratedSpec } else { '' }
+            jiraReport = if ($script:LastJiraReportPath) { [string]$script:LastJiraReportPath } else { '' }
+            jiraRunDir = if ($script:LastJiraRunDir) { [string]$script:LastJiraRunDir } else { '' }
+            agentRunDir = if ($script:AgentRunDir) { [string]$script:AgentRunDir } else { '' }
+            learnedFile = if ($script:LastKnowledgeLearningFile) { [string]$script:LastKnowledgeLearningFile } else { '' }
+        }
+
+        $json = $payload | ConvertTo-Json -Depth 8
+        $tmp = $script:QueueWorkerStatusFile + '.tmp'
+        [System.IO.File]::WriteAllText($tmp, $json, (New-Object System.Text.UTF8Encoding($false)))
+        Move-Item -Path $tmp -Destination $script:QueueWorkerStatusFile -Force
+    }
+    catch {}
+}
+
+function Update-QueueWorkerPhaseFromAgent {
+    param(
+        [string]$Agent,
+        [string]$State,
+        [string]$Details = ''
+    )
+
+    if (-not $script:QueueWorkerMode -or $script:QueueWorkerFinalWritten) { return }
+
+    $phase = switch ($Agent) {
+        'JiraAnalyst' { 'ANALYZING' }
+        'McpQaAgent' { 'TESTING' }
+        'QAReviewer' { 'REVIEWING' }
+        'FailureTriage' { 'RCA' }
+        default { 'RUNNING' }
+    }
+
+    $stateDetail = if ($Details) { "$State — $Details" } else { $State }
+    Write-QueueWorkerStatus -Status 'RUNNING' -Phase $phase -Detail $stateDetail
+}
+
+function Complete-QueueWorkerResult {
+    param(
+        [ValidateSet('PASS','FAIL','BLOCKED','ERROR','STOPPED')]
+        [string]$Result,
+        [string]$Details = ''
+    )
+
+    if (-not $script:QueueWorkerMode) { return }
+    if ($script:QueueWorkerFinalWritten) { return }
+
+    $script:QueueWorkerFinalWritten = $true
+    $script:QueueWorkerFinalResult = $Result
+
+    Write-QueueWorkerStatus `
+        -Status 'FINISHED' `
+        -Phase $Result `
+        -Detail $Details `
+        -Final $true `
+        -Result $Result
+}
+
+function Write-QueueLog {
+    param([string]$Text)
+
+    $line = "$(Get-Date -Format 'HH:mm:ss')  $Text"
+    $script:QueueLastEvent = $line
+
+    if ($queueLogBox) {
+        $queueLogBox.AppendText($line + "`r`n")
+        $queueLogBox.SelectionStart = $queueLogBox.TextLength
+        $queueLogBox.ScrollToCaret()
+    }
+}
+
+function New-QueueItem {
+    param(
+        [string]$Key,
+        [string]$Environment
+    )
+
+    return [pscustomobject]@{
+        Id = ([guid]::NewGuid().ToString('N').Substring(0,12))
+        Key = $Key.ToUpperInvariant()
+        Environment = $Environment
+        Status = 'WAITING'
+        Result = ''
+        Details = ''
+        WorkerSlot = 0
+        Pid = 0
+        Process = $null
+        WorkerDir = ''
+        StatusFile = ''
+        AddedAt = (Get-Date)
+        StartedAt = $null
+        FinishedAt = $null
+        RetryCount = 0
+        Merged = $false
+        GitSynced = $false
+        ReportPath = ''
+    }
+}
+
+function Save-QueueState {
+    if ($script:QueueWorkerMode) { return }
+
+    try {
+        New-Item -ItemType Directory -Path $script:QueueRoot -Force | Out-Null
+        $items = @(
+            $script:QueueItems |
+                ForEach-Object {
+                    [ordered]@{
+                        id = $_.Id
+                        key = $_.Key
+                        environment = $_.Environment
+                        status = $_.Status
+                        result = $_.Result
+                        details = $_.Details
+                        workerSlot = $_.WorkerSlot
+                        pid = $_.Pid
+                        workerDir = $_.WorkerDir
+                        statusFile = $_.StatusFile
+                        addedAt = if ($_.AddedAt) { ([datetime]$_.AddedAt).ToString('o') } else { $null }
+                        startedAt = if ($_.StartedAt) { ([datetime]$_.StartedAt).ToString('o') } else { $null }
+                        finishedAt = if ($_.FinishedAt) { ([datetime]$_.FinishedAt).ToString('o') } else { $null }
+                        retryCount = $_.RetryCount
+                        merged = $_.Merged
+                        gitSynced = $_.GitSynced
+                        reportPath = $_.ReportPath
+                    }
+                }
+        )
+
+        $obj = [ordered]@{
+            schemaVersion = 1
+            maxParallel = $script:QueueMaxParallel
+            paused = $script:QueuePaused
+            savedAt = (Get-Date).ToString('o')
+            items = $items
+        }
+        Write-Utf8NoBomFile -Path $script:QueueStateFile -Content ($obj | ConvertTo-Json -Depth 8)
+    }
+    catch {
+        Write-QueueLog "Queue state save warning: $($_.Exception.Message)"
+    }
+}
+
+function Load-QueueState {
+    if ($script:QueueWorkerMode) { return }
+    if (-not (Test-Path $script:QueueStateFile)) { return }
+
+    try {
+        $raw = Get-Content -Raw -Path $script:QueueStateFile
+        if ([string]::IsNullOrWhiteSpace($raw)) { return }
+        $state = $raw | ConvertFrom-Json -ErrorAction Stop
+
+        if ($state.maxParallel) {
+            $script:QueueMaxParallel = [Math]::Max(1,[Math]::Min(3,[int]$state.maxParallel))
+        }
+
+        foreach ($old in @($state.items)) {
+            if (-not $old.key) { continue }
+            $item = New-QueueItem -Key ([string]$old.key) -Environment ([string]$old.environment)
+            $item.Id = if ($old.id) { [string]$old.id } else { $item.Id }
+            $item.Result = [string]$old.result
+            $item.Details = [string]$old.details
+            $item.WorkerDir = [string]$old.workerDir
+            $item.StatusFile = [string]$old.statusFile
+            $item.RetryCount = [int]$old.retryCount
+            $item.Merged = [bool]$old.merged
+            $item.GitSynced = [bool]$old.gitSynced
+            $item.ReportPath = [string]$old.reportPath
+
+            if ($old.addedAt) { try { $item.AddedAt = [datetime]$old.addedAt } catch {} }
+            if ($old.startedAt) { try { $item.StartedAt = [datetime]$old.startedAt } catch {} }
+            if ($old.finishedAt) { try { $item.FinishedAt = [datetime]$old.finishedAt } catch {} }
+
+            $previousStatus = ([string]$old.status).ToUpperInvariant()
+            if ($previousStatus -in @('STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA','SYNCING','RUNNING')) {
+                $item.Status = 'INTERRUPTED'
+                $item.Details = 'Предыдущий Launcher был закрыт во время выполнения. Нажми Retry.'
+                $item.Result = ''
+            }
+            else {
+                $item.Status = if ($previousStatus) { $previousStatus } else { 'WAITING' }
+            }
+
+            [void]$script:QueueItems.Add($item)
+        }
+    }
+    catch {
+        Write-QueueLog "Queue state load warning: $($_.Exception.Message)"
+    }
+}
+
+function Get-SelectedQueueItem {
+    if (-not $queueGrid -or $queueGrid.SelectedRows.Count -eq 0) { return $null }
+    $id = [string]$queueGrid.SelectedRows[0].Tag
+    if ([string]::IsNullOrWhiteSpace($id)) { return $null }
+    return @($script:QueueItems | Where-Object { $_.Id -eq $id } | Select-Object -First 1)[0]
+}
+
+function Get-QueueStatusColor {
+    param([string]$Status)
+
+    $normalizedStatus = ([string]$Status).ToUpperInvariant()
+
+    switch ($normalizedStatus) {
+        'PASS' { return [System.Drawing.Color]::FromArgb(32,120,72) }
+        'FAIL' { return [System.Drawing.Color]::Firebrick }
+        'BLOCKED' { return [System.Drawing.Color]::FromArgb(197,119,0) }
+        'ERROR' { return [System.Drawing.Color]::Firebrick }
+        'STOPPED' { return [System.Drawing.Color]::DimGray }
+        'INTERRUPTED' { return [System.Drawing.Color]::FromArgb(161,98,7) }
+        'WAITING' { return [System.Drawing.Color]::DimGray }
+        default { return [System.Drawing.Color]::FromArgb(37,99,235) }
+    }
+}
+
+
+function Refresh-QueueGrid {
+    if (-not $queueGrid) { return }
+
+    try {
+        $selectedId = $null
+        if ($queueGrid.SelectedRows.Count -gt 0) {
+            $selectedId = [string]$queueGrid.SelectedRows[0].Tag
+        }
+
+        $queueGrid.Rows.Clear()
+        $n = 1
+
+        # PowerShell 5.1-safe queue snapshot.
+        $itemsSnapshot = @($script:QueueItems)
+
+        foreach ($item in $itemsSnapshot) {
+            if ($null -eq $item) { continue }
+
+            $started = if ($item.StartedAt) {
+                ([datetime]$item.StartedAt).ToString('HH:mm:ss')
+            } else { '' }
+
+            $worker = if ([int]$item.WorkerSlot -gt 0) {
+                "W$($item.WorkerSlot)"
+            } else { '' }
+
+            $rowIndex = $queueGrid.Rows.Add(
+                $n,
+                [string]$item.Key,
+                [string]$item.Environment,
+                [string]$item.Status,
+                $worker,
+                $started,
+                [string]$item.Result,
+                [string]$item.Details
+            )
+
+            $row = $queueGrid.Rows[$rowIndex]
+            $row.Tag = [string]$item.Id
+            $row.Cells[3].Style.ForeColor = Get-QueueStatusColor -Status ([string]$item.Status)
+            $row.Cells[3].Style.Font = New-Object System.Drawing.Font('Segoe UI',8.5,[System.Drawing.FontStyle]::Bold)
+
+            if (-not [string]::IsNullOrWhiteSpace([string]$item.Result)) {
+                $row.Cells[6].Style.ForeColor = Get-QueueStatusColor -Status ([string]$item.Result)
+                $row.Cells[6].Style.Font = New-Object System.Drawing.Font('Segoe UI',8.5,[System.Drawing.FontStyle]::Bold)
+            }
+
+            if (
+                -not [string]::IsNullOrWhiteSpace($selectedId) -and
+                ([string]$item.Id) -eq $selectedId
+            ) {
+                $row.Selected = $true
+            }
+
+            $n++
+        }
+
+        if ($queueSummaryLabel) {
+            $waiting = @($itemsSnapshot | Where-Object { ([string]$_.Status).ToUpperInvariant() -eq 'WAITING' }).Count
+            $running = @($itemsSnapshot | Where-Object {
+                ([string]$_.Status).ToUpperInvariant() -in @('STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA','SYNCING')
+            }).Count
+            $pass = @($itemsSnapshot | Where-Object { ([string]$_.Result).ToUpperInvariant() -eq 'PASS' }).Count
+            $fail = @($itemsSnapshot | Where-Object { ([string]$_.Result).ToUpperInvariant() -eq 'FAIL' }).Count
+            $blocked = @($itemsSnapshot | Where-Object { ([string]$_.Result).ToUpperInvariant() -eq 'BLOCKED' }).Count
+
+            $queueSummaryLabel.Text = "WAITING $waiting  •  RUNNING $running/$($script:QueueMaxParallel)  •  PASS $pass  •  FAIL $fail  •  BLOCKED $blocked"
+        }
+    }
+    catch {
+        $message = "Jira Queue UI недоступна: $($_.Exception.Message)"
+        Write-QueueLog "QUEUE UI FAIL-SAFE → $message"
+
+        if ($queueStatusLabel) {
+            $queueStatusLabel.Text = "$message • основной Launcher продолжает работу."
+            $queueStatusLabel.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
+        }
+
+        if ($queueStartButton) {
+            $queueStartButton.Enabled = $false
+        }
+
+        # Queue must never terminate the main Launcher.
+        return
+    }
+}
+
+function Get-QueueTaskKeysFromText {
+    param([string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return @() }
+    return @(
+        [regex]::Matches($Text, '(?i)\bSCRUM-\d+\b') |
+            ForEach-Object { $_.Value.ToUpperInvariant() } |
+            Select-Object -Unique
+    )
+}
+
+function Add-QueueTasksFromInput {
+    $keys = @(Get-QueueTaskKeysFromText -Text ([string]$queueInputBox.Text))
+    if ($keys.Count -eq 0) {
+        [System.Windows.Forms.MessageBox]::Show(
+            'Вставь один или несколько Jira key/URL, например SCRUM-3403, SCRUM-4069.',
+            'Rx2GO QA — Jira Queue','OK','Warning'
+        ) | Out-Null
+        return
+    }
+
+    $environment = [string]$queueEnvironmentCombo.SelectedItem
+    if ([string]::IsNullOrWhiteSpace($environment)) { $environment = 'HOT' }
+
+    foreach ($key in $keys) {
+        $activeDuplicate = @(
+            $script:QueueItems |
+                Where-Object { $_.Key -eq $key -and $_.Status -in @('WAITING','STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA','SYNCING') }
+        ).Count -gt 0
+
+        if ($activeDuplicate) {
+            Write-QueueLog "$key уже есть в активной очереди — пропущен."
+            continue
+        }
+
+        [void]$script:QueueItems.Add((New-QueueItem -Key $key -Environment $environment))
+        Write-QueueLog "Добавлено: $key [$environment]"
+    }
+
+    $queueInputBox.Clear()
+    Refresh-QueueGrid
+    Save-QueueState
+}
+
+function Remove-SelectedQueueItem {
+    $item = Get-SelectedQueueItem
+    if (-not $item) { return }
+
+    if ($item.Status -in @('STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA','SYNCING')) {
+        [System.Windows.Forms.MessageBox]::Show(
+            'Сначала останови выполняющийся Worker.',
+            'Rx2GO QA — Jira Queue','OK','Warning'
+        ) | Out-Null
+        return
+    }
+
+    [void]$script:QueueItems.Remove($item)
+    Write-QueueLog "Удалено из очереди: $($item.Key)"
+    Refresh-QueueGrid
+    Save-QueueState
+}
+
+function Move-SelectedQueueItem {
+    param([int]$Direction)
+    $item = Get-SelectedQueueItem
+    if (-not $item -or $item.Status -ne 'WAITING') { return }
+
+    $index = $script:QueueItems.IndexOf($item)
+    $target = $index + $Direction
+    if ($target -lt 0 -or $target -ge $script:QueueItems.Count) { return }
+
+    $script:QueueItems.RemoveAt($index)
+    $script:QueueItems.Insert($target,$item)
+    Refresh-QueueGrid
+    Save-QueueState
+}
+
+function Retry-SelectedQueueItem {
+    $item = Get-SelectedQueueItem
+    if (-not $item) { return }
+    if ($item.Status -in @('STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA','SYNCING')) { return }
+
+    $item.RetryCount++
+    $item.Status = 'WAITING'
+    $item.Result = ''
+    $item.Details = "Retry #$($item.RetryCount)"
+    $item.WorkerSlot = 0
+    $item.Pid = 0
+    $item.Process = $null
+    $item.WorkerDir = ''
+    $item.StatusFile = ''
+    $item.StartedAt = $null
+    $item.FinishedAt = $null
+    $item.Merged = $false
+    $item.GitSynced = $false
+    $item.ReportPath = ''
+
+    Write-QueueLog "Retry поставлен в очередь: $($item.Key)"
+    Refresh-QueueGrid
+    Save-QueueState
+    if ($script:QueueRunning -and -not $script:QueuePaused) { Process-QueueTick }
+}
+
+function Get-FreeQueueWorkerSlot {
+    for ($slot=1; $slot -le $script:QueueMaxParallel; $slot++) {
+        $used = @(
+            $script:QueueItems |
+                Where-Object {
+                    $_.WorkerSlot -eq $slot -and
+                    $_.Status -in @('STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA')
+                }
+        ).Count -gt 0
+        if (-not $used) { return $slot }
+    }
+    return 0
+}
+
+function Prepare-QueueWorkerDirectory {
+    param($Item)
+
+    $retrySuffix = if ($Item.RetryCount -gt 0) { "-r$($Item.RetryCount)" } else { '' }
+    $workerDir = Join-Path $script:QueueWorkersRoot "$($Item.Id)-$($Item.Key)$retrySuffix"
+
+    if (Test-Path $workerDir) {
+        Remove-Item -Path $workerDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    New-Item -ItemType Directory -Path $workerDir -Force | Out-Null
+
+    $excludeDirs = @('.git','node_modules','reports','jira-runs','.qa-state','.secrets')
+    $excludeFiles = @('.env','startup-error.log')
+
+    foreach ($source in @(Get-ChildItem -Path $script:ProjectRoot -Force -ErrorAction Stop)) {
+        if ($source.PSIsContainer -and $excludeDirs -contains $source.Name) { continue }
+        if (-not $source.PSIsContainer -and $excludeFiles -contains $source.Name) { continue }
+        if (-not $source.PSIsContainer -and $source.Name -match '(?i)credential|secret') { continue }
+
+        $dest = Join-Path $workerDir $source.Name
+        Copy-Item -Path $source.FullName -Destination $dest -Recurse -Force
+    }
+
+    $mainNodeModules = Join-Path $script:ProjectRoot 'node_modules'
+    $workerNodeModules = Join-Path $workerDir 'node_modules'
+
+    if (Test-Path $mainNodeModules) {
+        try {
+            New-Item -ItemType Junction -Path $workerNodeModules -Target $mainNodeModules -Force -ErrorAction Stop | Out-Null
+        }
+        catch {
+            $cmd = "mklink /J `"$workerNodeModules`" `"$mainNodeModules`""
+            $junction = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d','/c',$cmd -Wait -PassThru -WindowStyle Hidden
+            if ($junction.ExitCode -ne 0 -or -not (Test-Path $workerNodeModules)) {
+                throw 'Не удалось создать worker junction к node_modules.'
+            }
+        }
+    }
+    else {
+        throw 'node_modules отсутствует в основном Launcher. Сначала выполни Playwright precheck/setup.'
+    }
+
+    return $workerDir
+}
+
+function Start-QueueWorker {
+    param($Item,[int]$Slot)
+
+    try {
+        $workerDir = Prepare-QueueWorkerDirectory -Item $Item
+        $jobDir = Join-Path $script:QueueJobsRoot "$($Item.Id)-r$($Item.RetryCount)"
+        New-Item -ItemType Directory -Path $jobDir -Force | Out-Null
+        $statusFile = Join-Path $jobDir 'status.json'
+        if (Test-Path $statusFile) { Remove-Item $statusFile -Force -ErrorAction SilentlyContinue }
+
+        $launcherPath = Join-Path $workerDir 'Rx2GO-QA-Launcher.ps1'
+        if (-not (Test-Path $launcherPath)) { throw "Worker Launcher not found: $launcherPath" }
+
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = (Join-Path $PSHOME 'powershell.exe')
+        $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$launcherPath`""
+        $psi.WorkingDirectory = $workerDir
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
+
+        $psi.EnvironmentVariables['RX2GO_QUEUE_WORKER'] = '1'
+        $psi.EnvironmentVariables['RX2GO_QUEUE_JOB_ID'] = [string]$Item.Id
+        $psi.EnvironmentVariables['RX2GO_QUEUE_TASK_KEY'] = [string]$Item.Key
+        $psi.EnvironmentVariables['RX2GO_QUEUE_ENV'] = [string]$Item.Environment
+        $psi.EnvironmentVariables['RX2GO_QUEUE_STATUS_FILE'] = $statusFile
+        $psi.EnvironmentVariables['RX2GO_QUEUE_PARENT_ROOT'] = $script:ProjectRoot
+        $psi.EnvironmentVariables['RX2GO_QUEUE_WORKER_SLOT'] = [string]$Slot
+        if ([string]$Item.Environment -eq 'ADM' -and $dailyPassword) {
+            $psi.EnvironmentVariables['RX2GO_QUEUE_DAILY_PASSWORD'] = [string]$dailyPassword.Text
+        }
+
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $psi
+        [void]$process.Start()
+
+        $Item.Process = $process
+        $Item.Pid = $process.Id
+        $Item.WorkerSlot = $Slot
+        $Item.WorkerDir = $workerDir
+        $Item.StatusFile = $statusFile
+        $Item.StartedAt = Get-Date
+        $Item.FinishedAt = $null
+        $Item.Status = 'STARTING'
+        $Item.Result = ''
+        $Item.Details = "Worker $Slot запускается"
+        $Item.Merged = $false
+        $Item.GitSynced = $false
+
+        Write-QueueLog "START $($Item.Key) → Worker $Slot / PID $($process.Id) / $($Item.Environment)"
+        Save-QueueState
+        return $true
+    }
+    catch {
+        $Item.Status = 'ERROR'
+        $Item.Result = 'ERROR'
+        $Item.Details = $_.Exception.Message
+        $Item.FinishedAt = Get-Date
+        Write-QueueLog "ERROR $($Item.Key): $($_.Exception.Message)"
+        Save-QueueState
+        return $false
+    }
+}
+
+function Read-QueueWorkerStatus {
+    param($Item)
+    if (-not $Item.StatusFile -or -not (Test-Path $Item.StatusFile)) { return $null }
+    try {
+        $raw = Get-Content -Raw -Path $Item.StatusFile -ErrorAction Stop
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+        return ($raw | ConvertFrom-Json -ErrorAction Stop)
+    }
+    catch { return $null }
+}
+
+
+function Merge-UniqueQueueStrings {
+    param($A,$B)
+
+    $result = New-Object System.Collections.ArrayList
+
+    foreach ($value in @($A) + @($B)) {
+        if ($null -eq $value) { continue }
+
+        $s = ([string]$value).Trim()
+        if (-not $s) { continue }
+
+        $exists = @(
+            @($result) |
+                Where-Object {
+                    [string]::Equals(
+                        [string]$_,
+                        $s,
+                        [System.StringComparison]::OrdinalIgnoreCase
+                    )
+                }
+        ).Count -gt 0
+
+        if (-not $exists) {
+            [void]$result.Add($s)
+        }
+    }
+
+    return @($result)
+}
+
+function Merge-QueueLearnedKnowledgeJson {
+    param([string]$Source,[string]$Destination)
+
+    if (-not (Test-Path $Destination)) {
+        New-Item -ItemType Directory -Path (Split-Path $Destination -Parent) -Force | Out-Null
+        Copy-Item $Source $Destination -Force
+        return
+    }
+
+    try {
+        $src = Get-Content -Raw $Source | ConvertFrom-Json -ErrorAction Stop
+        $dst = Get-Content -Raw $Destination | ConvertFrom-Json -ErrorAction Stop
+        $fields = @('stableProductFacts','navigationFacts','apiNetworkFacts','testDataRules','automationLessons','regressionCandidates','projectRuleCandidates')
+
+        foreach ($field in $fields) {
+            $merged = Merge-UniqueQueueStrings -A $dst.$field -B $src.$field
+            if ($src.PSObject.Properties.Name -contains $field) { $src.$field = @($merged) }
+            else { Add-Member -InputObject $src -NotePropertyName $field -NotePropertyValue @($merged) }
+        }
+
+        $src | ConvertTo-Json -Depth 14 | Set-Content -Path $Destination -Encoding UTF8
+    }
+    catch {
+        Copy-Item $Source $Destination -Force
+    }
+}
+
+function Invoke-QueueMergeWorkerOutputs {
+    param($Item)
+
+    if (-not $Item.WorkerDir -or -not (Test-Path $Item.WorkerDir)) {
+        return [pscustomobject]@{ Success=$false; Count=0; Message='Worker directory missing.' }
+    }
+
+    $roots = @('knowledge','jira-cases','scenarios','tests\\generated')
+    $changed = 0
+
+    foreach ($relRoot in $roots) {
+        $srcRoot = Join-Path $Item.WorkerDir $relRoot
+        if (-not (Test-Path $srcRoot)) { continue }
+
+        foreach ($file in @(Get-ChildItem -Path $srcRoot -File -Recurse -ErrorAction SilentlyContinue)) {
+            $relative = $file.FullName.Substring($Item.WorkerDir.Length).TrimStart('\\','/')
+            $dest = Join-Path $script:ProjectRoot $relative
+
+            $same = $false
+            if (Test-Path $dest) {
+                try {
+                    $same = ((Get-FileHash $file.FullName -Algorithm SHA256).Hash -eq (Get-FileHash $dest -Algorithm SHA256).Hash)
+                } catch {}
+            }
+            if ($same) { continue }
+
+            New-Item -ItemType Directory -Path (Split-Path $dest -Parent) -Force | Out-Null
+
+            if ($relative -match '(?i)^knowledge[\\/]learned[\\/].+\\.json$') {
+                Merge-QueueLearnedKnowledgeJson -Source $file.FullName -Destination $dest
+            }
+            else {
+                Copy-Item -Path $file.FullName -Destination $dest -Force
+            }
+            $changed++
+        }
+    }
+
+    return [pscustomobject]@{ Success=$true; Count=$changed; Message="Merged $changed managed file(s)." }
+}
+
+function Invoke-QueueGitSyncForItem {
+    param($Item)
+
+    $oldSummary = $script:LastSummary
+    $oldMcp = $script:AgentMcpExecution
+    try {
+        $fakeSummary = [pscustomobject]@{
+            Pass = if ($Item.Result -eq 'PASS') { 1 } else { 0 }
+            Fail = if ($Item.Result -eq 'FAIL') { 1 } else { 0 }
+            Skip = if ($Item.Result -eq 'BLOCKED') { 1 } else { 0 }
+            Total = 1
+            Failed = @()
+        }
+        $script:LastSummary = $fakeSummary
+        $script:AgentMcpExecution = $null
+        $fakeTask = [pscustomobject]@{ Key=$Item.Key; Title='Jira Queue worker result'; Module='Queue' }
+        return (Invoke-AutoGitCommitPushAfterJiraRun -Task $fakeTask -Summary $fakeSummary)
+    }
+    finally {
+        $script:LastSummary = $oldSummary
+        $script:AgentMcpExecution = $oldMcp
+    }
+}
+
+
+function Test-QueueItemHasCodexUsageLimit {
+    param($Item,$WorkerStatus)
+
+    $parts = @(
+        [string]$Item.Details
+        [string]$Item.Result
+        if ($WorkerStatus) { [string]$WorkerStatus.detail } else { '' }
+        if ($WorkerStatus) { [string]$WorkerStatus.result } else { '' }
+    ) -join "`n"
+
+    return (Test-CodexUsageLimitText -Text $parts)
+}
+
+function Pause-QueueForCodexUsageLimit {
+    param([string]$Details)
+
+    $script:QueuePaused = $true
+
+    if ($queueStatusLabel) {
+        $queueStatusLabel.Text = 'Очередь на паузе: достигнут лимит Codex. Новые Worker не запускаются.'
+        $queueStatusLabel.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
+    }
+
+    Write-QueueLog "QUEUE PAUSED → Codex usage limit | $Details"
+    Save-QueueState
+
+    if (-not $script:QueueUsageLimitWarningShown) {
+        $script:QueueUsageLimitWarningShown = $true
+
+        [System.Windows.Forms.MessageBox]::Show(
+            "Очередь автоматически поставлена на паузу: достигнут лимит Codex.`r`n`r`nУже запущенные Worker могут завершить текущий шаг, но новые задачи не будут стартовать.`r`n`r`n$Details`r`n`r`nПосле восстановления лимита нажми Resume.",
+            'Rx2GO QA — Jira Queue',
+            'OK',
+            'Warning'
+        ) | Out-Null
+    }
+}
+
+function Finalize-QueueWorkerItem {
+    param($Item,$WorkerStatus)
+
+    if ($Item.Merged) { return }
+
+    $Item.Status = 'SYNCING'
+    $Item.Details = 'Объединяю знания/тесты и синхронизирую GitHub…'
+    Refresh-QueueGrid
+    [System.Windows.Forms.Application]::DoEvents()
+
+    $merge = Invoke-QueueMergeWorkerOutputs -Item $Item
+    if (-not $merge.Success) {
+        $Item.Status = 'ERROR'
+        $Item.Result = 'ERROR'
+        $Item.Details = "Merge failed: $($merge.Message)"
+        $Item.Merged = $true
+        $Item.FinishedAt = Get-Date
+        Write-QueueLog "$($Item.Key) → merge ERROR: $($merge.Message)"
+        Save-QueueState
+        return
+    }
+
+    $Item.Merged = $true
+    if ($WorkerStatus.jiraReport) { $Item.ReportPath = [string]$WorkerStatus.jiraReport }
+    $Item.Result = if ($WorkerStatus.result) { ([string]$WorkerStatus.result).ToUpperInvariant() } else { 'ERROR' }
+
+    Write-QueueLog "$($Item.Key) → $($merge.Message)"
+
+    $gitResult = Invoke-QueueGitSyncForItem -Item $Item
+    if ($gitResult -and $gitResult.Success -and ($gitResult.Pushed -or $gitResult.Message -match 'synchronized')) {
+        $Item.GitSynced = $true
+        Write-QueueLog "$($Item.Key) → GitHub sync PASS"
+    }
+    elseif ($gitResult -and $gitResult.Warning) {
+        Write-QueueLog "$($Item.Key) → Git warning: $($gitResult.Warning)"
+    }
+
+    $Item.Status = switch ($Item.Result) {
+        'PASS' { 'PASS' }
+        'FAIL' { 'FAIL' }
+        'BLOCKED' { 'BLOCKED' }
+        'STOPPED' { 'STOPPED' }
+        default { 'ERROR' }
+    }
+    $Item.Details = if ($WorkerStatus.detail) { [string]$WorkerStatus.detail } else { $Item.Result }
+    if (-not $Item.GitSynced -and $gitResult -and $gitResult.Warning) {
+        $Item.Details += " | Git: $($gitResult.Warning)"
+    }
+    $Item.FinishedAt = Get-Date
+    $Item.Process = $null
+    $Item.Pid = 0
+    $Item.WorkerSlot = 0
+
+    if (Test-QueueItemHasCodexUsageLimit -Item $Item -WorkerStatus $WorkerStatus) {
+        $codexLimitDetails = [string]$Item.Details
+
+        if ([string]::IsNullOrWhiteSpace($codexLimitDetails)) {
+            $codexLimitDetails = 'Codex usage limit reached.'
+        }
+
+        Pause-QueueForCodexUsageLimit -Details $codexLimitDetails
+    }
+
+    Write-QueueLog "DONE $($Item.Key) → $($Item.Result)"
+    Save-QueueState
+}
+
+function Stop-QueueWorkerItem {
+    param($Item,[string]$Reason='Остановлено пользователем')
+    if (-not $Item) { return }
+
+    if ($Item.Process -and -not $Item.Process.HasExited) {
+        try { & taskkill /PID $Item.Process.Id /T /F | Out-Null } catch {}
+    }
+
+    $Item.Status = 'STOPPED'
+    $Item.Result = 'STOPPED'
+    $Item.Details = $Reason
+    $Item.FinishedAt = Get-Date
+    $Item.Process = $null
+    $Item.Pid = 0
+    $Item.WorkerSlot = 0
+    Write-QueueLog "STOP $($Item.Key)"
+    Refresh-QueueGrid
+    Save-QueueState
+}
+
+function Stop-SelectedQueueWorker {
+    $item = Get-SelectedQueueItem
+    if ($item) { Stop-QueueWorkerItem -Item $item }
+}
+
+function Stop-AllQueueWorkers {
+    foreach ($item in @($script:QueueItems)) {
+        if ($item.Status -in @('STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA','SYNCING')) {
+            Stop-QueueWorkerItem -Item $item -Reason 'Остановлено при закрытии/остановке очереди'
+        }
+    }
+    $script:QueueRunning = $false
+    $script:QueuePaused = $false
+    if ($script:QueueTimer) { $script:QueueTimer.Stop() }
+    Refresh-QueueGrid
+    Save-QueueState
+}
+
+function Test-QueuePreflight {
+    if ($script:QueueWorkerMode) { return $false }
+
+    if (@($script:QueueItems | Where-Object { $_.Status -eq 'WAITING' }).Count -eq 0) {
+        [System.Windows.Forms.MessageBox]::Show('В очереди нет задач со статусом WAITING.','Rx2GO QA — Jira Queue','OK','Information') | Out-Null
+        return $false
+    }
+
+    if ($script:RunningProcess -and -not $script:RunningProcess.HasExited) {
+        [System.Windows.Forms.MessageBox]::Show('Сначала дождись завершения одиночного теста. Очередь использует отдельные Workers, но Git sync выполняется основным Launcher.','Rx2GO QA — Jira Queue','OK','Warning') | Out-Null
+        return $false
+    }
+
+    if (-not $script:ChatGPTConnected) {
+        [System.Windows.Forms.MessageBox]::Show('ChatGPT/Codex не подключён. Подключи его на вкладке Jira Task/Быстрый запуск.','Rx2GO QA — Jira Queue','OK','Warning') | Out-Null
+        return $false
+    }
+
+    $app = Get-AppCredentialPlain
+    if (-not $app -or [string]::IsNullOrWhiteSpace([string]$app.Password)) {
+        [System.Windows.Forms.MessageBox]::Show('Не сохранён пароль Rx2GO. Настрой учетку на вкладке «Быстрый запуск».','Rx2GO QA — Jira Queue','OK','Warning') | Out-Null
+        return $false
+    }
+    $app.Password = $null
+
+    $jiraCredential = Get-JiraApiCredentialPlain
+    if (-not $jiraCredential) {
+        [System.Windows.Forms.MessageBox]::Show('Не настроен Jira API credential. Нажми «Настроить Jira» на вкладке Jira Task.','Rx2GO QA — Jira Queue','OK','Warning') | Out-Null
+        return $false
+    }
+    $jiraCredential.Token = $null
+
+    $admWaiting = @($script:QueueItems | Where-Object { $_.Status -eq 'WAITING' -and $_.Environment -eq 'ADM' }).Count -gt 0
+    if ($admWaiting -and [string]::IsNullOrWhiteSpace([string]$dailyPassword.Text)) {
+        [System.Windows.Forms.MessageBox]::Show('В очереди есть ADM-задачи. Введи суточный пароль ADM на вкладке «Быстрый запуск».','Rx2GO QA — Jira Queue','OK','Warning') | Out-Null
+        return $false
+    }
+
+    $queueStatusLabel.Text = 'Preflight: проверяю Playwright dependencies…'
+    [System.Windows.Forms.Application]::DoEvents()
+    if (-not (Ensure-PlaywrightDependencies)) {
+        [System.Windows.Forms.MessageBox]::Show("Playwright precheck не прошёл:`r`n$($script:LastAgentError)",'Rx2GO QA — Jira Queue','OK','Error') | Out-Null
+        return $false
+    }
+
+    if (-not (Ensure-PlaywrightMcpForCodex)) {
+        [System.Windows.Forms.MessageBox]::Show("Playwright MCP не готов:`r`n$($script:LastAgentError)",'Rx2GO QA — Jira Queue','OK','Error') | Out-Null
+        return $false
+    }
+
+    Update-LayoutHealth
+    if ($layoutHealthLabel -and $layoutHealthLabel.Tag) {
+        Write-QueueLog 'UI layout health warning detected before queue start. Queue tab uses managed Dock/TableLayout controls; see header UI status for details.'
+    }
+
+    return $true
+}
+
+function Start-JiraQueue {
+    if ($script:QueueRunning -and -not $script:QueuePaused) { return }
+    if (-not (Test-QueuePreflight)) { return }
+
+    $script:QueueMaxParallel = [Math]::Max(1,[Math]::Min(3,[int]$queueParallelNumeric.Value))
+    $script:QueueRunning = $true
+    $script:QueuePaused = $false
+    $queueStatusLabel.Text = "Очередь запущена • максимум $($script:QueueMaxParallel) Worker(s)"
+    $queueStatusLabel.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
+    $runButton.Enabled = $false
+    $jiraRunButton.Enabled = $false
+    Write-QueueLog "QUEUE START → parallel=$($script:QueueMaxParallel)"
+    Save-QueueState
+    $script:QueueTimer.Start()
+    Process-QueueTick
+}
+
+function Pause-JiraQueue {
+    if (-not $script:QueueRunning) { return }
+    $script:QueuePaused = $true
+    $queueStatusLabel.Text = 'PAUSED — выполняющиеся Workers продолжат работу; новые не запускаются.'
+    $queueStatusLabel.ForeColor = [System.Drawing.Color]::FromArgb(161,98,7)
+    Write-QueueLog 'QUEUE PAUSE'
+    Save-QueueState
+}
+
+function Resume-JiraQueue {
+    if (-not $script:QueueRunning) {
+        Start-JiraQueue
+        return
+    }
+    $script:QueuePaused = $false
+    $script:QueueUsageLimitWarningShown = $false
+    $queueStatusLabel.Text = "RUNNING — максимум $($script:QueueMaxParallel) Worker(s)"
+    $queueStatusLabel.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
+    Write-QueueLog 'QUEUE RESUME'
+    Process-QueueTick
+    Save-QueueState
+}
+
+function Process-QueueTick {
+    if ($script:QueueWorkerMode -or -not $script:QueueRunning) { return }
+
+    # 1) Poll running workers and finalize only after the worker process exits.
+    foreach ($item in @($script:QueueItems)) {
+        if ($item.Status -notin @('STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA')) { continue }
+
+        $workerStatus = Read-QueueWorkerStatus -Item $item
+        if ($workerStatus) {
+            if (-not [bool]$workerStatus.final) {
+                $phase = ([string]$workerStatus.phase).ToUpperInvariant()
+                if ($phase -in @('STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA')) {
+                    $item.Status = $phase
+                }
+                if ($workerStatus.detail) { $item.Details = [string]$workerStatus.detail }
+            }
+        }
+
+        $processExited = $false
+        if ($item.Process) {
+            try { $processExited = $item.Process.HasExited } catch { $processExited = $true }
+        }
+        elseif ($item.Pid -gt 0) {
+            try { $null = Get-Process -Id $item.Pid -ErrorAction Stop; $processExited = $false } catch { $processExited = $true }
+        }
+
+        if ($workerStatus -and [bool]$workerStatus.final -and $processExited) {
+            Finalize-QueueWorkerItem -Item $item -WorkerStatus $workerStatus
+        }
+        elseif ($processExited -and (-not $workerStatus -or -not [bool]$workerStatus.final)) {
+            $item.Status = 'ERROR'
+            $item.Result = 'ERROR'
+            $item.Details = 'Worker process завершился без финального status.json. Открой логи Worker.'
+            $item.FinishedAt = Get-Date
+            $item.Process = $null
+            $item.Pid = 0
+            $item.WorkerSlot = 0
+            Write-QueueLog "ERROR $($item.Key) → worker exited without final status"
+            Save-QueueState
+        }
+    }
+
+    # 2) Start new workers up to the configured cap.
+    if (-not $script:QueuePaused) {
+        while ($true) {
+            $active = @($script:QueueItems | Where-Object { $_.Status -in @('STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA') }).Count
+            if ($active -ge $script:QueueMaxParallel) { break }
+
+            $next = @($script:QueueItems | Where-Object { $_.Status -eq 'WAITING' } | Select-Object -First 1)[0]
+            if (-not $next) { break }
+
+            $slot = Get-FreeQueueWorkerSlot
+            if ($slot -le 0) { break }
+            [void](Start-QueueWorker -Item $next -Slot $slot)
+        }
+    }
+
+    Refresh-QueueGrid
+
+    $waitingCount = @($script:QueueItems | Where-Object { $_.Status -eq 'WAITING' }).Count
+    $activeCount = @($script:QueueItems | Where-Object { $_.Status -in @('STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA','SYNCING') }).Count
+
+    if ($waitingCount -eq 0 -and $activeCount -eq 0) {
+        $script:QueueRunning = $false
+        $script:QueuePaused = $false
+        $script:QueueTimer.Stop()
+        $queueStatusLabel.Text = 'Очередь завершена.'
+        $queueStatusLabel.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
+        $runButton.Enabled = $true
+        $jiraRunButton.Enabled = $true
+        Write-QueueLog 'QUEUE COMPLETE'
+        Save-QueueState
+    }
+}
+
+function Open-SelectedQueueLogs {
+    $item = Get-SelectedQueueItem
+    if (-not $item) { return }
+
+    $path = if ($item.WorkerDir -and (Test-Path $item.WorkerDir)) { $item.WorkerDir }
+            elseif ($item.StatusFile -and (Test-Path (Split-Path $item.StatusFile -Parent))) { Split-Path $item.StatusFile -Parent }
+            else { $script:QueueRoot }
+
+    if (Test-Path $path) { Start-Process explorer.exe $path }
+}
+
+
+function Test-QueueEngineSelfTest {
+    try {
+        $keys = @(Get-QueueTaskKeysFromText 'SCRUM-1, https://x/browse/SCRUM-2 SCRUM-1')
+
+        if ($keys.Count -ne 2) { return $false }
+        if ($keys[0] -ne 'SCRUM-1' -or $keys[1] -ne 'SCRUM-2') { return $false }
+        if ([Math]::Max(1,[Math]::Min(3,5)) -ne 3) { return $false }
+
+        # Regression guard for v0.12.26 / Windows PowerShell 5.1.
+        if ($script:QueueItems -isnot [System.Collections.ArrayList]) {
+            return $false
+        }
+
+        $snapshot = @($script:QueueItems)
+        if ($null -eq $snapshot) { return $false }
+
+        $probe = New-Object System.Collections.ArrayList
+        [void]$probe.Add([pscustomobject]@{ Status='WAITING'; Result='' })
+
+        $probeSnapshot = @($probe)
+        if ($probeSnapshot.Count -ne 1) { return $false }
+
+        $waiting = @(
+            $probeSnapshot |
+                Where-Object { ([string]$_.Status).ToUpperInvariant() -eq 'WAITING' }
+        ).Count
+
+        if ($waiting -ne 1) { return $false }
+
+        return $true
+    }
+    catch {
+        Write-QueueLog "Queue engine self-test exception: $($_.Exception.Message)"
+        return $false
+    }
+}
+
 function Set-AgentStatus {
     param(
         [ValidateSet('JiraAnalyst','McpQaAgent','QAReviewer','FailureTriage','TestDesigner','UIAgent','ApiNetworkAgent')]
         [string]$Agent,
-        [ValidateSet('WAIT','RUNNING','PASS','FAIL')]
+        [ValidateSet('WAIT','RUNNING','PASS','FAIL','BLOCKED')]
         [string]$State,
         [string]$Details = ''
     )
@@ -2384,6 +6843,7 @@ function Set-AgentStatus {
         'RUNNING' { 'работает…' }
         'PASS'    { 'готов' }
         'FAIL'    { 'ошибка' }
+        'BLOCKED' { 'недостаточно данных' }
     }
 
     if ($Details) {
@@ -2400,6 +6860,7 @@ function Set-AgentStatus {
         'RUNNING' { $label.ForeColor = [System.Drawing.Color]::FromArgb(37,99,235) }
         'PASS'    { $label.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72) }
         'FAIL'    { $label.ForeColor = [System.Drawing.Color]::Firebrick }
+        'BLOCKED' { $label.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0) }
     }
 
     if ($State -ne 'WAIT') {
@@ -2407,6 +6868,7 @@ function Set-AgentStatus {
         Append-AgentLog "$caption → $State$detailText"
     }
 
+    Update-QueueWorkerPhaseFromAgent -Agent $Agent -State $State -Details $Details
     [System.Windows.Forms.Application]::DoEvents()
 }
 
@@ -2426,6 +6888,18 @@ function Reset-AgentStatuses {
     $script:AgentMcpExecution = $null
     $script:AgentMcpExecutionRaw = $null
     $script:FailureTriage = $null
+    $script:LastKnowledgeRetrieval = $null
+    $script:LastKnowledgeContext = ''
+    $script:KnowledgeRemoteRef = $null
+    $script:LastKnowledgeLearning = $null
+    $script:LastKnowledgeLearningFile = $null
+    $script:LastAutoGitSync = $null
+    $script:SmartCoverageDesign = $null
+    $script:TaskUnderstandingContract = $null
+    $script:TaskUnderstandingGate = $null
+    $script:KnowledgeReadWarningShown = $false
+    $script:LastKnowledgeReadStatus = $null
+    $script:LastKnowledgeWriteWarning = $null
     $script:LastAgentLogFile = $null
     $script:LivePageContext = $null
     $script:LivePageContextFile = $null
@@ -2851,6 +7325,185 @@ Return ONLY JSON:
     return $true
 }
 
+
+function Test-CodexUsageLimitText {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+
+    return (
+        $Text -match '(?i)CODEX_USAGE_LIMIT' -or
+        $Text -match '(?i)лимит\s+Codex' -or
+        $Text -match "(?i)you'?ve hit your usage limit" -or
+        $Text -match '(?i)usage limit' -or
+        $Text -match '(?i)rate limit' -or
+        $Text -match '(?i)quota.*(exceeded|reached|limit)' -or
+        $Text -match '(?i)credits?.*(exhausted|depleted|limit|remaining\s*0)' -or
+        $Text -match '(?i)too many requests' -or
+        $Text -match '(?i)try again at\s+\d' -or
+        $Text -match '(?i)limit.*reset'
+    )
+}
+
+function Get-CodexUsageLimitRetryHint {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return '' }
+
+    $m = [regex]::Match(
+        $Text,
+        '(?i)(try again at[^\r\n\.]{1,80})'
+    )
+
+    if ($m.Success) {
+        return $m.Groups[1].Value.Trim()
+    }
+
+    return ''
+}
+
+function Get-CodexFailureUserMessage {
+    param(
+        [string]$FailureKind,
+        [string]$ErrorText
+    )
+
+    if ($FailureKind -eq 'CODEX_USAGE_LIMIT') {
+        $retry = Get-CodexUsageLimitRetryHint -Text $ErrorText
+
+        if ($retry) {
+            return "Достигнут лимит Codex ($retry). Исходный результат проверки сохранён."
+        }
+
+        return 'Достигнут лимит Codex. Исходный результат проверки сохранён.'
+    }
+
+    if ($FailureKind -eq 'CODEX_TIMEOUT') {
+        return 'Fixture Recovery не завершён: превышено время ожидания Codex. Исходный результат проверки сохранён.'
+    }
+
+    if ($FailureKind -eq 'CODEX_AUTH') {
+        return 'Fixture Recovery не завершён: Codex требует повторной авторизации. Исходный результат проверки сохранён.'
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ErrorText)) {
+        return "Fixture Recovery технически прерван: $ErrorText"
+    }
+
+    return 'Fixture Recovery технически прерван. Исходный результат проверки сохранён.'
+}
+
+function Show-CodexUsageLimitWarning {
+    param([string]$Message)
+
+    if ([string]::IsNullOrWhiteSpace($Message)) { return }
+
+    # Queue workers are hidden processes. Never show a modal dialog there,
+    # otherwise a hidden worker could block forever. Parent queue shows it.
+    if ($script:QueueWorkerMode) {
+        return
+    }
+
+    [System.Windows.Forms.MessageBox]::Show(
+        "$Message`r`n`r`nЭто не FAIL продукта. Проверку можно повторить после восстановления лимита.",
+        'Rx2GO QA — Codex',
+        'OK',
+        'Warning'
+    ) | Out-Null
+}
+
+function Get-CompactFixtureRecoveryContext {
+    param(
+        $Task,
+        $InitialExecution,
+        [string]$JiraText,
+        [string]$QaComment,
+        [string[]]$ProjectRules,
+        [string]$KnowledgeContext,
+        $CoverageDesign
+    )
+
+    $blockedAcceptance = @(
+        @($InitialExecution.acceptanceResults) |
+            Where-Object { ([string]$_.status).ToUpperInvariant() -eq 'BLOCKED' } |
+            Select-Object -First 8
+    )
+
+    $blockedAdditional = @(
+        @($InitialExecution.additionalResults) |
+            Where-Object { ([string]$_.status).ToUpperInvariant() -in @('BLOCKED','SKIP') } |
+            Select-Object -First 6
+    )
+
+    $compactInitial = [ordered]@{
+        status = [string]$InitialExecution.status
+        startUrl = [string]$InitialExecution.startUrl
+        endUrl = [string]$InitialExecution.endUrl
+        testData = $InitialExecution.testData
+        blockers = @($InitialExecution.blockers | Select-Object -First 8)
+        blockedAcceptance = $blockedAcceptance
+        blockedAdditional = $blockedAdditional
+    } | ConvertTo-Json -Depth 10 -Compress
+
+    if ($compactInitial.Length -gt 8000) {
+        $compactInitial = $compactInitial.Substring(0,8000) + '[TRUNCATED]'
+    }
+
+    $scope = Get-CurrentIterationScopeFromComments -JiraText $JiraText
+    if ([string]::IsNullOrWhiteSpace($scope)) {
+        $scope = @(
+            "CURRENT: " + (@($Task.CurrentBehavior) -join ' | ')
+            "EXPECTED: " + (@($Task.ExpectedBehavior) -join ' | ')
+            "ACCEPTANCE: " + (@($Task.Criteria) -join ' | ')
+        ) -join "`n"
+    }
+
+    if ($scope.Length -gt 5000) {
+        $scope = $scope.Substring(0,5000) + '[TRUNCATED]'
+    }
+
+    $qa = [string]$QaComment
+    if ($qa.Length -gt 1800) { $qa = $qa.Substring(0,1800) + '[TRUNCATED]' }
+
+    $rules = (@($ProjectRules) | Select-Object -First 14) -join "`n- "
+    if ($rules.Length -gt 3500) { $rules = $rules.Substring(0,3500) + '[TRUNCATED]' }
+
+    $knowledge = [string]$KnowledgeContext
+    if ($knowledge.Length -gt 4500) {
+        $knowledge = $knowledge.Substring(0,4500) + '[TRUNCATED]'
+    }
+
+    $coverage = if ($CoverageDesign) {
+        $highValue = @(
+            @($CoverageDesign.checks) |
+                Where-Object { ([string]$_.priority).ToUpperInvariant() -in @('P0','P1') } |
+                Select-Object -First 8
+        )
+
+        [ordered]@{
+            strategy = [string]$CoverageDesign.strategy
+            checks = $highValue
+            skippedIdeas = @($CoverageDesign.skippedIdeas | Select-Object -First 3)
+        } | ConvertTo-Json -Depth 8 -Compress
+    }
+    else {
+        '{"strategy":"live risk-based recovery","checks":[]}'
+    }
+
+    if ($coverage.Length -gt 3500) {
+        $coverage = $coverage.Substring(0,3500) + '[TRUNCATED]'
+    }
+
+    return [pscustomobject]@{
+        Scope = $scope
+        QaComment = $qa
+        ProjectRules = $rules
+        Knowledge = $knowledge
+        Coverage = $coverage
+        InitialBlocked = $compactInitial
+    }
+}
+
 function Invoke-CodexAgent {
     param(
         [string]$AgentSlug,
@@ -2862,6 +7515,7 @@ function Invoke-CodexAgent {
     )
 
     $script:LastAgentError = $null
+    $script:LastAgentFailureKind = $null
 
     $key = 'ADHOC'
     if ($script:CurrentJiraTask -and $script:CurrentJiraTask.Key) {
@@ -3002,6 +7656,49 @@ function Invoke-CodexAgent {
             try { $p.Kill() } catch { }
             try { [void]$p.WaitForExit(5000) } catch { }
 
+            # Important v0.12.30 recovery pass:
+            # `codex exec -o <file>` can flush the final answer only while the
+            # wrapper/MCP process is terminating. Therefore a valid final JSON
+            # may appear AFTER the pre-kill timeout recovery window.
+            if (
+                -not $recoveredRaw -and
+                $AgentSlug -eq '02-playwright-mcp-qa'
+            ) {
+                $postKillDeadline = [DateTime]::UtcNow.AddSeconds(8)
+
+                while (
+                    [DateTime]::UtcNow -lt $postKillDeadline -and
+                    -not $recoveredRaw
+                ) {
+                    if (Test-Path $outputFile) {
+                        try {
+                            $candidate = Read-Utf8File $outputFile
+
+                            if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+                                $candidateObj = $candidate | ConvertFrom-Json -ErrorAction Stop
+                                $candidateStatus = ([string]$candidateObj.status).ToUpperInvariant()
+
+                                if (
+                                    @('PASS','FAIL','BLOCKED') -contains $candidateStatus -and
+                                    [bool]$candidateObj.mcpUsed
+                                ) {
+                                    $recoveredRaw = $candidate
+                                    $recoveredStatus = $candidateStatus
+                                    break
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+
+                    Start-Sleep -Milliseconds 250
+                    try {
+                        [System.Windows.Forms.Application]::DoEvents()
+                    }
+                    catch { }
+                }
+            }
+
             $stdout = ''
             $stderr = ''
             try { $stdout = [string]$stdoutTask.Result } catch { }
@@ -3030,10 +7727,11 @@ function Invoke-CodexAgent {
                     $stdout
                 ) | Set-Content -Path $logFile -Encoding UTF8
 
-                Append-AgentLog "RECOVERED $AgentSlug → $recoveredStatus | final JSON was already complete at ${TimeoutSec}s"
+                Append-AgentLog "RECOVERED $AgentSlug → $recoveredStatus | valid final JSON accepted after wrapper timeout"
                 return $recoveredRaw
             }
 
+            $script:LastAgentFailureKind = 'CODEX_TIMEOUT'
             $script:LastAgentError = "$AgentSlug timeout after $TimeoutSec sec"
 
             @(
@@ -3078,13 +7776,32 @@ function Invoke-CodexAgent {
         ) | Set-Content -Path $logFile -Encoding UTF8
 
         if ($p.ExitCode -ne 0) {
-            if ($stderr -match 'input is not valid UTF-8') {
+            $combinedFailureText = (
+                ([string]$stderr) + "`n" +
+                ([string]$stdout)
+            )
+
+            if (Test-CodexUsageLimitText -Text $combinedFailureText) {
+                $script:LastAgentFailureKind = 'CODEX_USAGE_LIMIT'
+                $retryHint = Get-CodexUsageLimitRetryHint -Text $combinedFailureText
+
+                $script:LastAgentError = if ($retryHint) {
+                    "${AgentSlug}: Codex usage limit reached; $retryHint"
+                }
+                else {
+                    "${AgentSlug}: Codex usage limit reached"
+                }
+            }
+            elseif ($stderr -match 'input is not valid UTF-8') {
+                $script:LastAgentFailureKind = 'CODEX_INPUT'
                 $script:LastAgentError = "${AgentSlug}: Codex rejected UTF-8 input"
             }
             elseif ($stderr -match '(?i)not logged in|authentication|login required') {
+                $script:LastAgentFailureKind = 'CODEX_AUTH'
                 $script:LastAgentError = "${AgentSlug}: Codex authentication is required"
             }
             else {
+                $script:LastAgentFailureKind = 'CODEX_EXIT'
                 $short = (($stderr -split "`r?`n") | Where-Object { $_ } | Select-Object -Last 4) -join ' '
                 $script:LastAgentError = if ($short) {
                     "$AgentSlug exit $($p.ExitCode): $short"
@@ -3117,6 +7834,7 @@ function Invoke-CodexAgent {
         return $raw
     }
     catch {
+        $script:LastAgentFailureKind = 'CODEX_EXCEPTION'
         $script:LastAgentError = "${AgentSlug}: $($_.Exception.Message)"
 
         $extraOut = ''
@@ -3408,6 +8126,51 @@ function Get-LivePageContextForPrompt {
 
 
 
+
+function Get-SharedAdmDailyPassword {
+    if (
+        $knowledgeAdmDailyPasswordBox -and
+        -not [string]::IsNullOrWhiteSpace([string]$knowledgeAdmDailyPasswordBox.Text)
+    ) {
+        return [string]$knowledgeAdmDailyPasswordBox.Text
+    }
+
+    if (
+        $dailyPassword -and
+        -not [string]::IsNullOrWhiteSpace([string]$dailyPassword.Text)
+    ) {
+        return [string]$dailyPassword.Text
+    }
+
+    return ''
+}
+
+
+function Sync-AdmDailyPasswordFields {
+    param(
+        [string]$Source,
+        [string]$Value
+    )
+
+    $value = [string]$Value
+
+    if (
+        $Source -ne 'Knowledge' -and
+        $knowledgeAdmDailyPasswordBox -and
+        [string]$knowledgeAdmDailyPasswordBox.Text -ne $value
+    ) {
+        $knowledgeAdmDailyPasswordBox.Text = $value
+    }
+
+    if (
+        $Source -ne 'QuickRun' -and
+        $dailyPassword -and
+        [string]$dailyPassword.Text -ne $value
+    ) {
+        $dailyPassword.Text = $value
+    }
+}
+
 function Bootstrap-PersistentBrowserSession {
     param([string]$Environment)
 
@@ -3428,11 +8191,13 @@ function Bootstrap-PersistentBrowserSession {
         return $false
     }
 
+    $admDailyPassword = Get-SharedAdmDailyPassword
+
     if ((Test-GatewayRequired $Environment) -and
-        [string]::IsNullOrWhiteSpace([string]$dailyPassword.Text)) {
+        [string]::IsNullOrWhiteSpace([string]$admDailyPassword)) {
 
         $credential.Password = $null
-        $script:LastAgentError = 'ADM daily Telegram password is missing on Quick Run → Access & connections.'
+        $script:LastAgentError = 'ADM: не указан суточный пароль из Telegram. Введи его прямо в Knowledge Explorer или на Quick Run.'
         Append-AgentLog "BROWSER BOOTSTRAP → FAIL | $($script:LastAgentError)"
         return $false
     }
@@ -3484,7 +8249,7 @@ function Bootstrap-PersistentBrowserSession {
 
     if (Test-GatewayRequired $Environment) {
         $psi.EnvironmentVariables['RX2GO_GATEWAY_LOGIN'] = 'admin'
-        $psi.EnvironmentVariables['RX2GO_DAILY_PASSWORD'] = [string]$dailyPassword.Text
+        $psi.EnvironmentVariables['RX2GO_DAILY_PASSWORD'] = [string]$admDailyPassword
     }
 
     $p = $null
@@ -3639,10 +8404,12 @@ function Capture-LiveBrowserContext {
 
     $environment = [string]$jiraEnvironmentCombo.SelectedItem
 
-    if ((Test-GatewayRequired $environment) -and
-        [string]::IsNullOrWhiteSpace([string]$dailyPassword.Text)) {
+    $admDailyPassword = Get-SharedAdmDailyPassword
 
-        $script:LastAgentError = 'ADM daily Telegram password is missing on Quick Run → Access & connections.'
+    if ((Test-GatewayRequired $environment) -and
+        [string]::IsNullOrWhiteSpace([string]$admDailyPassword)) {
+
+        $script:LastAgentError = 'ADM: не указан суточный пароль из Telegram. Введи его прямо в Knowledge Explorer или на Quick Run.'
         Append-AgentLog "LIVE PAGE CONTEXT → FAIL | $($script:LastAgentError)"
         $credential.Password = $null
         return $false
@@ -3723,7 +8490,7 @@ function Capture-LiveBrowserContext {
 
     if (Test-GatewayRequired $environment) {
         $psi.EnvironmentVariables['RX2GO_GATEWAY_LOGIN'] = 'admin'
-        $psi.EnvironmentVariables['RX2GO_DAILY_PASSWORD'] = [string]$dailyPassword.Text
+        $psi.EnvironmentVariables['RX2GO_DAILY_PASSWORD'] = [string]$admDailyPassword
     }
 
     $p = $null
@@ -3855,52 +8622,1265 @@ function Capture-LiveBrowserContext {
     }
 }
 
+
+function Get-KnowledgeRetrievalCategory {
+    param([string]$Path)
+
+    $normalized = ([string]$Path).Replace('\','/').ToLowerInvariant()
+
+    if ($normalized.StartsWith('jira-cases/')) { return 'JiraCase' }
+    if ($normalized.StartsWith('scenarios/')) { return 'Scenario' }
+    if ($normalized.StartsWith('tests/')) { return 'Test' }
+    if ($normalized.StartsWith('knowledge/')) { return 'Knowledge' }
+    if ($normalized.StartsWith('pages/') -or $normalized.StartsWith('api/')) { return 'Helper' }
+
+    return 'Other'
+}
+
+function Test-KnowledgeRetrievalPath {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+
+    $normalized = $Path.Replace('\','/').ToLowerInvariant()
+
+    if (
+        $normalized.StartsWith('.git/') -or
+        $normalized.StartsWith('node_modules/') -or
+        $normalized.StartsWith('reports/') -or
+        $normalized.StartsWith('jira-runs/') -or
+        $normalized.StartsWith('.qa-state/') -or
+        $normalized.StartsWith('.secrets/') -or
+        $normalized -match '(^|/)(secrets?|credentials?|cookies?|tokens?)(/|$)'
+    ) {
+        return $false
+    }
+
+    $category = Get-KnowledgeRetrievalCategory -Path $normalized
+    if ($category -eq 'Other') { return $false }
+
+    $ext = [System.IO.Path]::GetExtension($normalized)
+    return ($ext -in @('.md','.yaml','.yml','.json','.ts','.tsx'))
+}
+
+function Get-KnowledgeSearchTerms {
+    param([string[]]$Texts)
+
+    $stopWords = @(
+        'this','that','with','from','into','when','then','than','will','should','must',
+        'have','has','had','the','and','for','are','was','were','not','but','can',
+        'page','task','test','testing','check','expected','actual','current',
+        'это','как','для','при','что','или','если','после','перед','нужно','должен',
+        'должна','должно','проверить','тест','тестирование','задача','страница',
+        'сейчас','ожидаемо','описание','текущее','поведение','кнопка','данные'
+    )
+
+    $set = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+
+    foreach ($textValue in @($Texts)) {
+        if ([string]::IsNullOrWhiteSpace([string]$textValue)) { continue }
+
+        $matches = [regex]::Matches(
+            ([string]$textValue).ToLowerInvariant(),
+            '[a-zа-яё0-9][a-zа-яё0-9_-]{2,}'
+        )
+
+        foreach ($match in $matches) {
+            $token = [string]$match.Value
+
+            if ($token.Length -lt 3) { continue }
+            if ($stopWords -contains $token) { continue }
+            if ($token -match '^\d{7,}$') { continue }
+
+            [void]$set.Add($token)
+
+            # Add lightweight normalized domain variants to improve cross-case recall.
+            if ($token -match '^tickets?$') { [void]$set.Add('ticket') }
+            if ($token -match '^orders?$') { [void]$set.Add('order') }
+            if ($token -match '^related') { [void]$set.Add('related') }
+            if ($token -match '^refresh') { [void]$set.Add('refresh') }
+            if ($token -match '^scanner') { [void]$set.Add('scanner') }
+            if ($token -match '^dispatcher') { [void]$set.Add('dispatcher') }
+        }
+    }
+
+    return @($set | Select-Object -First 90)
+}
+
+
+function Update-KnowledgeRemoteSnapshot {
+    $result = [ordered]@{
+        Success = $false
+        RemoteRef = $null
+        Message = 'LOCAL ONLY'
+    }
+
+    if ($script:QueueWorkerMode) {
+        $result.Message = 'QUEUE WORKER LOCAL SNAPSHOT'
+        return [pscustomobject]$result
+    }
+
+    if (-not (Test-GitInstalled)) {
+        return [pscustomobject]$result
+    }
+
+    Initialize-KnowledgeGit -Silent
+
+    $git = Get-GitState
+    if (-not $git.Repository -or $git.Remote -eq 'не настроен') {
+        return [pscustomobject]$result
+    }
+
+    if (([string]$git.Remote) -match '^https?://') {
+        [void](Set-KnowledgeOriginToSsh)
+        $git = Get-GitState
+    }
+
+    if (([string]$git.Remote) -notmatch '^git@github\.com:') {
+        $result.Message = 'REMOTE MEMORY SKIPPED: origin is not SSH'
+        return [pscustomobject]$result
+    }
+
+    $privateKey = Get-GitHubSshPrivateKeyPath
+
+    if (-not (Test-Path $privateKey)) {
+        $result.Message = 'REMOTE MEMORY SKIPPED: SSH key is not configured'
+        return [pscustomobject]$result
+    }
+
+    # Invoke-SshGitHubAuthCheck uses BatchMode=yes, so no browser/password UI.
+    $sshCheck = Invoke-SshGitHubAuthCheck
+
+    if (-not $sshCheck.Success) {
+        $result.Message = 'REMOTE MEMORY SKIPPED: SSH authentication is not ready'
+        return [pscustomobject]$result
+    }
+
+    $branch = [string]$git.Branch
+    if ([string]::IsNullOrWhiteSpace($branch) -or $branch -eq 'detached') {
+        $branch = 'main'
+    }
+
+    $remoteBranch = Invoke-Git `
+        @('ls-remote','--exit-code','--heads','origin',$branch) `
+        15000
+
+    if ($remoteBranch.ExitCode -ne 0) {
+        $result.Message = "REMOTE BRANCH NOT AVAILABLE: origin/$branch"
+        return [pscustomobject]$result
+    }
+
+    $fetch = Invoke-Git @(
+        'fetch','--quiet','origin',$branch
+    ) 45000
+
+    if ($fetch.ExitCode -ne 0) {
+        $result.Message = "REMOTE FETCH FAILED: $($fetch.Error)"
+        return [pscustomobject]$result
+    }
+
+    $remoteRef = "origin/$branch"
+    $verify = Invoke-Git @(
+        'rev-parse','--verify',$remoteRef
+    ) 10000
+
+    if ($verify.ExitCode -ne 0) {
+        $verifyFetchHead = Invoke-Git @(
+            'rev-parse','--verify','FETCH_HEAD'
+        ) 10000
+
+        if ($verifyFetchHead.ExitCode -eq 0) {
+            $remoteRef = 'FETCH_HEAD'
+        }
+        else {
+            $result.Message = 'REMOTE FETCHED BUT REF NOT RESOLVED'
+            return [pscustomobject]$result
+        }
+    }
+
+    $script:KnowledgeRemoteRef = $remoteRef
+    $result.Success = $true
+    $result.RemoteRef = $remoteRef
+    $result.Message = "REMOTE SNAPSHOT READY: $remoteRef"
+
+    return [pscustomobject]$result
+}
+
+
+function Get-RemoteKnowledgePaths {
+    param([string]$RemoteRef)
+
+    if ([string]::IsNullOrWhiteSpace($RemoteRef)) { return @() }
+
+    $tree = Invoke-Git @('ls-tree','-r','--name-only',$RemoteRef) 20000
+    if ($tree.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($tree.Output)) {
+        return @()
+    }
+
+    return @(
+        $tree.Output -split "`r?`n" |
+            Where-Object { Test-KnowledgeRetrievalPath -Path $_ } |
+            Select-Object -Unique
+    )
+}
+
+function Get-LocalKnowledgePaths {
+    $roots = @('jira-cases','scenarios','tests','knowledge','pages','api')
+    $paths = New-Object System.Collections.Generic.List[string]
+
+    foreach ($rootName in $roots) {
+        $fullRoot = Join-Path $script:ProjectRoot $rootName
+        if (-not (Test-Path $fullRoot)) { continue }
+
+        foreach ($file in @(Get-ChildItem -Path $fullRoot -File -Recurse -ErrorAction SilentlyContinue)) {
+            $relative = $file.FullName.Substring($script:ProjectRoot.Length).TrimStart('\','/')
+            $relative = $relative.Replace('\','/')
+
+            if (Test-KnowledgeRetrievalPath -Path $relative) {
+                $paths.Add($relative)
+            }
+        }
+    }
+
+    return @($paths | Select-Object -Unique)
+}
+
+function Read-KnowledgeRetrievalContent {
+    param(
+        [string]$Path,
+        [string]$Source,
+        [string]$RemoteRef
+    )
+
+    try {
+        if ($Source -eq 'REMOTE' -and -not [string]::IsNullOrWhiteSpace($RemoteRef)) {
+            $gitObject = $RemoteRef + ':' + $Path
+            $show = Invoke-Git @('show',$gitObject) 15000
+
+            if ($show.ExitCode -eq 0) {
+                return [string]$show.Output
+            }
+
+            return ''
+        }
+
+        $full = Join-Path $script:ProjectRoot ($Path -replace '/', '\')
+        if (-not (Test-Path $full)) { return '' }
+
+        $file = Get-Item $full -ErrorAction Stop
+        if ($file.Length -gt 250KB) { return '' }
+
+        return [System.IO.File]::ReadAllText($full, [System.Text.Encoding]::UTF8)
+    }
+    catch {
+        return ''
+    }
+}
+
+function Get-KnowledgeSnippet {
+    param(
+        [string]$Content,
+        [string[]]$Terms,
+        [int]$MaxChars = 1800
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Content)) { return '' }
+
+    $clean = $Content.Trim()
+    if ($clean.Length -le $MaxChars) { return $clean }
+
+    $lower = $clean.ToLowerInvariant()
+    $bestIndex = -1
+
+    foreach ($term in @($Terms)) {
+        if ([string]::IsNullOrWhiteSpace([string]$term)) { continue }
+
+        $idx = $lower.IndexOf(([string]$term).ToLowerInvariant())
+        if ($idx -ge 0 -and ($bestIndex -lt 0 -or $idx -lt $bestIndex)) {
+            $bestIndex = $idx
+        }
+    }
+
+    if ($bestIndex -lt 0) {
+        return ($clean.Substring(0,$MaxChars) + "`n[TRUNCATED]")
+    }
+
+    $start = [Math]::Max(0, $bestIndex - 320)
+    $length = [Math]::Min($MaxChars, $clean.Length - $start)
+
+    return (
+        $clean.Substring($start,$length) +
+        $(if (($start + $length) -lt $clean.Length) { "`n[TRUNCATED]" } else { '' })
+    )
+}
+
+function Get-KnowledgeCandidateScore {
+    param(
+        [string]$Path,
+        [string]$Content,
+        [string[]]$Terms,
+        [string]$IssueKey,
+        [string]$Module
+    )
+
+    $category = Get-KnowledgeRetrievalCategory -Path $Path
+    $score = switch ($category) {
+        'JiraCase'  { 14 }
+        'Scenario'  { 12 }
+        'Test'      { 10 }
+        'Knowledge' { 8 }
+        'Helper'    { 7 }
+        default     { 0 }
+    }
+
+    $pathLower = ([string]$Path).ToLowerInvariant()
+    $contentLower = ([string]$Content).ToLowerInvariant()
+
+    $matched = 0
+    foreach ($term in @($Terms)) {
+        if ([string]::IsNullOrWhiteSpace([string]$term)) { continue }
+
+        $needle = ([string]$term).ToLowerInvariant()
+
+        if ($pathLower.Contains($needle)) {
+            $score += 6
+            $matched++
+            continue
+        }
+
+        if ($contentLower.Contains($needle)) {
+            $score += 2
+            $matched++
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($IssueKey) -and $pathLower.Contains($IssueKey.ToLowerInvariant())) {
+        $score += 20
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($Module)) {
+        $moduleLower = $Module.ToLowerInvariant()
+
+        if ($pathLower.Contains($moduleLower)) { $score += 12 }
+        elseif ($contentLower.Contains($moduleLower)) { $score += 8 }
+    }
+
+    if ($matched -eq 0 -and $category -notin @('Knowledge','Helper')) {
+        return 0
+    }
+
+    return $score
+}
+
+
+function Get-CurrentKnowledgeEnvironment {
+    if (
+        $script:QueueWorkerMode -and
+        -not [string]::IsNullOrWhiteSpace([string]$script:QueueWorkerEnvironment)
+    ) {
+        return ([string]$script:QueueWorkerEnvironment).ToUpperInvariant()
+    }
+
+    if (
+        $jiraEnvironmentCombo -and
+        -not [string]::IsNullOrWhiteSpace([string]$jiraEnvironmentCombo.SelectedItem)
+    ) {
+        return ([string]$jiraEnvironmentCombo.SelectedItem).ToUpperInvariant()
+    }
+
+    return 'ADM'
+}
+
+
+function Test-KnowledgeExplorerPathAllowedForEnvironment {
+    param(
+        [string]$Path,
+        [string]$Environment
+    )
+
+    $normalized = ([string]$Path).Replace('\','/').ToLowerInvariant()
+
+    if ($normalized -notmatch '(^|/)knowledge/explorer/') {
+        return $true
+    }
+
+    # Explorer policies/readme/index are neutral metadata.
+    if (
+        $normalized -match '/knowledge/explorer/(readme\.md|index\.json)$' -or
+        $normalized -match '/knowledge/knowledge-explorer-policy\.yaml$'
+    ) {
+        return $true
+    }
+
+    $environment = ([string]$Environment).ToUpperInvariant()
+
+    switch ($environment) {
+        'ADM' {
+            return (
+                $normalized -match '/knowledge/explorer/adm/' -and
+                $normalized -notmatch '/knowledge/explorer/(hot|branch)/'
+            )
+        }
+        'HOT' {
+            return (
+                $normalized -match '/knowledge/explorer/(adm|hot)/' -or
+                # v0.12.34 legacy files were HOT observations.
+                $normalized -match '/knowledge/explorer/(modules|workflows)/'
+            )
+        }
+        'BRANCH' {
+            return (
+                $normalized -match '/knowledge/explorer/(adm|hot|branch)/' -or
+                $normalized -match '/knowledge/explorer/(modules|workflows)/'
+            )
+        }
+        default {
+            return $false
+        }
+    }
+}
+
+
+function Get-KnowledgeExplorerEnvironmentScoreBoost {
+    param(
+        [string]$Path,
+        [string]$Environment
+    )
+
+    $normalized = ([string]$Path).Replace('\','/').ToLowerInvariant()
+    $environment = ([string]$Environment).ToUpperInvariant()
+
+    if ($environment -eq 'ADM') {
+        if ($normalized -match '/knowledge/explorer/adm/') { return 18 }
+        return 0
+    }
+
+    if ($environment -eq 'HOT') {
+        if ($normalized -match '/knowledge/explorer/hot/') { return 24 }
+        if ($normalized -match '/knowledge/explorer/(modules|workflows)/') { return 20 }
+        if ($normalized -match '/knowledge/explorer/adm/') { return 12 }
+        return 0
+    }
+
+    if ($environment -eq 'BRANCH') {
+        if ($normalized -match '/knowledge/explorer/branch/') { return 30 }
+        if ($normalized -match '/knowledge/explorer/hot/') { return 20 }
+        if ($normalized -match '/knowledge/explorer/(modules|workflows)/') { return 18 }
+        if ($normalized -match '/knowledge/explorer/adm/') { return 10 }
+        return 0
+    }
+
+    return 0
+}
+
+function Get-RelevantKnowledgeContext {
+    param(
+        [string]$JiraText,
+        [string]$QaComment,
+        [string]$IssueKey,
+        [string]$Module = '',
+        [string]$Stage = 'task'
+    )
+
+    $terms = @(Get-KnowledgeSearchTerms -Texts @($JiraText,$QaComment,$IssueKey,$Module))
+    $knowledgeEnvironment = Get-CurrentKnowledgeEnvironment
+    $remote = Update-KnowledgeRemoteSnapshot
+    $remoteRef = if ($remote.Success) { [string]$remote.RemoteRef } else { '' }
+
+    $localPaths = @(Get-LocalKnowledgePaths)
+    $remotePaths = if ($remote.Success) {
+        @(Get-RemoteKnowledgePaths -RemoteRef $remoteRef)
+    } else {
+        @()
+    }
+
+    # Build one candidate per path.
+    # Historical memory prefers the fetched GitHub copy; executable helpers/tests
+    # prefer the current local workspace because it matches the running Launcher.
+    $pathSet = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($path in @($remotePaths + $localPaths)) {
+        if ($path) { [void]$pathSet.Add([string]$path) }
+    }
+
+    $items = New-Object System.Collections.Generic.List[object]
+
+    foreach ($path in @($pathSet)) {
+        if (
+            -not (Test-KnowledgeExplorerPathAllowedForEnvironment `
+                -Path ([string]$path) `
+                -Environment $knowledgeEnvironment)
+        ) {
+            continue
+        }
+
+        $category = Get-KnowledgeRetrievalCategory -Path $path
+
+        $hasRemote = $remotePaths -contains $path
+        $hasLocal = $localPaths -contains $path
+
+        $source = if (
+            $hasRemote -and
+            $category -in @('JiraCase','Scenario','Knowledge')
+        ) {
+            'REMOTE'
+        }
+        elseif ($hasLocal) {
+            'LOCAL'
+        }
+        elseif ($hasRemote) {
+            'REMOTE'
+        }
+        else {
+            continue
+        }
+
+        $content = Read-KnowledgeRetrievalContent `
+            -Path $path `
+            -Source $source `
+            -RemoteRef $remoteRef
+
+        if ([string]::IsNullOrWhiteSpace($content)) { continue }
+
+        $score = Get-KnowledgeCandidateScore `
+            -Path $path `
+            -Content $content `
+            -Terms $terms `
+            -IssueKey $IssueKey `
+            -Module $Module
+
+        $score += Get-KnowledgeExplorerEnvironmentScoreBoost `
+            -Path ([string]$path) `
+            -Environment $knowledgeEnvironment
+
+        if ($score -le 0) { continue }
+
+        $snippet = Get-KnowledgeSnippet `
+            -Content $content `
+            -Terms $terms `
+            -MaxChars 1800
+
+        $items.Add([pscustomobject]@{
+            Path = [string]$path
+            Category = [string]$category
+            Source = [string]$source
+            Score = [int]$score
+            Snippet = [string]$snippet
+        })
+    }
+
+    $limits = @{
+        JiraCase = 5
+        Scenario = 4
+        Test = 6
+        Knowledge = 6
+        Helper = 6
+    }
+
+    $selected = New-Object System.Collections.Generic.List[object]
+
+    foreach ($categoryName in @('JiraCase','Scenario','Test','Knowledge','Helper')) {
+        $limit = [int]$limits[$categoryName]
+
+        foreach ($item in @(
+            $items |
+                Where-Object { $_.Category -eq $categoryName } |
+                Sort-Object Score -Descending |
+                Select-Object -First $limit
+        )) {
+            $selected.Add($item)
+        }
+    }
+
+    # Keep the final prompt bounded while preserving category diversity.
+    $selected = @(
+        $selected |
+            Sort-Object Score -Descending |
+            Select-Object -First 22
+    )
+
+    $contextLines = New-Object System.Collections.Generic.List[string]
+    $contextLines.Add("KNOWLEDGE RETRIEVAL STAGE: $Stage")
+    $contextLines.Add("CURRENT ENVIRONMENT: $knowledgeEnvironment")
+    $contextLines.Add(
+        "ENVIRONMENT KNOWLEDGE HIERARCHY: ADM=primary baseline; HOT=ADM+HOT delta; BRANCH=ADM+HOT+temporary BRANCH delta."
+    )
+    $contextLines.Add("REMOTE SNAPSHOT: $($remote.Message)")
+    $contextLines.Add("MATCHED FILES: $($selected.Count)")
+    $contextLines.Add('')
+
+    if ($selected.Count -eq 0) {
+        $contextLines.Add('No relevant previous knowledge was found. Do not invent memory.')
+    }
+    else {
+        foreach ($item in $selected) {
+            $contextLines.Add(
+                "### [$($item.Category)] $($item.Path) | source=$($item.Source) | score=$($item.Score)"
+            )
+            $contextLines.Add([string]$item.Snippet)
+            $contextLines.Add('')
+        }
+    }
+
+    $context = ($contextLines -join "`n")
+
+    $safeKey = if ([string]::IsNullOrWhiteSpace($IssueKey)) {
+        'ADHOC'
+    } else {
+        ($IssueKey -replace '[^A-Za-z0-9_-]','_')
+    }
+
+    $dir = Join-Path $script:ProjectRoot "reports\knowledge-retrieval\$safeKey"
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+    $txtPath = Join-Path $dir "$stamp-$Stage.txt"
+    $jsonPath = Join-Path $dir "$stamp-$Stage.json"
+
+    Write-Utf8NoBomFile -Path $txtPath -Content $context
+
+    $artifact = [pscustomobject]@{
+        Stage = $Stage
+        IssueKey = $IssueKey
+        Module = $Module
+        RemoteSnapshot = [string]$remote.Message
+        RemoteRef = $remoteRef
+        SearchTerms = @($terms)
+        Count = $selected.Count
+        Items = @($selected | ForEach-Object {
+            [pscustomobject]@{
+                Path = $_.Path
+                Category = $_.Category
+                Source = $_.Source
+                Score = $_.Score
+            }
+        })
+        Context = $context
+        TextArtifact = $txtPath
+        JsonArtifact = $jsonPath
+    }
+
+    $json = $artifact | ConvertTo-Json -Depth 8
+    Write-Utf8NoBomFile -Path $jsonPath -Content $json
+
+    return $artifact
+}
+
+function Get-KnowledgeMemoryPrompt {
+    if (
+        $script:LastKnowledgeRetrieval -and
+        -not [string]::IsNullOrWhiteSpace([string]$script:LastKnowledgeRetrieval.Context)
+    ) {
+        return [string]$script:LastKnowledgeRetrieval.Context
+    }
+
+    return 'No relevant retrieved memory available.'
+}
+
+function Get-KnowledgeMemorySummary {
+    if (-not $script:LastKnowledgeRetrieval) {
+        return 'Knowledge retrieval: not available'
+    }
+
+    $count = [int]$script:LastKnowledgeRetrieval.Count
+    $remote = [string]$script:LastKnowledgeRetrieval.RemoteSnapshot
+
+    return "Knowledge retrieval: $count relevant file(s) | $remote"
+}
+
+
+function Test-TaskRequiresUsDateLocale {
+    param([string]$JiraText, [string]$QaComment = '')
+
+    $combined = "$JiraText`n$QaComment"
+
+    return (
+        $combined -match '(?i)MM/DD/YYYY' -or
+        $combined -match '(?i)американск.{0,16}формат.{0,16}дат' -or
+        $combined -match '(?i)american.{0,16}date.{0,16}format' -or
+        $combined -match '(?i)american locale'
+    )
+}
+
+function Get-CurrentIterationScopeFromComments {
+    param([string]$JiraText)
+
+    if ([string]::IsNullOrWhiteSpace($JiraText)) { return '' }
+
+    $markers = @(
+        'пока тестируем это',
+        'пока проверяем это',
+        'сейчас тестируем это',
+        'работать над задачей будем частями',
+        'test only these for now',
+        'for now test'
+    )
+
+    $lower = $JiraText.ToLowerInvariant()
+    $bestIndex = -1
+
+    foreach ($marker in $markers) {
+        $idx = $lower.LastIndexOf($marker)
+        if ($idx -gt $bestIndex) { $bestIndex = $idx }
+    }
+
+    if ($bestIndex -lt 0) { return '' }
+
+    $tail = $JiraText.Substring($bestIndex)
+    if ($tail.Length -gt 5000) { $tail = $tail.Substring(0,5000) }
+
+    return $tail
+}
+
+function Test-CrossJiraMarker {
+    param([string]$Text, [string]$CurrentIssueKey)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+
+    foreach ($match in [regex]::Matches($Text, '(?i)\bSCRUM-\d+\b')) {
+        $key = ([string]$match.Value).ToUpperInvariant()
+
+        if (
+            -not [string]::IsNullOrWhiteSpace($CurrentIssueKey) -and
+            $key -ne $CurrentIssueKey.ToUpperInvariant()
+        ) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Test-McpCrossTaskDataSafety {
+    param($Task, $McpExecution)
+
+    if (-not $Task -or -not $McpExecution) {
+        return [pscustomobject]@{ Success=$true; Error='' }
+    }
+
+    $parts = New-Object System.Collections.Generic.List[string]
+
+    if ($McpExecution.testData) {
+        $parts.Add(($McpExecution.testData | ConvertTo-Json -Compress -Depth 8))
+    }
+
+    foreach ($line in @(
+        @($McpExecution.executedSteps) +
+        @($McpExecution.acceptanceResults | ForEach-Object { $_.evidence })
+    )) {
+        if ([string]::IsNullOrWhiteSpace([string]$line)) { continue }
+
+        $lineText = [string]$line
+
+        if (
+            $lineText -match '(?i)\bSCRUM-\d+\b' -and
+            $lineText -notmatch '(?i)(не использ|did not use|not used|abandon|отклон|discard|ignored|не подходит)'
+        ) {
+            $parts.Add($lineText)
+        }
+    }
+
+    $combined = $parts -join "`n"
+
+    if (Test-CrossJiraMarker -Text $combined -CurrentIssueKey ([string]$Task.Key)) {
+        return [pscustomobject]@{
+            Success=$false
+            Error="Smart QA used test data/evidence marked for another Jira task. Current task is $($Task.Key)."
+        }
+    }
+
+    return [pscustomobject]@{ Success=$true; Error='' }
+}
+
+
+function Test-McpResultIntegrity {
+    param(
+        $Task,
+        $McpExecution
+    )
+
+    $errors = New-Object System.Collections.Generic.List[string]
+
+    if (-not $Task) {
+        $errors.Add('Current Jira task is missing.')
+    }
+
+    if (-not $McpExecution) {
+        $errors.Add('Smart QA execution result is missing.')
+        return [pscustomobject]@{
+            Success = $false
+            Error = ($errors -join ' | ')
+        }
+    }
+
+    $status = ([string]$McpExecution.status).ToUpperInvariant()
+    $results = @($McpExecution.acceptanceResults)
+    $additionalResults = @($McpExecution.additionalResults | Where-Object { $_ })
+    $impactingAdditional = @(
+        $additionalResults |
+            Where-Object { [bool]$_.affectsOverallResult }
+    )
+    $blockers = @($McpExecution.blockers | Where-Object { $_ })
+
+    # Task-understanding contract verification is mandatory for analyzed Jira tasks.
+    if ($Task -and -not [string]::IsNullOrWhiteSpace([string]$Task.ContractId)) {
+        if (-not $McpExecution.understanding) { $errors.Add('Missing task-understanding confirmation.') }
+        else {
+            if ([string]$McpExecution.understanding.contractId -ne [string]$Task.ContractId) { $errors.Add('Smart QA used a different Task Understanding Contract.') }
+            if (-not [bool]$McpExecution.understanding.contractAccepted) { $errors.Add('Smart QA did not accept the locked task contract.') }
+            if (-not [bool]$McpExecution.understanding.outOfScopeRespected) { $errors.Add('Smart QA allowed out-of-scope behavior to affect this run.') }
+            if (-not [bool]$McpExecution.understanding.qaCommentKeptAsGuidance) { $errors.Add('QA comment was treated as a product requirement.') }
+            if (-not [bool]$McpExecution.understanding.memoryKeptAdvisory) { $errors.Add('Knowledge memory was treated as a current requirement.') }
+        }
+        if (-not $McpExecution.contextVerification) { $errors.Add('Missing live context verification.') }
+        else {
+            if (-not [bool]$McpExecution.contextVerification.contextReady) { $errors.Add('Live browser context was not ready before testing.') }
+            if (-not [bool]$McpExecution.contextVerification.environmentVerified) { $errors.Add('Environment was not verified live.') }
+            if (-not [bool]$McpExecution.contextVerification.moduleVerified) { $errors.Add('Task module was not verified live.') }
+            if (-not [bool]$McpExecution.contextVerification.requiredBusinessContextVerified) { $errors.Add('Required facility/client/service/business context was not verified live.') }
+            if (@($McpExecution.contextVerification.unverifiedAssumptions | Where-Object { $_ }).Count -gt 0) { $errors.Add('Smart QA returned a verdict with unverified context assumptions.') }
+        }
+        $expectedIds = @(@($Task.AcceptanceMatrix | Where-Object { $_ }) | ForEach-Object { ([string]$_.id).ToUpperInvariant() })
+        if ($expectedIds.Count -gt 0) {
+            $returnedIds = @($results | ForEach-Object { ([string]$_.criterionId).ToUpperInvariant() })
+            foreach ($expectedId in $expectedIds) { $count=@($returnedIds | Where-Object { $_ -eq $expectedId }).Count; if($count -ne 1){$errors.Add("Acceptance $expectedId must be returned exactly once; received $count.")} }
+            foreach ($returnedId in $returnedIds) { if([string]::IsNullOrWhiteSpace($returnedId)){$errors.Add('Acceptance result is missing criterionId.')} elseif($expectedIds -notcontains $returnedId){$errors.Add("Unknown acceptance criterionId returned: $returnedId.")} }
+            $understandingIds=@(@($McpExecution.understanding.acceptanceIds | Where-Object { $_ }) | ForEach-Object { ([string]$_).ToUpperInvariant() })
+            foreach($expectedId in $expectedIds){if($understandingIds -notcontains $expectedId){$errors.Add("Understanding self-check omitted $expectedId.")}}
+        }
+    }
+
+    # A machine-readable self-audit is mandatory for every live Smart QA result.
+    if (-not $McpExecution.integrity) {
+        $errors.Add('Missing integrity self-audit.')
+    }
+    else {
+        if (-not [bool]$McpExecution.integrity.liveCurrentRunEvidence) {
+            $errors.Add('Result is not based exclusively on current live-run evidence.')
+        }
+
+        if (-not [bool]$McpExecution.integrity.currentScopeOnly) {
+            $errors.Add('Result includes checks outside the current Jira execution scope.')
+        }
+
+        if (-not [bool]$McpExecution.integrity.testDataIsolated) {
+            $errors.Add('Test data isolation was not confirmed.')
+        }
+
+        if ([bool]$McpExecution.integrity.historicalEvidenceUsedAsVerdict) {
+            $errors.Add('Historical Jira/memory evidence was used as the current verdict.')
+        }
+
+        if (-not [bool]$McpExecution.integrity.environmentAssumptionsVerified) {
+            $errors.Add('Environment/browser/native-control assumptions were not verified.')
+        }
+    }
+
+    if ($McpExecution.testData) {
+        $hasEntities = (@($McpExecution.testData.entities).Count -gt 0)
+        $created = [bool]$McpExecution.testData.created
+
+        if (($hasEntities -or $created) -and -not [bool]$McpExecution.testData.currentTaskVerified) {
+            $errors.Add('Used test data was not verified for the current Jira task.')
+        }
+    }
+
+    if ($status -in @('PASS','FAIL')) {
+        if ($results.Count -eq 0) {
+            $errors.Add("$status has no acceptanceResults.")
+        }
+
+        foreach ($result in $results) {
+            $criterionStatus = ([string]$result.status).ToUpperInvariant()
+            $evidence = [string]$result.evidence
+
+            if ($criterionStatus -in @('PASS','FAIL')) {
+                if ([string]::IsNullOrWhiteSpace($evidence) -or $evidence.Trim().Length -lt 8) {
+                    $errors.Add("Acceptance '$($result.criterion)' has insufficient current-run evidence.")
+                }
+            }
+        }
+    }
+
+    foreach ($extra in $additionalResults) {
+        $extraStatus = ([string]$extra.status).ToUpperInvariant()
+        $extraEvidence = [string]$extra.evidence
+
+        if ($extraStatus -in @('PASS','FAIL','BLOCKED','SKIP')) {
+            if ([string]::IsNullOrWhiteSpace($extraEvidence)) {
+                $errors.Add("Additional check '$($extra.case)' has no evidence/skip reason.")
+            }
+        }
+        else {
+            $errors.Add("Additional check '$($extra.case)' has invalid status '$extraStatus'.")
+        }
+    }
+
+    $failedImpactingAdditional = @(
+        $impactingAdditional |
+            Where-Object { ([string]$_.status).ToUpperInvariant() -eq 'FAIL' }
+    )
+
+    $blockedImpactingAdditional = @(
+        $impactingAdditional |
+            Where-Object { ([string]$_.status).ToUpperInvariant() -eq 'BLOCKED' }
+    )
+
+    $failedCriteria = @(
+        $results |
+            Where-Object { ([string]$_.status).ToUpperInvariant() -eq 'FAIL' }
+    )
+
+    $blockedCriteria = @(
+        $results |
+            Where-Object { ([string]$_.status).ToUpperInvariant() -eq 'BLOCKED' }
+    )
+
+    if ($status -eq 'PASS') {
+        if (
+            $failedCriteria.Count -gt 0 -or
+            $blockedCriteria.Count -gt 0 -or
+            $failedImpactingAdditional.Count -gt 0 -or
+            $blockedImpactingAdditional.Count -gt 0
+        ) {
+            $errors.Add('Overall PASS conflicts with failing/blocking acceptance or impacting additional result.')
+        }
+
+        if ($results.Count -gt 0) {
+            $notPass = @(
+                $results |
+                    Where-Object { ([string]$_.status).ToUpperInvariant() -ne 'PASS' }
+            )
+
+            if ($notPass.Count -gt 0) {
+                $errors.Add('Overall PASS requires every executed acceptance criterion to PASS.')
+            }
+        }
+    }
+
+    if ($status -eq 'FAIL') {
+        if ($failedCriteria.Count -eq 0 -and $failedImpactingAdditional.Count -eq 0) {
+            $errors.Add('Overall FAIL has no failed acceptance criterion or impacting additional regression/negative check.')
+        }
+
+        foreach ($failed in $failedCriteria) {
+            if ([string]::IsNullOrWhiteSpace([string]$failed.evidence)) {
+                $errors.Add("Failed acceptance '$($failed.criterion)' has no live evidence.")
+            }
+        }
+
+        foreach ($failedExtra in $failedImpactingAdditional) {
+            if ([string]::IsNullOrWhiteSpace([string]$failedExtra.evidence)) {
+                $errors.Add("Failed additional check '$($failedExtra.case)' has no live evidence.")
+            }
+        }
+    }
+
+    if ($status -eq 'BLOCKED') {
+        if ($blockers.Count -eq 0 -and $blockedCriteria.Count -eq 0) {
+            $errors.Add('Overall BLOCKED has no blocker evidence.')
+        }
+    }
+
+    # Historical words inside current evidence are not automatically wrong,
+    # but using history AS the verdict is forbidden and already machine-checked above.
+    # Ambiguous language is not strong enough for a product FAIL.
+    if ($status -eq 'FAIL') {
+        foreach ($failed in $failedCriteria) {
+            $evidence = ([string]$failed.evidence).ToLowerInvariant()
+
+            if (
+                $evidence -match '(вероятно|возможно|похоже|предполож|probably|possibly|seems|appears to)' -and
+                $evidence -notmatch '(фактически|наблюдал|observed|actual|screenshot|network|console|dom|value=)'
+            ) {
+                $errors.Add("Failed acceptance '$($failed.criterion)' is based on ambiguous/inferred evidence.")
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Success = ($errors.Count -eq 0)
+        Error = ($errors -join ' | ')
+    }
+}
+
+function Test-SmartQaIntegrityGuardSelfTest {
+    $task = [pscustomobject]@{
+        Key = 'SCRUM-SELFTEST'
+    }
+
+    $good = [pscustomobject]@{
+        status = 'PASS'
+        acceptanceResults = @(
+            [pscustomobject]@{
+                criterion = 'current criterion'
+                status = 'PASS'
+                evidence = 'Observed live browser state in current run.'
+            }
+        )
+        blockers = @()
+        testData = [pscustomobject]@{
+            created = $false
+            currentTaskVerified = $true
+            entities = @()
+        }
+        integrity = [pscustomobject]@{
+            liveCurrentRunEvidence = $true
+            currentScopeOnly = $true
+            testDataIsolated = $true
+            historicalEvidenceUsedAsVerdict = $false
+            environmentAssumptionsVerified = $true
+        }
+    }
+
+    $badStatus = [pscustomobject]@{
+        status = 'PASS'
+        acceptanceResults = @(
+            [pscustomobject]@{
+                criterion = 'failed criterion'
+                status = 'FAIL'
+                evidence = 'Observed current failure.'
+            }
+        )
+        blockers = @()
+        testData = [pscustomobject]@{
+            created = $false
+            currentTaskVerified = $true
+            entities = @()
+        }
+        integrity = $good.integrity
+    }
+
+    $badHistory = [pscustomobject]@{
+        status = 'FAIL'
+        acceptanceResults = @(
+            [pscustomobject]@{
+                criterion = 'criterion'
+                status = 'FAIL'
+                evidence = 'Historical Jira screenshot only.'
+            }
+        )
+        blockers = @()
+        testData = [pscustomobject]@{
+            created = $false
+            currentTaskVerified = $true
+            entities = @()
+        }
+        integrity = [pscustomobject]@{
+            liveCurrentRunEvidence = $false
+            currentScopeOnly = $true
+            testDataIsolated = $true
+            historicalEvidenceUsedAsVerdict = $true
+            environmentAssumptionsVerified = $true
+        }
+    }
+
+    $goodResult = Test-McpResultIntegrity -Task $task -McpExecution $good
+    $badStatusResult = Test-McpResultIntegrity -Task $task -McpExecution $badStatus
+    $badHistoryResult = Test-McpResultIntegrity -Task $task -McpExecution $badHistory
+
+    return (
+        $goodResult.Success -and
+        -not $badStatusResult.Success -and
+        -not $badHistoryResult.Success
+    )
+}
+
+
+function Convert-KnowledgeRemoteStatusToUserMessage {
+    param([string]$Status)
+
+    if ([string]::IsNullOrWhiteSpace($Status)) {
+        return 'Причина не определена.'
+    }
+
+    if ($Status -match '^REMOTE SNAPSHOT READY') {
+        return 'Актуальная Knowledge Base успешно получена из GitHub.'
+    }
+
+    if ($Status -match 'SSH key is not configured') {
+        return 'SSH-ключ GitHub не настроен.'
+    }
+
+    if ($Status -match 'SSH authentication is not ready') {
+        return 'GitHub SSH недоступен или публичный ключ ещё не добавлен в GitHub.'
+    }
+
+    if ($Status -match 'origin is not SSH') {
+        return 'Git origin настроен не через SSH.'
+    }
+
+    if ($Status -match 'REMOTE BRANCH NOT AVAILABLE') {
+        return 'Удалённая ветка Knowledge Base пока недоступна.'
+    }
+
+    if ($Status -match 'REMOTE FETCH FAILED') {
+        return 'Не удалось получить свежие изменения Knowledge Base из GitHub.'
+    }
+
+    if ($Status -eq 'LOCAL ONLY') {
+        return 'Удалённая Knowledge Base недоступна.'
+    }
+
+    return $Status
+}
+
+function Show-KnowledgeReadWarningOnce {
+    param([string]$RemoteStatus)
+
+    $script:LastKnowledgeReadStatus = $RemoteStatus
+
+    if (
+        [string]::IsNullOrWhiteSpace($RemoteStatus) -or
+        $RemoteStatus -match '^REMOTE SNAPSHOT READY'
+    ) {
+        return
+    }
+
+    if ($script:KnowledgeReadWarningShown) {
+        return
+    }
+
+    $script:KnowledgeReadWarningShown = $true
+    $reason = Convert-KnowledgeRemoteStatusToUserMessage -Status $RemoteStatus
+
+    Append-AgentLog "KNOWLEDGE READ → LOCAL FALLBACK | $reason"
+
+    if ($script:QueueWorkerMode) {
+        Write-QueueWorkerStatus -Status 'RUNNING' -Phase 'KNOWLEDGE' -Detail "Local Knowledge fallback: $reason"
+        return
+    }
+
+    [System.Windows.Forms.MessageBox]::Show(
+        "Не удалось получить актуальную базу знаний из GitHub.`r`n`r`nПричина: $reason`r`n`r`nТестирование продолжится с локальной Knowledge Base. Результат теста не будет подменён или остановлен из-за этой проблемы.",
+        'Rx2GO QA — Knowledge Base',
+        'OK',
+        'Warning'
+    ) | Out-Null
+}
+
+function Show-KnowledgeWriteWarningAfterRun {
+    $messages = New-Object System.Collections.Generic.List[string]
+
+    if (-not [string]::IsNullOrWhiteSpace([string]$script:LastKnowledgeWriteWarning)) {
+        $messages.Add([string]$script:LastKnowledgeWriteWarning)
+    }
+
+    if (
+        $script:LastAutoGitSync -and
+        -not [string]::IsNullOrWhiteSpace([string]$script:LastAutoGitSync.Warning)
+    ) {
+        $messages.Add("GitHub sync: $($script:LastAutoGitSync.Warning)")
+    }
+
+    if ($messages.Count -eq 0) {
+        return
+    }
+
+    $details = ($messages | Select-Object -Unique) -join "`r`n"
+
+    Append-AgentLog "KNOWLEDGE WRITE → WARNING | $details"
+
+    if ($script:QueueWorkerMode) {
+        Write-QueueWorkerStatus -Status 'RUNNING' -Phase 'KNOWLEDGE' -Detail "Knowledge write warning: $details"
+        return
+    }
+
+    [System.Windows.Forms.MessageBox]::Show(
+        "Тест завершён, но база знаний обновлена не полностью.`r`n`r`n$details`r`n`r`nPASS/FAIL продукта не изменён. Локальные данные и commit, если он был создан, сохранены.",
+        'Rx2GO QA — Knowledge Base',
+        'OK',
+        'Warning'
+    ) | Out-Null
+}
+
 function Invoke-AgentJiraAnalyst {
     param(
         [string]$JiraText,
         [string]$QaComment,
-        [string[]]$ProjectRules
+        [string[]]$ProjectRules,
+        [string]$KnowledgeContext = ''
     )
 
-    Set-AgentStatus -Agent JiraAnalyst -State RUNNING
+    Set-AgentStatus -Agent JiraAnalyst -State RUNNING -Details 'строю Task Understanding Contract'
 
     $prompt = @"
-You are Agent 1 of the Rx2GO QA pipeline: JIRA ANALYST.
+You are Agent 1 of the Rx2GO QA pipeline: SENIOR REQUIREMENTS ANALYST.
 
-Your only job is requirements analysis. Do not design Playwright code.
+Your most important responsibility is to UNDERSTAND THE TASK CORRECTLY before any browser testing begins.
+Do not design Playwright code and do not execute the product.
 
-Return ONLY valid JSON:
+You receive sources with DIFFERENT authority:
+1. Jira Description / Expected / Acceptance — product requirements.
+2. Jira comments — may clarify or narrow the CURRENT iteration.
+3. QA COMMENT — execution guidance, NOT automatically a product requirement.
+4. Task screenshots — visual context, NOT automatically a requirement.
+5. Project rules — execution constraints, NOT product requirements.
+6. Knowledge memory — historical QA experience, NEVER a current requirement.
+
+SOURCE PRECEDENCE:
+- Current explicit Jira requirement > older Jira text > QA guidance > memory.
+- A later Jira comment can narrow the scope of THIS run.
+- QA COMMENT may define facility/test-data/workflow guidance but must not silently create acceptance criteria.
+- Knowledge may suggest risks/workflows but must not change expected behavior.
+
+Return ONLY valid JSON with this exact top-level shape:
 {
   "title": "short task title",
   "module": "Tickets Queue|Chat|Scanner|Dispatcher|QAQC|Orders|Unknown",
-  "currentBehavior": ["observed current/bug behavior"],
-  "expectedBehavior": ["expected product behavior"],
+  "taskGoal": "one precise sentence describing what product behavior is being changed or fixed",
+  "primaryBusinessObject": "order|ticket|route|chat|scanner|other",
+  "trigger": "what action/event starts the behavior being tested",
+  "preconditions": ["business precondition"],
+  "inScope": ["what THIS run must verify"],
+  "outOfScope": ["explicitly excluded/umbrella areas not deciding THIS run"],
+  "currentBehavior": ["current bug/actual behavior only"],
+  "expectedBehavior": ["expected behavior only"],
+  "expectedStateChanges": ["state/data changes that MUST happen"],
+  "forbiddenStateChanges": ["state/data changes that MUST NOT happen"],
   "reproductionSteps": ["reproduction step"],
-  "acceptanceCriteria": ["testable acceptance requirement"],
-  "riskAreas": ["related regression area"],
-  "clarificationsFromComments": ["meaningful Jira comment clarification"]
+  "acceptanceCriteria": ["testable requirement"],
+  "acceptanceMatrix": [
+    {
+      "id": "AC1",
+      "requirement": "testable requirement",
+      "sourceType": "DESCRIPTION|JIRA_COMMENT",
+      "sourceQuote": "short source fragment that justifies this criterion",
+      "precondition": "required starting state or N/A",
+      "action": "user/system action",
+      "expected": "observable expected result",
+      "evidenceNeeded": ["UI|API|NETWORK|CONSOLE|DATA"]
+    }
+  ],
+  "executionGuidance": ["QA-comment instruction that affects HOW to test but is not acceptance"],
+  "constraints": ["project/environment/test-data constraint"],
+  "riskAreas": ["directly related risk area"],
+  "negativeRiskIdeas": ["direct negative case"],
+  "boundaryRiskIdeas": ["boundary case"],
+  "regressionRiskIdeas": ["direct adjacent regression"],
+  "ambiguities": [
+    {"severity": "LOW|MEDIUM|HIGH", "text": "what is ambiguous", "impact": "how it could change the verdict"}
+  ],
+  "contradictions": [
+    {"text": "contradicting statements", "resolved": true, "resolution": "which source wins and why"}
+  ],
+  "clarificationsFromComments": ["meaningful Jira-comment clarification"],
+  "scopeDecision": "how the latest Jira comments changed or did not change the current run scope",
+  "confidence": 0,
+  "selfAudit": {
+    "currentBehaviorNotUsedAsAcceptance": true,
+    "qaCommentNotUsedAsRequirement": true,
+    "memoryNotUsedAsRequirement": true,
+    "screenshotNotUsedAsRequirement": true,
+    "latestScopeApplied": true,
+    "noInventedRequirements": true
+  }
 }
 
 TASK SCREENSHOTS:
 $(Get-JiraScreenshotPromptSummary)
 
-SCREENSHOT RULES:
-- Attached screenshots are supplementary visual evidence from the user.
-- Read visible labels, controls, states, layout and error messages when they help explain the task.
-- A screenshot may show CURRENT behavior, EXPECTED design, or reproduction context; infer which only when Jira/QA text supports it.
-- Do not invent a product requirement solely because something is visible in a screenshot.
-- If the screenshot contradicts the Jira text, preserve the Jira requirement and mention the visual ambiguity only in risk/clarification when relevant.
-
-RULES:
-- "Сейчас", "Current", "Actual", "Текущее поведение" is CURRENT BUG BEHAVIOR.
-- Never turn current bug behavior into acceptance criteria.
-- "Как воспроизвести" is reproduction procedure.
-- "Ожидаемо", "Expected", "Критерий приёмки", "Acceptance Criteria", "Необходимо" are requirements.
-- Jira comments are clarifications, not original Description.
-- QA COMMENT is execution guidance, not a Jira requirement.
-- Project rules are execution constraints.
-- Do not invent missing requirements.
-- Do not include credentials or secrets.
+CURRENT ITERATION SCOPE EXTRACT FROM LATEST JIRA COMMENTS:
+$(Get-CurrentIterationScopeFromComments -JiraText $JiraText)
 
 JIRA SOURCE:
 $JiraText
@@ -3910,9 +9890,36 @@ $QaComment
 
 RX2GO PROJECT RULES:
 $($ProjectRules -join "`n- ")
+
+RETRIEVED KNOWLEDGE MEMORY:
+$KnowledgeContext
+
+MANDATORY ANALYSIS RULES:
+- "Сейчас", "Current", "Actual", "Текущее поведение" = CURRENT BUG/ACTUAL behavior, never Expected.
+- "Ожидаемо", "Expected", "Критерий приёмки", "Acceptance Criteria", "Необходимо" = requirement.
+- "Как воспроизвести" = reproduction, not requirement by itself.
+- If a later Jira comment explicitly narrows testing, acceptanceCriteria and inScope must reflect THIS narrowed iteration.
+- Keep umbrella functionality in outOfScope/risk only when it does not decide the current run.
+- Every acceptanceMatrix item MUST trace to DESCRIPTION or JIRA_COMMENT through sourceType + short sourceQuote.
+- QA COMMENT, PROJECT RULE, SCREENSHOT and MEMORY are forbidden as acceptanceMatrix sourceType.
+- Split compound requirements into separately testable AC items when needed.
+- acceptanceMatrix IDs must be AC1, AC2, AC3... with no gaps.
+- For each AC clearly state precondition -> action -> expected -> evidenceNeeded.
+- Identify both required state changes and forbidden side effects when relevant.
+- Do not invent endpoint names, exact controls, values or rules absent from current Jira sources.
+- If missing information could change PASS/FAIL, record an ambiguity. Use HIGH only when safe testing cannot determine the intended result.
+- Resolve contradictions by source precedence when possible; otherwise leave resolved=false and reduce confidence.
+- confidence is your confidence that another QA engineer can execute the intended CURRENT scope without guessing.
+- Before returning JSON, perform selfAudit honestly.
 "@
 
-    $raw = Invoke-CodexAgent -AgentSlug '01-jira-analyst' -Prompt $prompt -TimeoutSec 240 -ReasoningEffort 'low' -ImagePaths (Get-JiraScreenshotPaths)
+    $raw = Invoke-CodexAgent `
+        -AgentSlug '01-jira-analyst' `
+        -Prompt $prompt `
+        -TimeoutSec 300 `
+        -ReasoningEffort 'medium' `
+        -ImagePaths (Get-JiraScreenshotPaths)
+
     if (-not $raw) {
         Set-AgentStatus -Agent JiraAnalyst -State FAIL -Details $script:LastAgentError
         return $null
@@ -3925,7 +9932,20 @@ $($ProjectRules -join "`n- ")
     }
 
     $script:AgentJiraAnalysis = $parsed
-    Set-AgentStatus -Agent JiraAnalyst -State PASS
+    $script:TaskUnderstandingContract = $parsed
+
+    if ($script:AgentRunDir) {
+        try {
+            $contractArtifact = Join-Path $script:AgentRunDir 'task-understanding.json'
+            Write-Utf8NoBomFile -Path $contractArtifact -Content ($parsed | ConvertTo-Json -Depth 14)
+            Append-AgentLog "TASK UNDERSTANDING ARTIFACT -> $contractArtifact"
+        }
+        catch {
+            Append-AgentLog "TASK UNDERSTANDING ARTIFACT warning -> $($_.Exception.Message)"
+        }
+    }
+
+    Set-AgentStatus -Agent JiraAnalyst -State PASS -Details "confidence $([int]$parsed.confidence)%"
     return $parsed
 }
 
@@ -3987,12 +10007,23 @@ LIVE BROWSER PAGE CONTEXT — REAL AUTHENTICATED PAGE EVIDENCE:
 $(Get-LivePageContextForPrompt)
 
 SELECTED ENVIRONMENT: $([string]$jiraEnvironmentCombo.SelectedItem)
-DATA MUTATION ALLOWED: $(if ($jiraMutatingCheck.Checked) { 'YES' } else { 'NO' })
+DATA MUTATION ALLOWED: YES — ALL QA TEST-DATA ACTIONS AUTHORIZED
+
+TEST DATA MUTATION POLICY — GLOBAL RX2GO QA RULE:
+- Mutation of TEST DATA is ALWAYS AUTHORIZED.
+- For current-run or clearly identified QA/test entities you may create, edit, update, modify, save, submit, transition status, assign/unassign, link/unlink, remoderate, resolve/reopen, attach/detach, delete, recreate and clean up data whenever needed to complete the test.
+- This applies to QA orders, tickets, routes/gigs and other fixtures created for testing, explicitly marked as test data, or explicitly identified by the current Jira task as test fixtures.
+- Prefer fresh isolated current-Jira fixtures whenever provenance of an existing entity is unclear.
+- NEVER mutate an unmarked pre-existing business/customer entity merely because it is visible in the environment.
+- Historical IDs from Knowledge Retrieval are reference-only and are not mutation targets.
+- If a required state can be produced safely by changing current-run QA data, do that before returning BLOCKED.
+- Cleanup/deletion of current-run QA data is allowed when safe and when it does not destroy evidence required for the report.
+
 
 RULES:
 - Build checks that prove the acceptance criteria, not generic smoke.
 - Honor the QA comment.
-- Honor the mutation setting.
+- All necessary actions on clearly identified QA/test data are authorized; never mutate unmarked business/customer data.
 - Never use existing production orders if project rules prohibit that.
 - Identify exact required test data instead of silently assuming it exists.`n- Treat LIVE BROWSER PAGE CONTEXT as primary UI evidence. Do not invent controls or routes contradicted by it.
 "@
@@ -4060,7 +10091,18 @@ $(Get-LivePageContextForPrompt)
 
 UI CHECK ENABLED: $(if ($jiraUiCheck.Checked) { 'YES' } else { 'NO' })
 BROWSER VISIBLE: $(if ($jiraHeadedCheck.Checked) { 'YES' } else { 'NO' })
-DATA MUTATION ALLOWED: $(if ($jiraMutatingCheck.Checked) { 'YES' } else { 'NO' })
+DATA MUTATION ALLOWED: YES — ALL QA TEST-DATA ACTIONS AUTHORIZED
+
+TEST DATA MUTATION POLICY — GLOBAL RX2GO QA RULE:
+- Mutation of TEST DATA is ALWAYS AUTHORIZED.
+- For current-run or clearly identified QA/test entities you may create, edit, update, modify, save, submit, transition status, assign/unassign, link/unlink, remoderate, resolve/reopen, attach/detach, delete, recreate and clean up data whenever needed to complete the test.
+- This applies to QA orders, tickets, routes/gigs and other fixtures created for testing, explicitly marked as test data, or explicitly identified by the current Jira task as test fixtures.
+- Prefer fresh isolated current-Jira fixtures whenever provenance of an existing entity is unclear.
+- NEVER mutate an unmarked pre-existing business/customer entity merely because it is visible in the environment.
+- Historical IDs from Knowledge Retrieval are reference-only and are not mutation targets.
+- If a required state can be produced safely by changing current-run QA data, do that before returning BLOCKED.
+- Cleanup/deletion of current-run QA data is allowed when safe and when it does not destroy evidence required for the report.
+
 
 RULES:
 - Prefer accessible roles, labels, visible text and existing repository page objects/helpers.
@@ -4159,19 +10201,632 @@ RULES:
 
 
 
+
+function Get-SmartCoverageDesignJson {
+    if (-not $script:SmartCoverageDesign) {
+        return '{"strategy":"live risk-based coverage","checks":[],"skippedIdeas":[]}'
+    }
+
+    try {
+        return ($script:SmartCoverageDesign | ConvertTo-Json -Depth 10 -Compress)
+    }
+    catch {
+        return '{"strategy":"live risk-based coverage","checks":[],"skippedIdeas":[]}'
+    }
+}
+
+function New-SmartCoveragePlanSummary {
+    param($Coverage)
+
+    if (-not $Coverage) {
+        return "SMART RISK-BASED COVERAGE:`r`n- Coverage Designer недоступен; дополнительные проверки будут определены live MCP по текущему UI и рискам."
+    }
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('SMART RISK-BASED COVERAGE:')
+
+    if ($Coverage.strategy) {
+        $lines.Add("Strategy: $($Coverage.strategy)")
+    }
+
+    $checks = @($Coverage.checks | Where-Object { $_ })
+
+    if ($checks.Count -eq 0) {
+        $lines.Add('- Нет заранее выделенных дополнительных кейсов; MCP обязан выполнить live risk assessment.')
+    }
+    else {
+        $i = 1
+        foreach ($check in @($checks | Select-Object -First 18)) {
+            $type = if ($check.type) { [string]$check.type } else { 'CHECK' }
+            $priority = if ($check.priority) { [string]$check.priority } else { 'P1' }
+            $caseText = if ($check.case) { [string]$check.case } else { [string]$check }
+            $lines.Add("$i. [$type/$priority] $caseText")
+            $i++
+        }
+    }
+
+    $skipped = @($Coverage.skippedIdeas | Where-Object { $_ })
+    if ($skipped.Count -gt 0) {
+        $lines.Add('DEFERRED / NOT SAFE:')
+        foreach ($item in @($skipped | Select-Object -First 6)) {
+            $lines.Add("- $([string]$item)")
+        }
+    }
+
+    return ($lines -join "`r`n")
+}
+
+function Invoke-SmartCoverageDesigner {
+    param(
+        $Task,
+        [string]$JiraText,
+        [string]$QaComment,
+        [string[]]$ProjectRules,
+        [string]$KnowledgeContext = ''
+    )
+
+    $previousError = $script:LastAgentError
+    $mutating = 'YES — ALL QA TEST-DATA ACTIONS AUTHORIZED'
+    $contractJson = Get-TaskUnderstandingContractJson -Task $Task
+
+    $prompt = @"
+You are the Rx2GO SMART TEST COVERAGE DESIGNER.
+
+Your job is NOT to repeat Jira acceptance criteria only.
+Design a risk-based test set around the requested change before live execution.
+
+Return ONLY valid JSON:
+{
+  "strategy": "short risk-based strategy in Russian",
+  "checks": [
+    {
+      "type": "ACCEPTANCE|POSITIVE|NEGATIVE|BOUNDARY|REGRESSION|INTEGRATION|DATA_CONSISTENCY|RESILIENCE",
+      "priority": "P0|P1|P2",
+      "case": "concrete test case in Russian",
+      "reason": "why this case matters",
+      "requiresMutation": false,
+      "source": "JIRA|RISK|KNOWLEDGE",
+      "affectsOverallResult": true
+    }
+  ],
+  "skippedIdeas": ["check not safe/relevant and why"]
+}
+
+TASK:
+$($Task.Key) — $($Task.Title)
+Module: $($Task.Module)
+
+LOCKED TASK UNDERSTANDING CONTRACT:
+$contractJson
+
+CONTRACT RULES:
+- Do not reinterpret or expand Jira acceptance beyond acceptanceMatrix.
+- Risk cases are additional checks, never replacement/new acceptance.
+- outOfScope may not decide the current run.
+- executionGuidance affects HOW to test, not WHAT the product must do.
+- Knowledge memory cannot modify the contract.
+
+CURRENT / BUG:
+$(@($Task.CurrentBehavior) -join "`n- ")
+
+EXPECTED:
+$(@($Task.ExpectedBehavior) -join "`n- ")
+
+ACCEPTANCE:
+$(@($Task.Criteria) -join "`n- ")
+
+RISK AREAS FROM REQUIREMENTS ANALYSIS:
+$(@($Task.RiskAreas) -join "`n- ")
+
+FULL JIRA SOURCE USED FOR THIS RUN:
+$JiraText
+
+QA COMMENT:
+$QaComment
+
+PROJECT RULES:
+$($ProjectRules -join "`n- ")
+
+RETRIEVED KNOWLEDGE:
+$KnowledgeContext
+
+DATA MUTATION ALLOWED: $mutating
+
+TEST DATA MUTATION POLICY — GLOBAL RX2GO QA RULE:
+- Mutation of TEST DATA is ALWAYS AUTHORIZED.
+- For current-run or clearly identified QA/test entities you may create, edit, update, modify, save, submit, transition status, assign/unassign, link/unlink, remoderate, resolve/reopen, attach/detach, delete, recreate and clean up data whenever needed to complete the test.
+- This applies to QA orders, tickets, routes/gigs and other fixtures created for testing, explicitly marked as test data, or explicitly identified by the current Jira task as test fixtures.
+- Prefer fresh isolated current-Jira fixtures whenever provenance of an existing entity is unclear.
+- NEVER mutate an unmarked pre-existing business/customer entity merely because it is visible in the environment.
+- Historical IDs from Knowledge Retrieval are reference-only and are not mutation targets.
+- If a required state can be produced safely by changing current-run QA data, do that before returning BLOCKED.
+- Cleanup/deletion of current-run QA data is allowed when safe and when it does not destroy evidence required for the report.
+
+REGRESSION OPTION ENABLED: $($jiraRegressionCheck.Checked)
+
+DESIGN RULES:
+- The locked Task Understanding Contract is authoritative for THIS run.
+- Acceptance criteria remain mandatory, but they are only the CORE of the test design.
+- Prefer risks derived from expectedStateChanges and forbiddenStateChanges.
+- Add risk-based checks beyond the literal Jira text when they are logically connected to the changed behavior.
+- Consider, where relevant:
+  1) positive/happy path;
+  2) negative validation / forbidden action / invalid state;
+  3) boundary and edge values;
+  4) regression of directly adjacent or historically fragile behavior;
+  5) integration/data consistency between UI and backend;
+  6) reload/refresh/repeat-action/idempotency/state-persistence behavior;
+  7) role/permission differences only when the current feature has such a risk.
+- Use Knowledge Retrieval to recover previously known regressions, automation lessons and module behavior.
+- Do NOT add random broad smoke tests from unrelated modules.
+- If Jira comments narrow the current iteration scope, additional checks must remain inside that changed area or its immediate dependencies.
+- P0/P1 checks in the impacted area may affect the overall result when they reveal a real regression caused by or directly adjacent to the change.
+- P2 advisory exploration should normally not fail the Jira task unless it proves a critical impacted regression.
+- Use any necessary QA test-data mutation to make relevant checks executable. Skip only when no safe current-run test-data path exists.
+- Do not invent exact UI controls/endpoints absent from Jira/knowledge; describe the behavior to verify.
+- Prefer a small number of high-value additional cases over a huge checklist.
+- Unless genuinely not applicable, include at least one NEGATIVE and one REGRESSION idea.
+"@
+
+    $raw = Invoke-CodexAgent `
+        -AgentSlug 'risk-coverage-designer' `
+        -Prompt $prompt `
+        -TimeoutSec 220 `
+        -ReasoningEffort 'low'
+
+    if (-not $raw) {
+        Append-AgentLog 'SMART COVERAGE → Designer unavailable; MCP will derive additional negative/regression cases live.'
+        $script:LastAgentError = $previousError
+
+        return [pscustomobject]@{
+            strategy = 'Live risk-based fallback'
+            checks = @()
+            skippedIdeas = @('Coverage Designer недоступен; дополнительные кейсы обязан определить live MCP.')
+        }
+    }
+
+    $parsed = Convert-AgentJson $raw
+
+    if (-not $parsed) {
+        Append-AgentLog 'SMART COVERAGE → invalid Designer JSON; MCP will derive additional cases live.'
+        $script:LastAgentError = $previousError
+
+        return [pscustomobject]@{
+            strategy = 'Live risk-based fallback'
+            checks = @()
+            skippedIdeas = @('Coverage Designer вернул некорректный JSON; дополнительные кейсы обязан определить live MCP.')
+        }
+    }
+
+    $script:LastAgentError = $previousError
+    $script:SmartCoverageDesign = $parsed
+
+    $count = @($parsed.checks | Where-Object { $_ }).Count
+    Append-AgentLog "SMART COVERAGE → designed $count risk-based check(s)."
+
+    return $parsed
+}
+
+
+function Test-McpBlockedByInsufficientFixture {
+    param($McpExecution)
+
+    if (-not $McpExecution) { return $false }
+
+    $status = ([string]$McpExecution.status).ToUpperInvariant()
+    if ($status -ne 'BLOCKED') { return $false }
+
+    $parts = New-Object System.Collections.Generic.List[string]
+
+    foreach ($value in @($McpExecution.blockers)) {
+        if ($value) { $parts.Add([string]$value) }
+    }
+
+    foreach ($item in @($McpExecution.acceptanceResults)) {
+        if ($item) {
+            if ($item.criterion) { $parts.Add([string]$item.criterion) }
+            if ($item.evidence) { $parts.Add([string]$item.evidence) }
+        }
+    }
+
+    foreach ($item in @($McpExecution.additionalResults)) {
+        if ($item) {
+            if ($item.case) { $parts.Add([string]$item.case) }
+            if ($item.evidence) { $parts.Add([string]$item.evidence) }
+        }
+    }
+
+    $combined = ($parts -join "`n").ToLowerInvariant()
+
+    # Strong data/fixture signals. This intentionally does NOT match generic
+    # infrastructure/auth/MCP failures.
+    $patterns = @(
+        'all\s*\(\s*0\s*\)',
+        'list\s*=\s*\[\s*\]',
+        'found\s*=\s*0',
+        'no rows',
+        'zero rows',
+        'empty history',
+        'empty fixture',
+        'fixture.*(empty|invalid|unsuitable|непригод)',
+        'test data.*(missing|insufficient|required|недостат|отсутств)',
+        'нет строк',
+        'не содержит строк',
+        'строки не отрис',
+        'отсутств.*строк',
+        'нет данных',
+        'отсутств.*данн',
+        'пуст.*истори',
+        'activity history.*(loading|empty|all \(0\)|нет|отсутств)',
+        'history.*(loading|empty|no rows|zero rows)',
+        'не удалось.*провер.*из-за отсутств',
+        'невозможно.*провер.*из-за отсутств',
+        'нуж.*созда.*(order|route|ticket|заказ|раут|тикет)'
+    )
+
+    foreach ($pattern in $patterns) {
+        if ($combined -match $pattern) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Invoke-McpQaFixtureRecovery {
+    param(
+        $Task,
+        $InitialExecution,
+        [string]$JiraText,
+        [string]$QaComment,
+        [string[]]$ProjectRules,
+        [string]$KnowledgeContext = '',
+        $CoverageDesign = $null
+    )
+
+    if (-not $InitialExecution) { return $null }
+    if (-not (Test-McpBlockedByInsufficientFixture -McpExecution $InitialExecution)) {
+        return $null
+    }
+
+    $environment = [string]$jiraEnvironmentCombo.SelectedItem
+
+    $compact = Get-CompactFixtureRecoveryContext `
+        -Task $Task `
+        -InitialExecution $InitialExecution `
+        -JiraText $JiraText `
+        -QaComment $QaComment `
+        -ProjectRules $ProjectRules `
+        -KnowledgeContext $KnowledgeContext `
+        -CoverageDesign $CoverageDesign
+
+    Set-AgentStatus `
+        -Agent McpQaAgent `
+        -State RUNNING `
+        -Details 'создаю свежие тестовые данные для заблокированных кейсов'
+
+    $jiraTaskStatus.Text = '2/3 Playwright MCP QA: данных недостаточно → создаю свежий fixture и повторяю проверку…'
+    $jiraTaskStatus.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
+    [System.Windows.Forms.Application]::DoEvents()
+
+    Append-AgentLog 'FIXTURE RECOVERY → initial run BLOCKED because current fixture/data was insufficient.'
+    Append-AgentLog 'FIXTURE RECOVERY → mutation is allowed; fresh isolated data is mandatory before final BLOCKED.'
+
+    $prompt = @"
+You are the Rx2GO SMART QA FIXTURE RECOVERY AGENT.
+
+You have Microsoft Playwright MCP connected to the SAME already-authenticated Chrome session.
+The first live QA pass returned BLOCKED because the selected existing fixture did not contain enough data to verify one or more acceptance criteria.
+
+THIS IS NOT A PLANNING TURN.
+You must actively use playwright/browser_* tools and attempt to remove the data blocker.
+
+STRICT TOOL BUDGET:
+- Use ONLY `playwright/browser_*` MCP tools for all browser work.
+- Do NOT use bundled Browser/Chrome/Computer Use tools.
+- Do NOT use node_repl.
+- Do NOT inspect Browser extension/native-host/registry/plugin installation.
+- Do NOT diagnose unrelated MCP plugins.
+- Do NOT use BrowserStack for this recovery.
+- Stay inside the existing authenticated Rx2GO Chrome session.
+- Spend tokens on the blocked acceptance criteria and fixture creation only.
+
+ENVIRONMENT: $environment
+DATA MUTATION ALLOWED: YES
+
+LOCKED TASK UNDERSTANDING CONTRACT:
+$(Get-TaskUnderstandingContractJson -Task $Task)
+
+RECOVERY CONTRACT RULES:
+- Recovery changes only test fixtures, never task meaning.
+- Preserve the same contractId and acceptance criterion IDs.
+- Re-run blocked AC IDs; do not invent new acceptance requirements.
+- Keep outOfScope excluded from the verdict.
+
+TASK:
+$($Task.Key) — $($Task.Title)
+Module: $($Task.Module)
+
+CURRENT ITERATION SCOPE ONLY:
+$($compact.Scope)
+
+QA COMMENT:
+$($compact.QaComment)
+
+RELEVANT PROJECT RULES:
+$($compact.ProjectRules)
+
+RELEVANT KNOWLEDGE ONLY:
+$($compact.Knowledge)
+
+HIGH-VALUE COVERAGE ONLY:
+$($compact.Coverage)
+
+COMPACT INITIAL BLOCKED RESULT:
+$($compact.InitialBlocked)
+
+MANDATORY FIXTURE RECOVERY RULES:
+1. Do NOT return BLOCKED merely because a previously selected existing order/route/ticket has no rows, no history or unsuitable state.
+2. Create, update, modify, transition, link, assign, delete or recreate isolated TEST DATA for THIS Jira key whenever that can remove the blocker.
+3. Never modify an unmarked pre-existing business/customer entity to manufacture the missing state.
+4. Mark fresh/current-run QA entities with a clear QA / $($Task.Key) marker where the UI provides a safe field for it.
+5. Respect facility/environment requirements from Jira and QA comment.
+6. If the acceptance criterion requires Activity History / audit/history rows, creating the parent entity alone is not enough:
+   - perform the minimum SAFE, reversible/QA-only workflow action needed to generate at least one history entry;
+   - confirm the history/API actually contains at least one row;
+   - only then verify the target field/date/format.
+7. If a route/gig is required, inspect the live UI for the real create/assign flow and create a fresh QA route when safe.
+8. If an order is required, use the established Rx2GO test-data rules and a fresh QA order.
+9. Reuse proven live controls/endpoints discovered in this session; do not invent selectors or APIs.
+10. You may return BLOCKED only AFTER at least one concrete fresh-fixture creation path was attempted and either:
+    - creation failed for a specific observed reason;
+    - required business preconditions cannot be safely produced;
+    - the product/API prevents generation of the needed state.
+11. If you still return BLOCKED, blockers must explicitly state:
+    - what fresh data you attempted to create;
+    - what exact step failed/prevented completion;
+    - why no other safe path was available.
+12. AUTOCOMPLETE / REQUIRED FIELD RULE:
+    - If Recipient, Address, Facility, Client, Pharmacy or another field uses autocomplete/combobox suggestions, typing text is NOT enough.
+    - Fill the field, wait for the suggestion list, choose the actual matching suggestion through Playwright, then verify the model/field is accepted.
+    - If `Is required`, invalid-state styling, or equivalent validation remains after typing, the value was NOT accepted. Do not submit yet.
+    - For Street Address specifically, select the real address suggestion and confirm dependent address data is populated/accepted before Add/Save.
+    - For Recipient/Customer fields, select the actual dropdown option and confirm validation disappears.
+13. Re-run all previously BLOCKED acceptance criteria after fixture recovery. Preserve already valid PASS evidence only if it is still relevant to the same current run.
+14. Do not close the browser.
+
+Return ONLY valid JSON with the SAME structure as the original Smart QA result:
+{
+  "status": "PASS|FAIL|BLOCKED",
+  "mcpUsed": true,
+  "environment": "$environment",
+  "startUrl": "actual URL",
+  "endUrl": "actual URL",
+  "understanding": {
+    "contractId": "$($Task.ContractId)",
+    "contractAccepted": true,
+    "acceptanceIds": ["AC1"],
+    "outOfScopeRespected": true,
+    "qaCommentKeptAsGuidance": true,
+    "memoryKeptAdvisory": true,
+    "notes": ["fixture recovery preserved task contract"]
+  },
+  "contextVerification": {
+    "contextReady": true,
+    "environmentVerified": true,
+    "moduleVerified": true,
+    "requiredBusinessContextVerified": true,
+    "verifiedFacts": ["current live context"],
+    "unverifiedAssumptions": []
+  },
+  "testData": {
+    "created": true,
+    "currentTaskVerified": true,
+    "selectionReason": "created-this-run|exact-jira-entity|unmarked-read-only-entity|not-applicable",
+    "sourceTicketId": "",
+    "relatedTicketIds": [],
+    "entities": [
+      {
+        "type":"ticket|order|other",
+        "id":"actual id",
+        "label":"purpose",
+        "provenance":"created-this-run|exact-jira-entity|unmarked-read-only-entity",
+        "jiraMarker":"$($Task.Key)|none"
+      }
+    ]
+  },
+  "integrity": {
+    "liveCurrentRunEvidence": true,
+    "currentScopeOnly": true,
+    "testDataIsolated": true,
+    "historicalEvidenceUsedAsVerdict": false,
+    "environmentAssumptionsVerified": true,
+    "notes": ["self-audit note including fixture recovery"]
+  },
+  "executedSteps": ["actual browser action"],
+  "actualSelectors": ["proven selector/role/text strategy"],
+  "acceptanceResults": [
+    {"criterionId":"AC1","criterion":"criterion text","status":"PASS|FAIL|BLOCKED","evidence":"current live evidence"}
+  ],
+  "additionalResults": [
+    {
+      "type":"NEGATIVE|BOUNDARY|REGRESSION|INTEGRATION|DATA_CONSISTENCY|RESILIENCE",
+      "priority":"P0|P1|P2",
+      "case":"additional case",
+      "status":"PASS|FAIL|SKIP|BLOCKED",
+      "evidence":"current live evidence or skip/block reason",
+      "affectsOverallResult":true
+    }
+  ],
+  "networkEvidence": ["actual request/status"],
+  "consoleEvidence": ["actual console observation"],
+  "screenshots": ["artifact path"],
+  "blockers": ["blocker only if recovery genuinely could not remove it"],
+  "specGuidance": ["deterministic Playwright guidance"]
+}
+"@
+
+    $raw = Invoke-CodexAgent `
+        -AgentSlug '02-playwright-mcp-qa-fixture-recovery' `
+        -Prompt $prompt `
+        -TimeoutSec 540 `
+        -ReasoningEffort 'low'
+
+    if (-not $raw) {
+        $failureKind = [string]$script:LastAgentFailureKind
+        $failureText = [string]$script:LastAgentError
+        $message = Get-CodexFailureUserMessage `
+            -FailureKind $failureKind `
+            -ErrorText $failureText
+
+        $script:LastFixtureRecoveryInterruption = [pscustomobject]@{
+            Kind = $failureKind
+            Message = $message
+            Error = $failureText
+        }
+
+        Set-AgentStatus `
+            -Agent McpQaAgent `
+            -State BLOCKED `
+            -Details 'fixture recovery прерван; исходный BLOCKED сохранён'
+
+        Append-AgentLog "FIXTURE RECOVERY → INTERRUPTED | $failureKind | $message"
+
+        if ($failureKind -eq 'CODEX_USAGE_LIMIT') {
+            Show-CodexUsageLimitWarning -Message $message
+        }
+
+        return [pscustomobject]@{
+            Interrupted = $true
+            FailureKind = $failureKind
+            Message = $message
+            Execution = $null
+            Raw = $null
+        }
+    }
+
+    $parsed = Convert-AgentJson $raw
+    if (-not $parsed) {
+        Append-AgentLog "FIXTURE RECOVERY → invalid JSON: $($script:LastAgentError)"
+        return $null
+    }
+
+    if (-not $parsed.status -or -not [bool]$parsed.mcpUsed) {
+        Append-AgentLog 'FIXTURE RECOVERY → rejected: missing status or mcpUsed=true.'
+        return $null
+    }
+
+    if (-not (Test-LastAgentUsedPlaywrightMcpSuccessfully -MinimumCompletedCalls 2)) {
+        Append-AgentLog 'FIXTURE RECOVERY → rejected: live Playwright MCP calls were not confirmed.'
+        return $null
+    }
+
+    $status = ([string]$parsed.status).ToUpperInvariant()
+    if (@('PASS','FAIL','BLOCKED') -notcontains $status) {
+        Append-AgentLog "FIXTURE RECOVERY → rejected invalid status: $status"
+        return $null
+    }
+
+    $artifact = Join-Path $script:AgentRunDir 'smart-mcp-fixture-recovery.json'
+    Write-Utf8NoBomFile -Path $artifact -Content $raw
+
+    Append-AgentLog "FIXTURE RECOVERY → completed with status $status"
+    Append-AgentLog "FIXTURE RECOVERY ARTIFACT → $artifact"
+
+    return [pscustomobject]@{
+        Execution = $parsed
+        Raw = $raw
+    }
+}
+
+function Complete-JiraBlockedLiveRun {
+    param(
+        $Task,
+        $McpExecution,
+        [string]$Reason
+    )
+
+    if (-not $Task -or -not $McpExecution) { return }
+
+    $taskKey = [string]$Task.Key
+    $reasonText = if ([string]::IsNullOrWhiteSpace($Reason)) {
+        'Не удалось получить достаточно тестовых данных для полного доказательства acceptance criteria.'
+    }
+    else {
+        $Reason
+    }
+
+    $pipelineSummary = New-SmartPipelineSummary -McpExecution $McpExecution
+
+    if ([string]::IsNullOrWhiteSpace([string]$script:LastJiraPlan)) {
+        $script:LastJiraPlan = New-JiraTestPlan $Task
+    }
+
+    $script:LastJiraPlan += "`r`n`r`nFINAL LIVE RESULT:`r`nНЕДОСТАТОЧНО ДАННЫХ`r`n$reasonText"
+    $script:LastJiraPlan += $pipelineSummary
+    $jiraPlanBox.Text = $script:LastJiraPlan
+
+    [void](Save-JiraRunArtifacts $Task $script:LastJiraPlan)
+
+    # A blocked live run is still a completed QA observation and should teach
+    # the Knowledge Base about fixture requirements / automation lessons.
+    $blockedSummary = [pscustomobject]@{
+        Pass = 0
+        Fail = 0
+        Skip = 0
+        Total = 0
+        Failed = @()
+    }
+
+    [void](Update-KnowledgeFromCompletedRun `
+        -Task $Task `
+        -Summary $blockedSummary)
+
+    $script:LastAutoGitSync = Invoke-AutoGitCommitPushAfterJiraRun `
+        -Task $Task `
+        -Summary $blockedSummary
+
+    Update-AutoGitUiStatus -GitResult $script:LastAutoGitSync
+    Show-KnowledgeWriteWarningAfterRun
+
+    [void](Save-JiraReadableReport)
+
+    $jiraCopyReportButton.Enabled = $true
+    $jiraRegressionButton.Enabled = $true
+
+    Show-QAResultToast `
+        -Result BLOCKED `
+        -Title '⚠ НЕДОСТАТОЧНО ДАННЫХ' `
+        -Details "$taskKey — $reasonText"
+
+    if ($script:QueueWorkerMode) {
+        try { Stop-PersistentBrowserSession } catch {}
+        Complete-QueueWorkerResult -Result BLOCKED -Details $reasonText
+    }
+}
+
 function Invoke-AgentMcpQa {
     param(
         $Task,
         [string]$JiraText,
         [string]$QaComment,
-        [string[]]$ProjectRules
+        [string[]]$ProjectRules,
+        [string]$KnowledgeContext = '',
+        $CoverageDesign = $null
     )
 
     Set-AgentStatus -Agent McpQaAgent -State RUNNING -Details 'работаю в живом Chrome'
     $script:LastAgentError = $null
 
     $environment = [string]$jiraEnvironmentCombo.SelectedItem
-    $mutating = if ($jiraMutatingCheck.Checked) { 'YES' } else { 'NO' }
+    $mutating = 'YES — ALL QA TEST-DATA ACTIONS AUTHORIZED'
+    $contractJson = Get-TaskUnderstandingContractJson -Task $Task
+    $contractId = [string]$Task.ContractId
+    $coverageJson = if ($CoverageDesign) {
+        $CoverageDesign | ConvertTo-Json -Depth 10 -Compress
+    } else {
+        '{"strategy":"live risk-based coverage","checks":[],"skippedIdeas":[]}'
+    }
 
     $prompt = @"
 You are the main Rx2GO SMART QA AGENT.
@@ -4187,18 +10842,42 @@ MANDATORY BROWSER TOOL RULE:
 - Do NOT substitute shell/exec for live browser actions.
 - If a Playwright MCP tool is unavailable or blocked, return BLOCKED with that exact infrastructure reason.
 
+TASK UNDERSTANDING LOCK:
+- The Task Understanding Contract below already passed a deterministic gate.
+- Do NOT re-derive acceptance from raw Jira, QA comment, screenshots or memory.
+- Execute every acceptanceMatrix ID exactly once and return the same ID in acceptanceResults.
+- currentBehavior is bug/actual, NOT expected.
+- executionGuidance tells HOW to test; it is NOT a new requirement.
+- outOfScope cannot fail this run. Memory cannot create acceptance requirements.
+- Verify the live environment/module/required business context before acceptance actions.
+- If required context cannot be verified safely, return BLOCKED instead of testing the wrong thing.
+
+LOCKED TASK UNDERSTANDING CONTRACT:
+$contractJson
+
 Your job is to behave like a senior QA engineer in the live product:
 1. Start by taking a live browser snapshot and confirm the current Rx2GO page.
 2. Navigate only as needed to the task module.
 3. Read the actual current UI before deciding what controls/selectors exist.
-4. If the QA comment/task requires fresh test data AND DATA MUTATION ALLOWED=YES, create fresh isolated test data now.
-5. If DATA MUTATION ALLOWED=NO, NEVER create, edit, transition, link, delete, remoderate, resolve, assign, submit, save, or otherwise mutate any Rx2GO entity. Use only read-only verification and return BLOCKED when mutation is required to prove the task.
-6. Never use Jira example IDs or existing business orders/tickets as a fallback when fresh data is required.
-6. If fresh data cannot be created safely with confirmed UI/API behavior, return BLOCKED instead of guessing or using production data.
-7. Execute the acceptance criteria in the live browser now. This is not a planning-only turn.
-8. Inspect browser console and relevant network requests through Playwright MCP when useful.
-9. Record the actual IDs/entities you created, the actual controls you used, and actual evidence from the page.
-10. Leave the browser open on a useful final state for the generated Playwright test.
+4. Create or modify fresh isolated current-Jira TEST DATA whenever that makes the check deterministic.
+5. If a QA/test entity has empty history, zero rows, unsuitable state or otherwise cannot prove a criterion, DO NOT stop at BLOCKED:
+   - create a fresh fixture OR modify current-run QA data into the needed state;
+   - perform any necessary QA-only update/transition/link/assignment/remoderation;
+   - generate the minimum required history/audit/state;
+   - retry the check.
+6. You are authorized to update, transition, link, unlink, assign, unassign, resolve, reopen, delete, recreate and clean up current-run QA fixtures whenever necessary.
+7. Never use Jira example IDs, historical IDs, or unmarked business/customer entities as mutation targets.
+8. Return BLOCKED for data reasons only after all safe current-run QA test-data actions that could remove the blocker have been attempted and the blocker is documented.
+9. AUTOCOMPLETE / REQUIRED FIELD RULE:
+   - For Recipient, Street Address, Facility, Client, Pharmacy and similar autocomplete fields, typing visible text is not proof that the application accepted the value.
+   - Select the real suggestion/dropdown option with Playwright and verify required/invalid validation disappears before submitting.
+   - If `Is required` remains after fill(), treat the field as NOT selected and fix it before continuing.
+10. Execute the acceptance criteria in the live browser now. This is not a planning-only turn.
+11. Perform a live risk assessment and execute the highest-value relevant additional cases: negative, boundary, regression, integration/data consistency or resilience checks. Do not stop after the happy path.
+12. If the Coverage Designer proposed P0/P1 checks that are feasible and safe, execute them. For each proposed check you do not execute, record a clear SKIP/BLOCKED reason in additionalResults.
+13. Inspect browser console and relevant network requests through Playwright MCP when useful.
+14. Record the actual IDs/entities you created, the actual controls you used, and actual evidence from the page.
+15. Leave the browser open on a useful final state for the generated Playwright test.
 
 OUTPUT LANGUAGE:
 - All human-readable JSON strings must be in Russian: executedSteps, acceptance criterion/evidence, networkEvidence, consoleEvidence, blockers, specGuidance and test-data labels.
@@ -4211,18 +10890,61 @@ Return ONLY valid JSON with this exact top-level shape:
   "environment": "$environment",
   "startUrl": "actual URL",
   "endUrl": "actual URL",
+  "understanding": {
+    "contractId": "$contractId",
+    "contractAccepted": true,
+    "acceptanceIds": ["AC1"],
+    "outOfScopeRespected": true,
+    "qaCommentKeptAsGuidance": true,
+    "memoryKeptAdvisory": true,
+    "notes": ["short understanding self-check"]
+  },
+  "contextVerification": {
+    "contextReady": true,
+    "environmentVerified": true,
+    "moduleVerified": true,
+    "requiredBusinessContextVerified": true,
+    "verifiedFacts": ["actual current context fact"],
+    "unverifiedAssumptions": []
+  },
   "testData": {
     "created": true,
+    "currentTaskVerified": true,
+    "selectionReason": "created-this-run|exact-jira-entity|unmarked-read-only-entity|not-applicable",
     "sourceTicketId": "",
     "relatedTicketIds": [],
     "entities": [
-      {"type":"ticket|order|other","id":"actual id","label":"purpose"}
+      {
+        "type":"ticket|order|other",
+        "id":"actual id",
+        "label":"purpose",
+        "provenance":"created-this-run|exact-jira-entity|unmarked-read-only-entity",
+        "jiraMarker":"SCRUM-1234|none"
+      }
     ]
+  },
+  "integrity": {
+    "liveCurrentRunEvidence": true,
+    "currentScopeOnly": true,
+    "testDataIsolated": true,
+    "historicalEvidenceUsedAsVerdict": false,
+    "environmentAssumptionsVerified": true,
+    "notes": ["short self-audit note"]
   },
   "executedSteps": ["actual browser action performed"],
   "actualSelectors": ["selector/role/text strategy proven against the live UI"],
   "acceptanceResults": [
-    {"criterion":"criterion text","status":"PASS|FAIL|BLOCKED","evidence":"actual evidence"}
+    {"criterionId":"AC1","criterion":"criterion text","status":"PASS|FAIL|BLOCKED","evidence":"actual evidence"}
+  ],
+  "additionalResults": [
+    {
+      "type":"NEGATIVE|BOUNDARY|REGRESSION|INTEGRATION|DATA_CONSISTENCY|RESILIENCE",
+      "priority":"P0|P1|P2",
+      "case":"additional risk-based case",
+      "status":"PASS|FAIL|SKIP|BLOCKED",
+      "evidence":"actual current-run evidence or skip/block reason",
+      "affectsOverallResult":true
+    }
   ],
   "networkEvidence": ["actual observed request/status relevant to this task"],
   "consoleEvidence": ["actual console/page error or explicit none observed"],
@@ -4268,12 +10990,60 @@ QA COMMENT SEMANTICS:
 PROJECT RULES:
 $($ProjectRules -join "`n- ")
 
+RETRIEVED KNOWLEDGE MEMORY:
+$KnowledgeContext
+
+RISK-BASED COVERAGE DESIGN:
+$coverageJson
+
+COVERAGE EXECUTION RULES:
+- Jira acceptance criteria are mandatory, but they are not the whole test suite.
+- Execute relevant P0/P1 NEGATIVE and REGRESSION checks whenever safe and feasible.
+- Also consider BOUNDARY, INTEGRATION, DATA_CONSISTENCY and RESILIENCE checks when the changed behavior exposes such risks.
+- Do not run random unrelated smoke tests.
+- Additional checks must stay in the impacted module / immediate dependencies, especially when Jira comments narrow the current scope.
+- A directly impacted negative/regression failure with live evidence should set affectsOverallResult=true and make overall status FAIL.
+- A clearly unrelated/pre-existing advisory issue may be recorded with affectsOverallResult=false and must not distort the Jira result.
+- If a valuable additional check cannot be performed safely, return SKIP/BLOCKED for that case with the reason instead of omitting it silently.
+
+MEMORY USE RULES:
+- Use prior Jira cases/scenarios to avoid rediscovering known workflow details.
+- NEVER reuse an order/ticket/entity visibly marked with another Jira key. Example: while testing SCRUM-3403, an order whose Special Instructions contains SCRUM-4069 is contaminated test data and must be abandoned.
+- Historical numeric order/ticket IDs from memory are reference-only. Do not navigate to them as current test data.
+- If the live entity contains a QA marker for another SCRUM-* key, leave it and select/create isolated data for the current Jira key.
+- Reuse proven repository helpers/test-data patterns when they are still compatible.
+- Pay special attention to prior TEST_AUTOMATION_BUG patterns so you do not repeat them.
+- Memory is advisory. The live Playwright MCP browser is the source of truth for current UI/runtime behavior.
+- Never use historical order/ticket IDs as current test data unless the current task explicitly asks for that exact existing entity.
+- Do not mark acceptance PASS/FAIL from memory; execute it live.
+
 ENVIRONMENT: $environment
 DATA MUTATION ALLOWED: $mutating
+
+TEST DATA MUTATION POLICY — GLOBAL RX2GO QA RULE:
+- Mutation of TEST DATA is ALWAYS AUTHORIZED.
+- For current-run or clearly identified QA/test entities you may create, edit, update, modify, save, submit, transition status, assign/unassign, link/unlink, remoderate, resolve/reopen, attach/detach, delete, recreate and clean up data whenever needed to complete the test.
+- This applies to QA orders, tickets, routes/gigs and other fixtures created for testing, explicitly marked as test data, or explicitly identified by the current Jira task as test fixtures.
+- Prefer fresh isolated current-Jira fixtures whenever provenance of an existing entity is unclear.
+- NEVER mutate an unmarked pre-existing business/customer entity merely because it is visible in the environment.
+- Historical IDs from Knowledge Retrieval are reference-only and are not mutation targets.
+- If a required state can be produced safely by changing current-run QA data, do that before returning BLOCKED.
+- Cleanup/deletion of current-run QA data is allowed when safe and when it does not destroy evidence required for the report.
+
 UI CHECK: $($jiraUiCheck.Checked)
 API CHECK: $($jiraApiCheck.Checked)
 NETWORK/CONSOLE CHECK: $($jiraNetworkCheck.Checked)
 REGRESSION CHECK: $($jiraRegressionCheck.Checked)
+
+DATE-FORMAT TESTING RULES:
+- For MM/DD/YYYY / American-locale tasks, first classify each target as APP-RENDERED TEXT or NATIVE HTML DATE CONTROL.
+- For `<input type="date">`, DOM `value` is normally ISO `YYYY-MM-DD`; Chrome/OS can render the native control differently by locale. Never mark product FAIL solely because a Russian-locale screenshot shows `05.09.2026`.
+- Rx2GO QA launches Chrome with en-US locale. Before judging a native date control, record `navigator.language`, document lang where relevant, element type/value, and a current screenshot.
+- For app-rendered non-native text dates, the visible text itself must match MM/DD/YYYY.
+- Prefer a NON-AMBIGUOUS date such as Jira example `11/30/2028`; do not use ambiguous 05/09/2026 as proof of month/day order.
+- Historical Jira screenshots/comments marked FAIL are historical context only. Retest current HOT behavior.
+- If the latest Jira comment narrows an umbrella task to a subset, only that subset determines THIS run PASS/FAIL.
+- For SCRUM-3403, when the latest comment limits testing to Order Detail Activity History, Gigs Activity History Route, Copays and Scanner, other modules must not affect the current result.
 
 EXECUTION BUDGET:
 - Prefer the smallest deterministic fixture that satisfies the task.
@@ -4282,6 +11052,24 @@ EXECUTION BUDGET:
 - Once required test data exists, stop setup exploration and execute acceptance criteria immediately.
 - Reuse controls/requests already proven in this same live session instead of rediscovering the same flow.
 - If a setup attempt fails, inspect the failure before retrying; do not blindly create multiple extra entities.
+
+RESULT INTEGRITY RULES — APPLY TO EVERY JIRA TASK:
+- Verify `contextVerification` before acceptance testing: correct environment, module and required business context.
+- Echo the exact locked contractId in understanding.contractId.
+- understanding.acceptanceIds must contain every contract AC ID.
+- Every acceptanceResults row must include the correct criterionId from acceptanceMatrix.
+- Never add an unknown criterionId and never omit a contract AC.
+- Before returning PASS/FAIL/BLOCKED, perform an explicit evidence self-audit and fill the `integrity` object truthfully.
+- PASS/FAIL must be based on evidence observed in THIS live browser run. Jira Description, Jira comments, attached historical screenshots, Knowledge Retrieval and previous test reports are context only.
+- Only the CURRENT execution scope may affect the current overall result. Older umbrella requirements outside a later explicitly narrowed Jira-comment scope are background, not current FAILs.
+- Every test entity used must be either created this run, the exact entity explicitly required by current Jira, or an unmarked read-only entity that is safe for this check.
+- If an entity is visibly tagged/labelled for another Jira key, it is contaminated and cannot be used as current product evidence.
+- Before failing on rendering, formatting, timezone, locale, native browser widgets, browser autofill, permissions, downloads or OS-owned UI, determine whether the behavior belongs to Rx2GO or to Chrome/Windows and verify the intended test environment.
+- Use non-ambiguous values when the assertion depends on ordering/format (dates, decimal separators, timezone, sorting).
+- Overall PASS is allowed only when every executed acceptance result is PASS and no additional result with affectsOverallResult=true has status FAIL/BLOCKED.
+- Overall FAIL requires either a failed current acceptance criterion OR a failed directly impacted additional check with affectsOverallResult=true, always with concrete current-run evidence.
+- If the observation is ambiguous, environment-dependent, cannot be reproduced safely, or test-data provenance is uncertain, return BLOCKED instead of guessing FAIL.
+- Never convert an automation/setup/environment failure into a product FAIL.
 
 FINAL SAFETY RULES:
 - Never reveal or log credentials, cookies, auth headers, tokens or passwords.
@@ -4300,6 +11088,27 @@ FINAL SAFETY RULES:
         -ImagePaths (Get-JiraScreenshotPaths)
 
     if (-not $raw) {
+        if ([string]$script:LastAgentFailureKind -eq 'CODEX_USAGE_LIMIT') {
+            $limitMessage = Get-CodexFailureUserMessage `
+                -FailureKind 'CODEX_USAGE_LIMIT' `
+                -ErrorText ([string]$script:LastAgentError)
+
+            $script:LastAgentError = "[CODEX_USAGE_LIMIT] $limitMessage"
+
+            Set-AgentStatus `
+                -Agent McpQaAgent `
+                -State BLOCKED `
+                -Details 'проверка прервана: лимит Codex'
+
+            Append-AgentLog "MAIN MCP QA → INTERRUPTED / CODEX_USAGE_LIMIT | $limitMessage"
+
+            if (-not $script:QueueWorkerMode) {
+                Show-CodexUsageLimitWarning -Message $limitMessage
+            }
+
+            return $null
+        }
+
         Set-AgentStatus -Agent McpQaAgent -State FAIL -Details $script:LastAgentError
         return $null
     }
@@ -4327,6 +11136,59 @@ FINAL SAFETY RULES:
         return $null
     }
 
+    # If the first run is BLOCKED only because the selected fixture/data is empty
+    # and mutation is allowed, automatically attempt one fresh-fixture recovery
+    # before accepting BLOCKED as the final product-testing state.
+    if (
+        ([string]$parsed.status).ToUpperInvariant() -eq 'BLOCKED' -and
+        (Test-McpBlockedByInsufficientFixture -McpExecution $parsed)
+    ) {
+        $initialBlockedArtifact = Join-Path $script:AgentRunDir 'smart-mcp-initial-blocked.json'
+        Write-Utf8NoBomFile -Path $initialBlockedArtifact -Content $raw
+        Append-AgentLog "FIXTURE RECOVERY → initial BLOCKED artifact: $initialBlockedArtifact"
+
+        $recovery = Invoke-McpQaFixtureRecovery `
+            -Task $Task `
+            -InitialExecution $parsed `
+            -JiraText $JiraText `
+            -QaComment $QaComment `
+            -ProjectRules $ProjectRules `
+            -KnowledgeContext $KnowledgeContext `
+            -CoverageDesign $CoverageDesign
+
+        if ($recovery -and $recovery.Execution) {
+            $parsed = $recovery.Execution
+            $raw = [string]$recovery.Raw
+        }
+        elseif ($recovery -and [bool]$recovery.Interrupted) {
+            $interruptionMessage = [string]$recovery.Message
+
+            $newBlockers = @($interruptionMessage) + @($parsed.blockers)
+
+            if ($parsed.PSObject.Properties.Name -contains 'blockers') {
+                $parsed.blockers = $newBlockers
+            }
+            else {
+                $parsed | Add-Member `
+                    -MemberType NoteProperty `
+                    -Name blockers `
+                    -Value $newBlockers
+            }
+
+            # Restore a BLOCKED product-test state. Recovery infrastructure
+            # interruption must not become a red product/QA failure.
+            Set-AgentStatus `
+                -Agent McpQaAgent `
+                -State BLOCKED `
+                -Details $interruptionMessage
+
+            Append-AgentLog "FIXTURE RECOVERY → preserved initial BLOCKED | $interruptionMessage"
+        }
+        else {
+            Append-AgentLog 'FIXTURE RECOVERY → could not produce a replacement result; preserving initial BLOCKED evidence.'
+        }
+    }
+
     $observedUrl = if (-not [string]::IsNullOrWhiteSpace([string]$parsed.endUrl)) {
         [string]$parsed.endUrl
     }
@@ -4340,12 +11202,23 @@ FINAL SAFETY RULES:
         return $null
     }
 
-    if (-not $jiraMutatingCheck.Checked -and $parsed.testData -and [bool]$parsed.testData.created) {
-        $script:LastAgentError = 'Playwright MCP QA violated mutation policy: testData.created=true while Jira mutation permission is disabled.'
-        Append-AgentLog "MUTATION POLICY → FAIL | $($script:LastAgentError)"
-        Set-AgentStatus -Agent McpQaAgent -State FAIL -Details 'mutation policy violation'
+    $crossTaskSafety = Test-McpCrossTaskDataSafety -Task $Task -McpExecution $parsed
+    if (-not $crossTaskSafety.Success) {
+        $script:LastAgentError = [string]$crossTaskSafety.Error
+        Append-AgentLog "CROSS-JIRA DATA GUARD → FAIL | $($script:LastAgentError)"
+        Set-AgentStatus -Agent McpQaAgent -State FAIL -Details 'cross-Jira test data contamination'
         return $null
     }
+
+    $integrityCheck = Test-McpResultIntegrity -Task $Task -McpExecution $parsed
+    if (-not $integrityCheck.Success) {
+        $script:LastAgentError = "Result Integrity Gate rejected Smart QA verdict: $($integrityCheck.Error)"
+        Append-AgentLog "RESULT INTEGRITY GATE → REJECTED | $($integrityCheck.Error)"
+        Set-AgentStatus -Agent McpQaAgent -State FAIL -Details 'result integrity rejected'
+        return $null
+    }
+
+    Append-AgentLog 'RESULT INTEGRITY GATE → PASS'
 
     $validStatuses = @('PASS','FAIL','BLOCKED')
     $status = ([string]$parsed.status).ToUpperInvariant()
@@ -4368,9 +11241,17 @@ FINAL SAFETY RULES:
 
     if ($status -eq 'BLOCKED') {
         $reason = (@($parsed.blockers) | Where-Object { $_ } | Select-Object -First 1)
-        if (-not $reason) { $reason = 'Live QA execution is blocked.' }
+        if (-not $reason) { $reason = 'Не удалось получить достаточно данных для полного выполнения проверки.' }
+
         $script:LastAgentError = [string]$reason
-        Set-AgentStatus -Agent McpQaAgent -State FAIL -Details 'BLOCKED'
+
+        Set-AgentStatus `
+            -Agent McpQaAgent `
+            -State BLOCKED `
+            -Details 'недостаточно данных после fixture recovery'
+
+        Append-AgentLog "PRODUCT TEST STATE → BLOCKED / НЕДОСТАТОЧНО ДАННЫХ | $reason"
+
         return $parsed
     }
 
@@ -4538,13 +11419,24 @@ LIVE BROWSER PAGE CONTEXT — REAL AUTHENTICATED PAGE EVIDENCE:
 $(Get-LivePageContextForPrompt)
 
 ENVIRONMENT: $([string]$jiraEnvironmentCombo.SelectedItem)
-DATA MUTATION ALLOWED: $(if ($jiraMutatingCheck.Checked) { 'YES' } else { 'NO' })
+DATA MUTATION ALLOWED: YES — ALL QA TEST-DATA ACTIONS AUTHORIZED
+
+TEST DATA MUTATION POLICY — GLOBAL RX2GO QA RULE:
+- Mutation of TEST DATA is ALWAYS AUTHORIZED.
+- For current-run or clearly identified QA/test entities you may create, edit, update, modify, save, submit, transition status, assign/unassign, link/unlink, remoderate, resolve/reopen, attach/detach, delete, recreate and clean up data whenever needed to complete the test.
+- This applies to QA orders, tickets, routes/gigs and other fixtures created for testing, explicitly marked as test data, or explicitly identified by the current Jira task as test fixtures.
+- Prefer fresh isolated current-Jira fixtures whenever provenance of an existing entity is unclear.
+- NEVER mutate an unmarked pre-existing business/customer entity merely because it is visible in the environment.
+- Historical IDs from Knowledge Retrieval are reference-only and are not mutation targets.
+- If a required state can be produced safely by changing current-run QA data, do that before returning BLOCKED.
+- Cleanup/deletion of current-run QA data is allowed when safe and when it does not destroy evidence required for the report.
+
 
 RULES:
 - Test the Jira acceptance criteria, not generic page loading.
 - Use existing repository fixtures/helpers/page objects where available.
 - Never hard-code credentials or secrets.
-- Respect data mutation setting.
+- All necessary actions on clearly identified QA/test data are authorized; never mutate unmarked business/customer data.
 - Add explicit expect() assertions.
 - Do not use test.skip as implementation substitute.
 - Response must begin with import and contain only TypeScript.`n- Use LIVE BROWSER PAGE CONTEXT to choose actual visible controls/selectors. Do not generate guessed UI flows when live evidence contradicts them.
@@ -4734,10 +11626,6 @@ function Test-SmartSpecDataSafety {
         Error = ''
     }
 
-    if (-not $jiraMutatingCheck.Checked) {
-        return [pscustomobject]$result
-    }
-
     $jiraIds = @(Get-LongNumericIds -Text ([string]$Task.Raw))
     $mcpIds = @(Get-LongNumericIds -Text $McpExecutionRaw)
 
@@ -4760,13 +11648,87 @@ function Test-SmartSpecDataSafety {
     return [pscustomobject]$result
 }
 
+
+
+function Test-SmartSpecSelectAssertionSafety {
+    param(
+        [string]$Code,
+        $McpExecution
+    )
+
+    $result = [ordered]@{
+        Success = $true
+        Error = ''
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Code)) {
+        return [pscustomobject]$result
+    }
+
+    # Regression guard for SCRUM-4075:
+    # visible <select> label can differ from the DOM option value.
+    #
+    # PowerShell quoting note:
+    # a single quote inside a single-quoted PowerShell string is doubled.
+    $singleQuotedPattern = '(?is)expect\s*\(\s*([A-Za-z_$][A-Za-z0-9_$\.]*)\s*\)\s*\.\s*toHaveValue\s*\(\s*''([^'']+)'''
+    $doubleQuotedPattern = '(?is)expect\s*\(\s*([A-Za-z_$][A-Za-z0-9_$\.]*)\s*\)\s*\.\s*toHaveValue\s*\(\s*"([^"]+)"'
+
+    $matches = New-Object System.Collections.ArrayList
+
+    foreach ($m in [regex]::Matches($Code,$singleQuotedPattern)) {
+        [void]$matches.Add([pscustomobject]@{
+            LocatorName = [string]$m.Groups[1].Value
+            Expected = [string]$m.Groups[2].Value
+        })
+    }
+
+    foreach ($m in [regex]::Matches($Code,$doubleQuotedPattern)) {
+        [void]$matches.Add([pscustomobject]@{
+            LocatorName = [string]$m.Groups[1].Value
+            Expected = [string]$m.Groups[2].Value
+        })
+    }
+
+    foreach ($item in @($matches)) {
+        $locatorName = [string]$item.LocatorName
+        $expected = [string]$item.Expected
+
+        $looksLikeNamedSelect = (
+            $locatorName -match '(?i)(facility|service|client|pharmacy|status|select)'
+        )
+
+        $looksLikeHumanLabel = (
+            $expected -match '[A-Za-z]' -and
+            (
+                $expected -match '\s' -or
+                $expected -match '[A-Z][a-z]+'
+            )
+        )
+
+        if ($looksLikeNamedSelect -and $looksLikeHumanLabel) {
+            $result.Success = $false
+            $result.Error = (
+                "Generated spec may compare a visible selected option label using toHaveValue(): " +
+                "$locatorName -> '$expected'. For HTML select controls, verify option:checked text unless " +
+                "the live MCP evidence explicitly proves '$expected' is the underlying option value."
+            )
+
+            return [pscustomobject]$result
+        }
+    }
+
+    return [pscustomobject]$result
+}
+
 function Invoke-AgentSmartReviewer {
     param(
         $Task,
         $McpExecution,
         [string]$McpExecutionRaw,
         [string]$QaComment,
-        [string[]]$ProjectRules
+        [string[]]$ProjectRules,
+        [string]$KnowledgeContext = '',
+        $CoverageDesign = $null
     )
 
     Set-AgentStatus -Agent QAReviewer -State RUNNING -Details 'собираю deterministic spec'
@@ -4775,6 +11737,12 @@ function Invoke-AgentSmartReviewer {
 
     $environment = [string]$jiraEnvironmentCombo.SelectedItem
     $mcpJson = $McpExecution | ConvertTo-Json -Depth 16
+    $contractJson = Get-TaskUnderstandingContractJson -Task $Task
+    $coverageJson = if ($CoverageDesign) {
+        $CoverageDesign | ConvertTo-Json -Depth 10 -Compress
+    } else {
+        '{"strategy":"live risk-based coverage","checks":[],"skippedIdeas":[]}'
+    }
 
     $prompt = @"
 You are the final Rx2GO QA REVIEWER and Playwright spec owner.
@@ -4790,6 +11758,16 @@ TASK:
 $($Task.Key) — $($Task.Title)
 Module: $($Task.Module)
 
+LOCKED TASK UNDERSTANDING CONTRACT:
+$contractJson
+
+REVIEW CONTRACT RULES:
+- Generate assertions for the same acceptanceMatrix only.
+- Do not convert QA guidance, screenshot details or Knowledge memory into new acceptance.
+- Keep outOfScope out of the deterministic verdict.
+- Preserve criterion IDs in test titles/comments where practical.
+- The live MCP result must match contractId $($Task.ContractId).
+
 TASK SCREENSHOTS:
 $(Get-JiraScreenshotPromptSummary)
 Use attached screenshots as secondary visual evidence. The REAL PLAYWRIGHT MCP QA EXECUTION below remains primary runtime evidence.
@@ -4803,15 +11781,54 @@ $QaComment
 PROJECT RULES:
 $($ProjectRules -join "`n- ")
 
+RETRIEVED KNOWLEDGE MEMORY:
+$KnowledgeContext
+
+RISK-BASED COVERAGE DESIGN:
+$coverageJson
+
+MEMORY USE RULES:
+- Reuse compatible existing fixtures/helpers/tests from memory rather than inventing replacements.
+- Before generating the spec, verify that MCP's verdict passed Result Integrity principles: current-run evidence, current scope, isolated test data, no historical verdict substitution, verified environment assumptions.
+- If MCP evidence is insufficient for a deterministic assertion, do not hard-code the weak inference into the spec.
+- Prior automation failures are warnings: avoid repeating their root causes.
+- Real MCP execution from THIS run outranks any historical memory for selectors, IDs and current behavior.
+- Historical entity IDs must never be used as fallback current test data.
+- Reject any spec that navigates to or hard-codes an entity known to belong to another Jira key.
+- For MM/DD/YYYY tasks, a native `<input type=date>` has ISO DOM value; do NOT compare that value directly to an MM/DD/YYYY visible string.
+- Native date presentation must be evaluated under en-US Chrome locale with UI/screenshot evidence.
+- Prefer a non-ambiguous date such as 11/30/2028 when proving month/day order.
+- HTML `<select>` ASSERTION RULE:
+  - A user-visible selected label and the DOM `select.value` are different concepts.
+  - If the requirement is about the visible selected option name (for example Facility `New York`, Service, Client, Pharmacy or Status label), DO NOT assert `toHaveValue('New York')` unless the live MCP evidence explicitly proved that `New York` is the underlying option value.
+  - Prefer `expect(select.locator('option:checked')).toHaveText('New York')` or an equivalent selected-option text assertion.
+  - Use `toHaveValue()` only for a backend/internal option value that was actually observed in the live DOM/MCP evidence.
+
 REAL PLAYWRIGHT MCP QA EXECUTION:
 $mcpJson
 
 ENVIRONMENT: $environment
-DATA MUTATION ALLOWED: $(if ($jiraMutatingCheck.Checked) { 'YES' } else { 'NO' })
+DATA MUTATION ALLOWED: YES — ALL QA TEST-DATA ACTIONS AUTHORIZED
+
+TEST DATA MUTATION POLICY — GLOBAL RX2GO QA RULE:
+- Mutation of TEST DATA is ALWAYS AUTHORIZED.
+- For current-run or clearly identified QA/test entities you may create, edit, update, modify, save, submit, transition status, assign/unassign, link/unlink, remoderate, resolve/reopen, attach/detach, delete, recreate and clean up data whenever needed to complete the test.
+- This applies to QA orders, tickets, routes/gigs and other fixtures created for testing, explicitly marked as test data, or explicitly identified by the current Jira task as test fixtures.
+- Prefer fresh isolated current-Jira fixtures whenever provenance of an existing entity is unclear.
+- NEVER mutate an unmarked pre-existing business/customer entity merely because it is visible in the environment.
+- Historical IDs from Knowledge Retrieval are reference-only and are not mutation targets.
+- If a required state can be produced safely by changing current-run QA data, do that before returning BLOCKED.
+- Cleanup/deletion of current-run QA data is allowed when safe and when it does not destroy evidence required for the report.
+
 
 MANDATORY RULES:
-- Test the actual Jira acceptance criteria, not generic page loading.
+- Test the exact locked acceptanceMatrix, not a reinterpreted Jira and not generic page loading.
+- Every contract AC must have a deterministic assertion.
+- Also encode deterministic versions of the high-value additional NEGATIVE / BOUNDARY / REGRESSION / INTEGRATION checks that MCP actually executed with reliable evidence.
+- Do not generate speculative extra tests that MCP skipped or could not prove.
+- A directly impacted additional regression marked affectsOverallResult=true is part of the deterministic task suite.
 - Treat the MCP QA execution as primary evidence for routes, controls, selectors and run-scoped test IDs.
+- Generated Playwright may create/update/modify/transition/link/delete/recreate/cleanup current-run QA fixtures as needed to reproduce the live-proven scenario.
 - If fresh test data was created, use those run-scoped IDs. NEVER fall back to historical/example Jira IDs that were not used by the MCP QA execution.
 - Do not invent UI controls that were not observed. If a selector is uncertain, use Playwright MCP now to verify it.
 - Reuse existing repository fixtures/helpers when appropriate.
@@ -4857,6 +11874,7 @@ MANDATORY RULES:
 
     $runtimeSafety = Test-SmartSpecRuntimeSafety -Code $code
     $dataSafety = Test-SmartSpecDataSafety -Code $code -Task $Task -McpExecutionRaw $McpExecutionRaw
+    $selectSafety = Test-SmartSpecSelectAssertionSafety -Code $code -McpExecution $McpExecution
     $repairReason = ''
 
     if (-not $runtimeSafety.Success) {
@@ -4866,6 +11884,10 @@ MANDATORY RULES:
     elseif (-not $dataSafety.Success) {
         $repairReason = [string]$dataSafety.Error
         Append-AgentLog "QA Reviewer data safety guard → FAIL | $repairReason"
+    }
+    elseif (-not $selectSafety.Success) {
+        $repairReason = [string]$selectSafety.Error
+        Append-AgentLog "QA Reviewer select assertion guard → FAIL | $repairReason"
     }
     else {
         Write-Utf8NoBomFile -Path $specAbsolute -Content $code
@@ -4895,6 +11917,9 @@ You are repairing a generated Rx2GO Playwright TypeScript spec.
 Return ONLY the corrected complete TypeScript spec. No markdown, no prose.
 
 TASK: $($Task.Key) — $($Task.Title)
+LOCKED CONTRACT:
+$contractJson
+
 ACCEPTANCE:
 $(@($Task.Criteria) -join "`n- ")
 
@@ -4914,6 +11939,11 @@ RULES:
 - Persistent CDP pages do NOT inherit Playwright baseURL: never use literal relative page.goto('/...') or page.goto('...').
 - For direct navigation use an absolute URL built with resolveBaseUrl() or an already observed absolute URL.
 - Preserve task-specific acceptance assertions.
+- HTML `<select>` ASSERTION RULE:
+  - A user-visible selected label and the DOM `select.value` are different concepts.
+  - If the requirement is about the visible selected option name (for example Facility `New York`, Service, Client, Pharmacy or Status label), DO NOT assert `toHaveValue('New York')` unless the live MCP evidence explicitly proved that `New York` is the underlying option value.
+  - Prefer `expect(select.locator('option:checked')).toHaveText('New York')` or an equivalent selected-option text assertion.
+  - Use `toHaveValue()` only for a backend/internal option value that was actually observed in the live DOM/MCP evidence.
 - Do not hard-code credentials or secrets.
 - Return only valid TypeScript beginning with imports.
 "@
@@ -4949,6 +11979,13 @@ RULES:
     if (-not $dataSafety.Success) {
         $script:JiraGenerationError = [string]$dataSafety.Error
         Set-AgentStatus -Agent QAReviewer -State FAIL -Details 'unsafe test data fallback'
+        return $null
+    }
+
+    $selectSafety = Test-SmartSpecSelectAssertionSafety -Code $repairCode -McpExecution $McpExecution
+    if (-not $selectSafety.Success) {
+        $script:JiraGenerationError = [string]$selectSafety.Error
+        Set-AgentStatus -Agent QAReviewer -State FAIL -Details 'unsafe select label assertion'
         return $null
     }
 
@@ -5050,6 +12087,15 @@ function New-SmartPipelineSummary {
             }
         }
 
+        if (@($McpExecution.additionalResults).Count -gt 0) {
+            $lines += 'LIVE ADDITIONAL RISK-BASED RESULTS:'
+            foreach ($r in @($McpExecution.additionalResults)) {
+                if ($r) {
+                    $lines += "- [$($r.type)/$($r.status)] $($r.case) — $($r.evidence)"
+                }
+            }
+        }
+
         if (@($McpExecution.blockers).Count -gt 0) {
             $lines += 'BLOCKERS:'
             foreach ($b in @($McpExecution.blockers)) { if ($b) { $lines += "- $b" } }
@@ -5081,7 +12127,7 @@ function Invoke-ChatGPTJiraTestGeneration($task, [string]$qaComment, [string[]]$
     $aiLog = Join-Path $aiDir "jira-test-$key-$stamp.log"
     $promptFile = Join-Path $aiDir "jira-test-$key-$stamp.prompt.utf8.txt"
 
-    $mutating = if ($jiraMutatingCheck.Checked) { 'YES' } else { 'NO' }
+    $mutating = 'YES — ALL QA TEST-DATA ACTIONS AUTHORIZED'
     $environment = [string]$jiraEnvironmentCombo.SelectedItem
 
     $prompt = @"
@@ -5113,13 +12159,24 @@ $($projectRules -join "`n- ")
 ENVIRONMENT: $environment
 DATA MUTATION ALLOWED: $mutating
 
+TEST DATA MUTATION POLICY — GLOBAL RX2GO QA RULE:
+- Mutation of TEST DATA is ALWAYS AUTHORIZED.
+- For current-run or clearly identified QA/test entities you may create, edit, update, modify, save, submit, transition status, assign/unassign, link/unlink, remoderate, resolve/reopen, attach/detach, delete, recreate and clean up data whenever needed to complete the test.
+- This applies to QA orders, tickets, routes/gigs and other fixtures created for testing, explicitly marked as test data, or explicitly identified by the current Jira task as test fixtures.
+- Prefer fresh isolated current-Jira fixtures whenever provenance of an existing entity is unclear.
+- NEVER mutate an unmarked pre-existing business/customer entity merely because it is visible in the environment.
+- Historical IDs from Knowledge Retrieval are reference-only and are not mutation targets.
+- If a required state can be produced safely by changing current-run QA data, do that before returning BLOCKED.
+- Cleanup/deletion of current-run QA data is allowed when safe and when it does not destroy evidence required for the report.
+
+
 RULES:
 - Test the acceptance criterion itself, not only page loading.
 - Current bug behavior is not expected behavior.
 - QA comment is execution guidance.
 - Use existing authenticated fixtures and URL helpers.
 - Never hard-code credentials or tokens.
-- Respect the data mutation setting.
+- All necessary actions on clearly identified QA/test data are authorized; never mutate unmarked business/customer data.
 - Return valid Playwright TypeScript.
 "@
 
@@ -5549,146 +12606,159 @@ function Open-HtmlReport {
 
 
 
-function Get-JiraTaskInfo([string]$rawText, $aiAnalysis = $null, [string]$qaComment = '', [string[]]$projectRules = @()) {
-    $raw = if ($rawText) { $rawText.Trim() } else { '' }
-    $key = 'ADHOC'
-    $m = [regex]::Match($raw, '(?i)\b([A-Z][A-Z0-9]+-\d+)\b')
-    if ($m.Success) { $key = $m.Groups[1].Value.ToUpperInvariant() }
+function Test-TaskUnderstandingContract {
+    param($Analysis,[string]$JiraText)
 
-    $title = if ($script:LoadedJiraIssue -and $script:LoadedJiraIssue.key -eq $key) {
-        [string]$script:LoadedJiraIssue.summary
-    } else { $key }
+    $errors = New-Object System.Collections.ArrayList
+    $warnings = New-Object System.Collections.ArrayList
 
-    $low = $raw.ToLowerInvariant()
-    $module = 'Unknown'
-    if ($low -match 'ticket queue|tickets queue|related tickets|ticket|тикет') { $module = 'Tickets Queue' }
-    elseif ($low -match 'show chat|chat|чат') { $module = 'Chat' }
-    elseif ($low -match 'scanner|сканер') { $module = 'Scanner' }
-    elseif ($low -match 'dispatcher|диспетчер') { $module = 'Dispatcher' }
-    elseif ($low -match 'qaqc|qa/qc') { $module = 'QAQC' }
-    elseif ($low -match 'order|заказ') { $module = 'Orders' }
-
-    $current = @()
-    $expected = @()
-    $repro = @()
-    $criteria = @()
-    $risk = @()
-    $source = 'Local fallback'
-
-    if ($aiAnalysis) {
-        if ($aiAnalysis.title) { $title = [string]$aiAnalysis.title }
-        $allowed = @('Tickets Queue','Chat','Scanner','Dispatcher','QAQC','Orders','Unknown')
-        if ($aiAnalysis.module -and $allowed -contains [string]$aiAnalysis.module) { $module = [string]$aiAnalysis.module }
-
-        $current = @($aiAnalysis.currentBehavior | Where-Object { $_ } | ForEach-Object { ([string]$_).Trim() })
-        $expected = @($aiAnalysis.expectedBehavior | Where-Object { $_ } | ForEach-Object { ([string]$_).Trim() })
-        $repro = @($aiAnalysis.reproductionSteps | Where-Object { $_ } | ForEach-Object { ([string]$_).Trim() })
-        $criteria = @($aiAnalysis.acceptanceCriteria | Where-Object { $_ } | ForEach-Object { ([string]$_).Trim() })
-        $risk = @($aiAnalysis.riskAreas | Where-Object { $_ } | ForEach-Object { ([string]$_).Trim() })
-        $source = 'ChatGPT OAuth / Codex'
+    if (-not $Analysis) {
+        [void]$errors.Add('Requirements Analyst returned no Task Understanding Contract.')
     }
+    else {
+        $goal = ([string]$Analysis.taskGoal).Trim()
+        if ($goal.Length -lt 12) { [void]$errors.Add('Task goal is missing or too vague.') }
 
-    if ($criteria.Count -eq 0) {
-        $section = ''
-        foreach ($rawLine in @($raw -split "`r?`n")) {
-            $line = $rawLine.Trim()
-            if (-not $line) { continue }
+        $criteria = @($Analysis.acceptanceCriteria | Where-Object { $_ })
+        $matrix = @($Analysis.acceptanceMatrix | Where-Object { $_ })
+        if ($criteria.Count -eq 0) { [void]$errors.Add('No acceptance criteria were extracted.') }
+        if ($matrix.Count -eq 0) { [void]$errors.Add('Acceptance matrix is missing.') }
+        if ($matrix.Count -lt $criteria.Count) { [void]$errors.Add("Acceptance matrix has fewer rows ($($matrix.Count)) than acceptance criteria ($($criteria.Count)).") }
 
-            if ($line -match '(?i)^(сейчас|текущее поведение|current|actual)\s*:?\s*$') { $section='current'; continue }
-            if ($line -match '(?i)^(ожидаемо|expected)\s*:?\s*$') { $section='expected'; continue }
-            if ($line -match '(?i)^(как воспроизвести|steps to reproduce|repro)\s*:?\s*$') { $section='repro'; continue }
-            if ($line -match '(?i)^(критерий при[её]мки|acceptance criteria|необходимо)\s*:?\s*$') { $section='acceptance'; continue }
+        $expectedIndex = 1
+        foreach ($item in $matrix) {
+            $expectedId = "AC$expectedIndex"
+            $id = ([string]$item.id).Trim().ToUpperInvariant()
+            $sourceType = ([string]$item.sourceType).Trim().ToUpperInvariant()
+            $requirement = ([string]$item.requirement).Trim()
+            $expected = ([string]$item.expected).Trim()
+            $sourceQuote = ([string]$item.sourceQuote).Trim()
+            if ($id -ne $expectedId) { [void]$errors.Add("Acceptance matrix ID sequence is invalid: expected $expectedId, received '$id'.") }
+            if ($sourceType -notin @('DESCRIPTION','JIRA_COMMENT')) { [void]$errors.Add("$id uses forbidden acceptance source '$sourceType'.") }
+            if ($requirement.Length -lt 5) { [void]$errors.Add("$id has no usable requirement.") }
+            if ($expected.Length -lt 4) { [void]$errors.Add("$id has no observable expected result.") }
+            if ($sourceQuote.Length -lt 3) { [void]$errors.Add("$id has no source trace.") }
+            if (@($item.evidenceNeeded | Where-Object { $_ }).Count -eq 0) { [void]$errors.Add("$id has no evidenceNeeded definition.") }
+            $expectedIndex++
+        }
 
-            $clean = $line -replace '^(?:[-*•]|\d+[.)])\s*',''
-            if (-not $clean) { continue }
-
-            switch ($section) {
-                'current' { $current += $clean }
-                'expected' { $expected += $clean; $criteria += $clean }
-                'repro' { $repro += $clean }
-                'acceptance' { $criteria += $clean }
+        $audit = $Analysis.selfAudit
+        if (-not $audit) { [void]$errors.Add('Requirements self-audit is missing.') }
+        else {
+            foreach ($name in @('currentBehaviorNotUsedAsAcceptance','qaCommentNotUsedAsRequirement','memoryNotUsedAsRequirement','screenshotNotUsedAsRequirement','latestScopeApplied','noInventedRequirements')) {
+                $value = $false
+                if ($audit.PSObject.Properties.Name -contains $name) { $value = [bool]$audit.$name }
+                if (-not $value) { [void]$errors.Add("Requirements self-audit failed: $name.") }
             }
+        }
+
+        $confidence = 0
+        try { $confidence = [int]$Analysis.confidence } catch { $confidence = 0 }
+        if ($confidence -lt 70) { [void]$errors.Add("Requirements confidence is too low: $confidence%.") }
+        elseif ($confidence -lt 82) { [void]$warnings.Add("Requirements confidence is moderate: $confidence%.") }
+
+        foreach ($ambiguity in @($Analysis.ambiguities | Where-Object { $_ })) {
+            $severity = ([string]$ambiguity.severity).ToUpperInvariant()
+            if ($severity -eq 'HIGH') { [void]$errors.Add("High-impact ambiguity: $([string]$ambiguity.text)") }
+            elseif ($severity -eq 'MEDIUM') { [void]$warnings.Add("Ambiguity: $([string]$ambiguity.text)") }
+        }
+
+        foreach ($contradiction in @($Analysis.contradictions | Where-Object { $_ })) {
+            if (-not [bool]$contradiction.resolved) { [void]$errors.Add("Unresolved requirement contradiction: $([string]$contradiction.text)") }
+        }
+
+        $latestScope = Get-CurrentIterationScopeFromComments -JiraText $JiraText
+        if (-not [string]::IsNullOrWhiteSpace($latestScope)) {
+            if (@($Analysis.inScope | Where-Object { $_ }).Count -eq 0) { [void]$errors.Add('Latest Jira comment narrows scope, but inScope is empty.') }
+            if ([string]::IsNullOrWhiteSpace([string]$Analysis.scopeDecision)) { [void]$errors.Add('Latest Jira comment exists, but scopeDecision is missing.') }
         }
     }
 
-    $criteria = @($criteria | Select-Object -Unique)
-    if ($criteria.Count -eq 0) {
-        $criteria = @('Требование не удалось выделить автоматически — проверь импорт Jira.')
-    }
-
-    return [pscustomobject]@{
-        Key = $key
-        Title = $title
-        Module = $module
-        Raw = $raw
-        CurrentBehavior = @($current | Select-Object -Unique)
-        ExpectedBehavior = @($expected | Select-Object -Unique)
-        ReproductionSteps = @($repro | Select-Object -Unique)
-        Criteria = $criteria
-        Automated = $false
-        AnalysisSource = $source
-        RiskAreas = @($risk)
-        QAComment = $qaComment
-        ProjectRules = @($projectRules)
-        JiraComments = if ($script:LoadedJiraIssue -and $script:LoadedJiraIssue.key -eq $key) { @($script:LoadedJiraIssue.comments) } else { @() }
-    }
+    return [pscustomobject]@{ Success=($errors.Count -eq 0); Error=($errors -join ' | '); Warnings=@($warnings) }
 }
 
+function New-TaskUnderstandingContractId {
+    param([string]$Key,[string]$Goal,$AcceptanceMatrix,$InScope)
+    $seed = @([string]$Key,[string]$Goal,(@($AcceptanceMatrix | ForEach-Object { "$($_.id)|$($_.requirement)|$($_.expected)" }) -join "`n"),(@($InScope) -join "`n")) -join "`n---`n"
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($seed)
+        $hash = $sha.ComputeHash($bytes)
+        $hex = -join ($hash | ForEach-Object { $_.ToString('x2') })
+        return $hex.Substring(0,16)
+    }
+    finally { $sha.Dispose() }
+}
+
+function Get-TaskUnderstandingContractJson {
+    param($Task)
+    if (-not $Task) { return '{}' }
+    $contract = [ordered]@{
+        contractId=[string]$Task.ContractId; key=[string]$Task.Key; title=[string]$Task.Title; module=[string]$Task.Module;
+        goal=[string]$Task.TaskGoal; primaryBusinessObject=[string]$Task.PrimaryBusinessObject; trigger=[string]$Task.Trigger;
+        preconditions=@($Task.Preconditions); inScope=@($Task.InScope); outOfScope=@($Task.OutOfScope);
+        currentBehavior=@($Task.CurrentBehavior); expectedBehavior=@($Task.ExpectedBehavior);
+        expectedStateChanges=@($Task.ExpectedStateChanges); forbiddenStateChanges=@($Task.ForbiddenStateChanges);
+        acceptanceMatrix=@($Task.AcceptanceMatrix); executionGuidance=@($Task.ExecutionGuidance); constraints=@($Task.Constraints);
+        confidence=[int]$Task.UnderstandingConfidence
+    }
+    return ($contract | ConvertTo-Json -Depth 12 -Compress)
+}
+
+function Get-TaskUnderstandingSummary {
+    param($Task)
+    if (-not $Task) { return 'TASK UNDERSTANDING: unavailable' }
+    $lines = New-Object System.Collections.ArrayList
+    [void]$lines.Add('КАК СИСТЕМА ПОНЯЛА ЗАДАЧУ:')
+    [void]$lines.Add("Contract: $($Task.ContractId)")
+    [void]$lines.Add("Цель: $($Task.TaskGoal)")
+    [void]$lines.Add("Объект: $($Task.PrimaryBusinessObject)")
+    [void]$lines.Add("Триггер: $($Task.Trigger)")
+    [void]$lines.Add("Уверенность: $($Task.UnderstandingConfidence)%")
+    [void]$lines.Add('')
+    if (@($Task.InScope).Count -gt 0) { [void]$lines.Add('В ЭТОМ ПРОГОНЕ ПРОВЕРЯЕМ:'); foreach($x in @($Task.InScope)){[void]$lines.Add("- $x")}; [void]$lines.Add('') }
+    if (@($Task.OutOfScope).Count -gt 0) { [void]$lines.Add('НЕ ОПРЕДЕЛЯЕТ РЕЗУЛЬТАТ ЭТОГО ПРОГОНА:'); foreach($x in @($Task.OutOfScope)){[void]$lines.Add("- $x")}; [void]$lines.Add('') }
+    if (@($Task.ExpectedStateChanges).Count -gt 0) { [void]$lines.Add('ЧТО ДОЛЖНО ИЗМЕНИТЬСЯ:'); foreach($x in @($Task.ExpectedStateChanges)){[void]$lines.Add("- $x")}; [void]$lines.Add('') }
+    if (@($Task.ForbiddenStateChanges).Count -gt 0) { [void]$lines.Add('ЧЕГО НЕ ДОЛЖНО ПРОИСХОДИТЬ:'); foreach($x in @($Task.ForbiddenStateChanges)){[void]$lines.Add("- $x")}; [void]$lines.Add('') }
+    if (@($Task.AcceptanceMatrix).Count -gt 0) {
+        [void]$lines.Add('ACCEPTANCE MATRIX:')
+        foreach($ac in @($Task.AcceptanceMatrix)) { if($ac){ [void]$lines.Add("[$($ac.id)] $($ac.requirement)"); [void]$lines.Add("    Действие: $($ac.action)"); [void]$lines.Add("    Ожидаемо: $($ac.expected)"); [void]$lines.Add("    Источник: $($ac.sourceType) - $($ac.sourceQuote)") } }
+        [void]$lines.Add('')
+    }
+    if (@($Task.ExecutionGuidance).Count -gt 0) { [void]$lines.Add('ИНСТРУКЦИИ QA - КАК ТЕСТИРОВАТЬ, НЕ НОВЫЕ ТРЕБОВАНИЯ:'); foreach($x in @($Task.ExecutionGuidance)){[void]$lines.Add("- $x")} }
+    return (@($lines) -join "`r`n")
+}
+
+function Get-JiraTaskInfo([string]$rawText, $aiAnalysis = $null, [string]$qaComment = '', [string[]]$projectRules = @()) {
+    $raw = if ($rawText) { $rawText.Trim() } else { '' }
+    $key = 'ADHOC'; $m=[regex]::Match($raw,'(?i)\b([A-Z][A-Z0-9]+-\d+)\b'); if($m.Success){$key=$m.Groups[1].Value.ToUpperInvariant()}
+    $title = if($script:LoadedJiraIssue -and $script:LoadedJiraIssue.key -eq $key){[string]$script:LoadedJiraIssue.summary}else{$key}
+    $low=$raw.ToLowerInvariant(); $module='Unknown'
+    if($low -match 'ticket queue|tickets queue|related tickets|ticket|тикет'){$module='Tickets Queue'} elseif($low -match 'show chat|chat|чат'){$module='Chat'} elseif($low -match 'scanner|сканер'){$module='Scanner'} elseif($low -match 'dispatcher|диспетчер'){$module='Dispatcher'} elseif($low -match 'qaqc|qa/qc'){$module='QAQC'} elseif($low -match 'order|заказ'){$module='Orders'}
+    $current=@();$expected=@();$repro=@();$criteria=@();$risk=@();$negativeRisk=@();$boundaryRisk=@();$regressionRisk=@()
+    $taskGoal='';$primaryBusinessObject='other';$trigger='';$preconditions=@();$inScope=@();$outOfScope=@();$expectedStateChanges=@();$forbiddenStateChanges=@();$acceptanceMatrix=@();$executionGuidance=@();$constraints=@();$ambiguities=@();$contradictions=@();$understandingConfidence=0;$scopeDecision='';$source='Local fallback'
+    if($aiAnalysis){
+        if($aiAnalysis.title){$title=[string]$aiAnalysis.title};$allowed=@('Tickets Queue','Chat','Scanner','Dispatcher','QAQC','Orders','Unknown');if($aiAnalysis.module -and $allowed -contains [string]$aiAnalysis.module){$module=[string]$aiAnalysis.module}
+        $current=@($aiAnalysis.currentBehavior|?{$_}|%{([string]$_).Trim()});$expected=@($aiAnalysis.expectedBehavior|?{$_}|%{([string]$_).Trim()});$repro=@($aiAnalysis.reproductionSteps|?{$_}|%{([string]$_).Trim()});$criteria=@($aiAnalysis.acceptanceCriteria|?{$_}|%{([string]$_).Trim()});$risk=@($aiAnalysis.riskAreas|?{$_});$negativeRisk=@($aiAnalysis.negativeRiskIdeas|?{$_});$boundaryRisk=@($aiAnalysis.boundaryRiskIdeas|?{$_});$regressionRisk=@($aiAnalysis.regressionRiskIdeas|?{$_})
+        $taskGoal=([string]$aiAnalysis.taskGoal).Trim();$primaryBusinessObject=([string]$aiAnalysis.primaryBusinessObject).Trim();$trigger=([string]$aiAnalysis.trigger).Trim();$preconditions=@($aiAnalysis.preconditions|?{$_});$inScope=@($aiAnalysis.inScope|?{$_});$outOfScope=@($aiAnalysis.outOfScope|?{$_});$expectedStateChanges=@($aiAnalysis.expectedStateChanges|?{$_});$forbiddenStateChanges=@($aiAnalysis.forbiddenStateChanges|?{$_});$acceptanceMatrix=@($aiAnalysis.acceptanceMatrix|?{$_});$executionGuidance=@($aiAnalysis.executionGuidance|?{$_});$constraints=@($aiAnalysis.constraints|?{$_});$ambiguities=@($aiAnalysis.ambiguities|?{$_});$contradictions=@($aiAnalysis.contradictions|?{$_});try{$understandingConfidence=[int]$aiAnalysis.confidence}catch{$understandingConfidence=0};$scopeDecision=[string]$aiAnalysis.scopeDecision;$source='ChatGPT OAuth / Codex + Understanding Gate'
+    }
+    if($criteria.Count -eq 0){$section='';foreach($rawLine in @($raw -split "`r?`n")){$line=$rawLine.Trim();if(-not $line){continue};if($line -match '(?i)^(сейчас|текущее поведение|current|actual)\s*:?\s*$'){$section='current';continue};if($line -match '(?i)^(ожидаемо|expected)\s*:?\s*$'){$section='expected';continue};if($line -match '(?i)^(как воспроизвести|steps to reproduce|repro)\s*:?\s*$'){$section='repro';continue};if($line -match '(?i)^(критерий при[её]мки|acceptance criteria|необходимо)\s*:?\s*$'){$section='acceptance';continue};$clean=$line -replace '^(?:[-*•]|\d+[.)])\s*','';if(-not $clean){continue};switch($section){'current'{$current+=$clean};'expected'{$expected+=$clean;$criteria+=$clean};'repro'{$repro+=$clean};'acceptance'{$criteria+=$clean}}}}
+    $criteria=@($criteria|Select-Object -Unique);if($criteria.Count -eq 0){$criteria=@('Требование не удалось выделить автоматически - проверь импорт Jira.')};if([string]::IsNullOrWhiteSpace($taskGoal)){$taskGoal="$key - verify current acceptance criteria without adding assumptions."};if([string]::IsNullOrWhiteSpace($primaryBusinessObject)){$primaryBusinessObject='other'}
+    $contractId=New-TaskUnderstandingContractId -Key $key -Goal $taskGoal -AcceptanceMatrix $acceptanceMatrix -InScope $inScope
+    return [pscustomobject]@{Key=$key;Title=$title;Module=$module;Raw=$raw;TaskGoal=$taskGoal;PrimaryBusinessObject=$primaryBusinessObject;Trigger=$trigger;Preconditions=@($preconditions);InScope=@($inScope);OutOfScope=@($outOfScope);CurrentBehavior=@($current|Select-Object -Unique);ExpectedBehavior=@($expected|Select-Object -Unique);ExpectedStateChanges=@($expectedStateChanges);ForbiddenStateChanges=@($forbiddenStateChanges);ReproductionSteps=@($repro|Select-Object -Unique);Criteria=$criteria;AcceptanceMatrix=@($acceptanceMatrix);ContractId=$contractId;ExecutionGuidance=@($executionGuidance);Constraints=@($constraints);UnderstandingConfidence=$understandingConfidence;ScopeDecision=$scopeDecision;Ambiguities=@($ambiguities);Contradictions=@($contradictions);Automated=$false;AnalysisSource=$source;RiskAreas=@($risk);NegativeRiskIdeas=@($negativeRisk);BoundaryRiskIdeas=@($boundaryRisk);RegressionRiskIdeas=@($regressionRisk);QAComment=$qaComment;ProjectRules=@($projectRules);JiraComments=if($script:LoadedJiraIssue -and $script:LoadedJiraIssue.key -eq $key){@($script:LoadedJiraIssue.comments)}else{@()}}
+}
 
 function New-JiraTestPlan($task) {
-    $lines = New-Object System.Collections.Generic.List[string]
-    $lines.Add("$($task.Key) — $($task.Title)")
-    $lines.Add("MODULE: $($task.Module)")
-    $lines.Add("ENVIRONMENT: $([string]$jiraEnvironmentCombo.SelectedItem)")
-    $lines.Add("ANALYSIS: $($task.AnalysisSource)")
-    $lines.Add("JIRA COMMENTS IMPORTED: $(@($task.JiraComments).Count)")
-    $lines.Add('')
-
-    if (@($task.CurrentBehavior).Count -gt 0) {
-        $lines.Add('CURRENT / BUG BEHAVIOR:')
-        foreach ($x in @($task.CurrentBehavior)) { $lines.Add("- $x") }
-        $lines.Add('')
-    }
-
-    if (@($task.ExpectedBehavior).Count -gt 0) {
-        $lines.Add('EXPECTED:')
-        foreach ($x in @($task.ExpectedBehavior)) { $lines.Add("- $x") }
-        $lines.Add('')
-    }
-
-    if (@($task.ReproductionSteps).Count -gt 0) {
-        $lines.Add('REPRODUCTION STEPS:')
-        $i = 1
-        foreach ($x in @($task.ReproductionSteps)) { $lines.Add("$i. $x"); $i++ }
-        $lines.Add('')
-    }
-
-    $lines.Add('ACCEPTANCE CRITERIA:')
-    $i = 1
-    foreach ($x in @($task.Criteria)) { $lines.Add("$i. $x"); $i++ }
-    $lines.Add('')
-
-    if ($task.QAComment) {
-        $lines.Add('QA COMMENT FOR THIS RUN:')
-        $lines.Add([string]$task.QAComment)
-        $lines.Add('')
-    }
-
-    $lines.Add('PLANNED CHECKS:')
-    if ($jiraUiCheck.Checked) { $lines.Add('- UI: проверить acceptance criteria в браузере.') }
-    if ($jiraApiCheck.Checked) { $lines.Add('- API: проверить связанные запросы и ответы.') }
-    if ($jiraNetworkCheck.Checked) { $lines.Add('- Network/Console: проверить ошибки запросов и консоли.') }
-    if ($jiraRegressionCheck.Checked) { $lines.Add('- Regression: проверить связанный критический функционал.') }
-    $lines.Add('')
-
-    $automationStatus = if ($task.Automated) {
-        'AUTOMATION STATUS: TASK-SPEC READY'
-    }
-    else {
-        'AUTOMATION STATUS: TASK-SPEC NOT READY'
-    }
-    $lines.Add($automationStatus)
-    return ($lines -join "`r`n")
+    $lines=New-Object System.Collections.ArrayList
+    [void]$lines.Add("$($task.Key) - $($task.Title)");[void]$lines.Add("MODULE: $($task.Module)");[void]$lines.Add("ENVIRONMENT: $([string]$jiraEnvironmentCombo.SelectedItem)");[void]$lines.Add("ANALYSIS: $($task.AnalysisSource)");[void]$lines.Add("JIRA COMMENTS IMPORTED: $(@($task.JiraComments).Count)");[void]$lines.Add('');[void]$lines.Add((Get-TaskUnderstandingSummary -Task $task));[void]$lines.Add('')
+    if(@($task.CurrentBehavior).Count -gt 0){[void]$lines.Add('CURRENT / BUG BEHAVIOR:');foreach($x in @($task.CurrentBehavior)){[void]$lines.Add("- $x")};[void]$lines.Add('')}
+    if(@($task.ExpectedBehavior).Count -gt 0){[void]$lines.Add('EXPECTED:');foreach($x in @($task.ExpectedBehavior)){[void]$lines.Add("- $x")};[void]$lines.Add('')}
+    if(@($task.ReproductionSteps).Count -gt 0){[void]$lines.Add('REPRODUCTION STEPS:');$i=1;foreach($x in @($task.ReproductionSteps)){[void]$lines.Add("$i. $x");$i++};[void]$lines.Add('')}
+    [void]$lines.Add('PLANNED CHECKS:');[void]$lines.Add('- Core acceptance: каждый AC из Task Understanding Contract должен получить отдельный live verdict.');[void]$lines.Add('- Positive: основной рабочий сценарий и сохранение состояния, если релевантно.');[void]$lines.Add('- Negative: минимум один связанный негативный сценарий, если применимо.');[void]$lines.Add('- Boundary: граничные значения, если применимо.')
+    if($jiraUiCheck.Checked){[void]$lines.Add('- UI: acceptance + risk-based UI behavior.')};if($jiraApiCheck.Checked){[void]$lines.Add('- API/Data consistency: запросы, ответы и UI/backend.')};if($jiraNetworkCheck.Checked){[void]$lines.Add('- Network/Console: failed requests / console errors.')};if($jiraRegressionCheck.Checked){[void]$lines.Add('- Regression: только непосредственно связанный функционал из Knowledge Base.')};[void]$lines.Add('')
+    if($script:SmartCoverageDesign){[void]$lines.Add((New-SmartCoveragePlanSummary -Coverage $script:SmartCoverageDesign));[void]$lines.Add('')}
+    [void]$lines.Add($(if($task.Automated){'AUTOMATION STATUS: TASK-SPEC READY'}else{'AUTOMATION STATUS: TASK-SPEC NOT READY'}))
+    return (@($lines) -join "`r`n")
 }
 
 function Save-JiraRunArtifacts($task, [string]$plan) {
@@ -5709,6 +12779,11 @@ function Save-JiraRunArtifacts($task, [string]$plan) {
         regression = [bool]$jiraRegressionCheck.Checked
         networkConsole = [bool]$jiraNetworkCheck.Checked
         acceptanceCriteria = $criteria
+        acceptanceMatrix = @($task.AcceptanceMatrix)
+        contractId = [string]$task.ContractId
+        taskGoal = [string]$task.TaskGoal
+        inScope = @($task.InScope)
+        outOfScope = @($task.OutOfScope)
         analysisSource = $task.AnalysisSource
         riskAreas = @($task.RiskAreas)
         qaComment = $task.QAComment
@@ -5736,6 +12811,8 @@ function Add-JiraRegressionCandidate {
         title = $script:CurrentJiraTask.Title
         module = $script:CurrentJiraTask.Module
         acceptanceCriteria = @($script:CurrentJiraTask.Criteria)
+        acceptanceMatrix = @($script:CurrentJiraTask.AcceptanceMatrix)
+        contractId = [string]$script:CurrentJiraTask.ContractId
         riskAreas = @($script:CurrentJiraTask.RiskAreas)
         projectRules = @($script:CurrentJiraTask.ProjectRules)
         status = 'regression-candidate'
@@ -5748,6 +12825,944 @@ function Add-JiraRegressionCandidate {
     Refresh-KnowledgeUI
 }
 
+
+
+function Test-KnowledgeLearningSafeText {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+
+    $value = $Text.Trim()
+
+    if ($value.Length -gt 1200) { return $false }
+
+    # Never persist credentials/session material.
+    if (
+        $value -match '(?i)\b(password|парол|token|secret|api[ _-]?key|authorization|bearer|cookie|session(?:id)?|access[ _-]?key|client[ _-]?secret)\b'
+    ) {
+        return $false
+    }
+
+    # Do not turn transient run-scoped entity IDs into project memory.
+    # Stable Client/Account IDs explicitly described as configuration are allowed.
+    if (
+        $value -match '(?i)\b(order|ticket|route|заказ|тикет|маршрут)\b.{0,40}\b\d{6,}\b' -and
+        $value -notmatch '(?i)\b(client|account|facility)\s*(id|#)?\b'
+    ) {
+        return $false
+    }
+
+    return $true
+}
+
+
+function Get-SafeKnowledgeLearningStrings {
+    param($Values)
+
+    $result = New-Object System.Collections.ArrayList
+
+    foreach ($value in @($Values)) {
+        if ($null -eq $value) { continue }
+
+        $textValue = ([string]$value).Trim()
+
+        if (Test-KnowledgeLearningSafeText -Text $textValue) {
+            if (-not $result.Contains($textValue)) {
+                [void]$result.Add($textValue)
+            }
+        }
+    }
+
+    return @($result)
+}
+
+
+function Merge-UniqueKnowledgeLearningStrings {
+    param(
+        $Existing,
+        $NewValues
+    )
+
+    $result = New-Object System.Collections.ArrayList
+
+    foreach ($value in @($Existing) + @($NewValues)) {
+        if ($null -eq $value) { continue }
+
+        $textValue = ([string]$value).Trim()
+        if (-not (Test-KnowledgeLearningSafeText -Text $textValue)) {
+            continue
+        }
+
+        $already = $false
+
+        foreach ($current in @($result)) {
+            if (
+                [string]::Equals(
+                    [string]$current,
+                    $textValue,
+                    [System.StringComparison]::OrdinalIgnoreCase
+                )
+            ) {
+                $already = $true
+                break
+            }
+        }
+
+        if (-not $already) {
+            [void]$result.Add($textValue)
+        }
+    }
+
+    return @($result)
+}
+
+
+function Test-KnowledgeAutoLearningSelfTest {
+    try {
+        $probe = New-Object System.Collections.ArrayList
+        [void]$probe.Add('alpha')
+        [void]$probe.Add('beta')
+
+        $snapshot = @($probe)
+
+        if ($snapshot.Count -ne 2) { return $false }
+
+        $merged = @(
+            Merge-UniqueKnowledgeLearningStrings `
+                -Existing @('alpha') `
+                -NewValues @('ALPHA','gamma')
+        )
+
+        if ($merged.Count -ne 2) { return $false }
+
+        $safe = @(Get-SafeKnowledgeLearningStrings @('one','one','two'))
+
+        if ($safe.Count -ne 2) { return $false }
+
+        $jsonProbe = [ordered]@{
+            verifiedAcceptance = @(
+                [pscustomobject]@{
+                    criterion = 'probe'
+                    status = 'PASS'
+                    evidence = 'current live evidence'
+                }
+            )
+            facts = $merged
+        } | ConvertTo-Json -Depth 5
+
+        if ([string]::IsNullOrWhiteSpace($jsonProbe)) { return $false }
+
+        return $true
+    }
+    catch {
+        Append-AgentLog "KNOWLEDGE SELF-TEST → FAIL | $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Get-KnowledgeLearningModuleSlug {
+    param([string]$Module)
+
+    $slug = if ([string]::IsNullOrWhiteSpace($Module)) {
+        'unknown'
+    }
+    else {
+        $Module.ToLowerInvariant()
+    }
+
+    $slug = $slug -replace '[^a-z0-9]+','-'
+    $slug = $slug.Trim('-')
+
+    if ([string]::IsNullOrWhiteSpace($slug)) {
+        $slug = 'unknown'
+    }
+
+    return $slug
+}
+
+function Get-KnowledgeLearningSourceText {
+    if (
+        $jiraImportedBox -and
+        -not [string]::IsNullOrWhiteSpace([string]$jiraImportedBox.Text)
+    ) {
+        return [string]$jiraImportedBox.Text
+    }
+
+    if ($script:CurrentJiraTask -and $script:CurrentJiraTask.Raw) {
+        return [string]$script:CurrentJiraTask.Raw
+    }
+
+    return ''
+}
+
+function Get-KnowledgeLearningCurrentResult {
+    try {
+        return [string](Get-JiraReportOverallResult)
+    }
+    catch {
+        if ($script:LastSummary) {
+            if ($script:LastSummary.Fail -gt 0) { return 'FAIL' }
+            if ($script:LastSummary.Pass -gt 0) { return 'PASS' }
+        }
+
+        return 'UNKNOWN'
+    }
+}
+
+function Invoke-PostRunKnowledgeCurator {
+    param(
+        $Task,
+        $Summary
+    )
+
+    if (-not $Task -or -not $Task.Key) { return $null }
+
+    $jiraSource = Get-KnowledgeLearningSourceText
+    if ($jiraSource.Length -gt 14000) {
+        $jiraSource = $jiraSource.Substring(0,14000) + "`n[TRUNCATED]"
+    }
+
+    $mcpJson = if ($script:AgentMcpExecution) {
+        $script:AgentMcpExecution | ConvertTo-Json -Depth 14
+    }
+    else {
+        '{}'
+    }
+
+    if ($mcpJson.Length -gt 18000) {
+        $mcpJson = $mcpJson.Substring(0,18000) + "`n[TRUNCATED]"
+    }
+
+    $triageJson = if ($script:FailureTriage) {
+        $script:FailureTriage | ConvertTo-Json -Depth 8
+    }
+    else {
+        '{}'
+    }
+
+    $existingMemory = Get-KnowledgeMemoryPrompt
+    if ($existingMemory.Length -gt 9000) {
+        $existingMemory = $existingMemory.Substring(0,9000) + "`n[TRUNCATED]"
+    }
+
+    $productResult = Get-KnowledgeLearningCurrentResult
+
+    $prompt = @"
+You are the Rx2GO POST-RUN KNOWLEDGE CURATOR.
+
+The QA test has finished. Distill only durable, reusable project knowledge that should help future Jira testing.
+
+CURRENT TASK:
+$($Task.Key) — $($Task.Title)
+Module: $($Task.Module)
+Product result: $productResult
+
+CURRENT JIRA SOURCE USED FOR THIS RUN:
+$jiraSource
+
+CURRENT LIVE SMART QA EXECUTION:
+$mcpJson
+
+CURRENT FAILURE TRIAGE:
+$triageJson
+
+PREVIOUS RETRIEVED MEMORY:
+$existingMemory
+
+Return ONLY valid JSON:
+{
+  "status": "LEARNED|NO_NEW_KNOWLEDGE",
+  "summary": "short summary in Russian",
+  "stableProductFacts": ["durable verified fact"],
+  "navigationFacts": ["reusable navigation/UI location fact"],
+  "apiNetworkFacts": ["reusable API/network contract observed"],
+  "testDataRules": ["stable reusable test-data rule"],
+  "automationLessons": ["lesson that prevents future automation false failures"],
+  "regressionCandidates": ["reusable regression scenario candidate"],
+  "projectRuleCandidates": ["candidate global rule; advisory only"]
+}
+
+STRICT CURATION RULES:
+- Learn only from CURRENT Jira source + CURRENT live MCP evidence + CURRENT Failure Triage.
+- Previous retrieved memory is deduplication/reference context only; never promote an old claim just because it exists.
+- Do not save PASS/FAIL itself as a permanent product fact.
+- A current product defect may be saved only as a narrowly scoped observed issue/lesson, not as intended behavior.
+- Persist stable field names, module behavior, navigation, expected contracts, locale/date behavior, reusable setup rules and automation pitfalls.
+- Never persist passwords, tokens, cookies, auth headers, API keys, secrets or session data.
+- Never persist temporary order/ticket/route IDs, current timestamps, random generated names, screenshot paths, browser PIDs or one-run-only data.
+- A stable configured Client ID / Account ID / Facility rule may be saved only when explicitly stated in the current Jira source as reusable configuration.
+- Do not invent selectors, routes, API endpoints or business rules not proven by current evidence.
+- Keep each item concise and independently useful.
+- Prefer fewer high-confidence facts over many weak ones.
+- Avoid duplicates already present in PREVIOUS RETRIEVED MEMORY.
+- automationLessons should capture TEST_AUTOMATION_BUG / environment / native-control / data-isolation lessons when relevant.
+- regressionCandidates should describe behavior to recheck, not implementation details.
+"@
+
+    Append-AgentLog "KNOWLEDGE AUTO-LEARN → curator started for $($Task.Key)"
+
+    $raw = Invoke-CodexAgent `
+        -AgentSlug '05-knowledge-curator' `
+        -Prompt $prompt `
+        -TimeoutSec 150 `
+        -ReasoningEffort low
+
+    if (-not $raw) {
+        Append-AgentLog "KNOWLEDGE AUTO-LEARN → curator unavailable; deterministic run snapshot will still be saved."
+        return $null
+    }
+
+    $parsed = Convert-AgentJson $raw
+
+    if (-not $parsed) {
+        Append-AgentLog "KNOWLEDGE AUTO-LEARN → curator JSON invalid; deterministic run snapshot will still be saved."
+        return $null
+    }
+
+    return $parsed
+}
+
+function Save-PostRunKnowledge {
+    param(
+        $Task,
+        $Summary,
+        $Curated
+    )
+
+    if (-not $Task -or -not $Task.Key) { return $null }
+
+    $moduleSlug = Get-KnowledgeLearningModuleSlug -Module ([string]$Task.Module)
+    $dir = Join-Path $script:ProjectRoot "knowledge\learned\$moduleSlug"
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+
+    $safeKey = ([string]$Task.Key -replace '[^A-Za-z0-9_.-]','_')
+    $path = Join-Path $dir "$safeKey.json"
+
+    $existing = $null
+    if (Test-Path $path) {
+        try {
+            $existingRaw = Get-Content -Raw -Path $path -ErrorAction Stop
+            if (-not [string]::IsNullOrWhiteSpace($existingRaw)) {
+                $existing = $existingRaw | ConvertFrom-Json -ErrorAction Stop
+            }
+        }
+        catch {
+            $existing = $null
+        }
+    }
+
+    $curatedStable = if ($Curated) {
+        Get-SafeKnowledgeLearningStrings $Curated.stableProductFacts
+    } else { @() }
+
+    $curatedNavigation = if ($Curated) {
+        Get-SafeKnowledgeLearningStrings $Curated.navigationFacts
+    } else { @() }
+
+    $curatedApi = if ($Curated) {
+        Get-SafeKnowledgeLearningStrings $Curated.apiNetworkFacts
+    } else { @() }
+
+    $curatedDataRules = if ($Curated) {
+        Get-SafeKnowledgeLearningStrings $Curated.testDataRules
+    } else { @() }
+
+    $curatedAutomation = if ($Curated) {
+        Get-SafeKnowledgeLearningStrings $Curated.automationLessons
+    } else { @() }
+
+    $curatedRegression = if ($Curated) {
+        Get-SafeKnowledgeLearningStrings $Curated.regressionCandidates
+    } else { @() }
+
+    $curatedRuleCandidates = if ($Curated) {
+        Get-SafeKnowledgeLearningStrings $Curated.projectRuleCandidates
+    } else { @() }
+
+    # Machine-grounded acceptance snapshot is always saved when available,
+    # even if the optional AI curator fails.
+    $verifiedAcceptance = New-Object System.Collections.ArrayList
+
+    if ($script:AgentMcpExecution) {
+        foreach ($item in @($script:AgentMcpExecution.acceptanceResults)) {
+            if (-not $item) { continue }
+
+            $criterion = [string]$item.criterion
+            $evidence = [string]$item.evidence
+            $status = ([string]$item.status).ToUpperInvariant()
+
+            if (
+                (Test-KnowledgeLearningSafeText -Text $criterion) -and
+                (Test-KnowledgeLearningSafeText -Text $evidence)
+            ) {
+                [void]$verifiedAcceptance.Add([pscustomobject]@{
+                    criterion = $criterion
+                    status = $status
+                    evidence = $evidence
+                })
+            }
+        }
+    }
+
+    $existingStable = if ($existing) { @($existing.stableProductFacts) } else { @() }
+    $existingNavigation = if ($existing) { @($existing.navigationFacts) } else { @() }
+    $existingApi = if ($existing) { @($existing.apiNetworkFacts) } else { @() }
+    $existingDataRules = if ($existing) { @($existing.testDataRules) } else { @() }
+    $existingAutomation = if ($existing) { @($existing.automationLessons) } else { @() }
+    $existingRegression = if ($existing) { @($existing.regressionCandidates) } else { @() }
+    $existingRuleCandidates = if ($existing) { @($existing.projectRuleCandidates) } else { @() }
+
+    $productResult = Get-KnowledgeLearningCurrentResult
+
+    $failureLesson = $null
+    if ($script:FailureTriage) {
+        $failureSummary = [string]$script:FailureTriage.summary
+        $failureAction = [string]$script:FailureTriage.recommendedAction
+
+        if (
+            (Test-KnowledgeLearningSafeText -Text $failureSummary) -and
+            (Test-KnowledgeLearningSafeText -Text $failureAction)
+        ) {
+            $failureLesson = [pscustomobject]@{
+                classification = [string]$script:FailureTriage.classification
+                confidence = [string]$script:FailureTriage.confidence
+                summary = $failureSummary
+                recommendedAction = $failureAction
+            }
+        }
+    }
+
+    $dataStrategy = $null
+    if ($script:AgentMcpExecution -and $script:AgentMcpExecution.testData) {
+        $dataStrategy = [pscustomobject]@{
+            created = [bool]$script:AgentMcpExecution.testData.created
+            currentTaskVerified = [bool]$script:AgentMcpExecution.testData.currentTaskVerified
+            selectionReason = [string]$script:AgentMcpExecution.testData.selectionReason
+        }
+    }
+
+    $doc = [ordered]@{
+        schemaVersion = 1
+        jiraKey = [string]$Task.Key
+        title = [string]$Task.Title
+        module = [string]$Task.Module
+        updatedAt = (Get-Date).ToString('o')
+        lastProductResult = $productResult
+        source = 'current Jira source + current live Smart QA + current Failure Triage'
+        curatorStatus = if ($Curated -and $Curated.status) {
+            [string]$Curated.status
+        } else {
+            'DETERMINISTIC_ONLY'
+        }
+        curatorSummary = if (
+            $Curated -and
+            (Test-KnowledgeLearningSafeText -Text ([string]$Curated.summary))
+        ) {
+            [string]$Curated.summary
+        } else {
+            'Current-run verified acceptance snapshot saved automatically.'
+        }
+        verifiedAcceptance = @($verifiedAcceptance)
+        testDataStrategy = $dataStrategy
+        failureLesson = $failureLesson
+        stableProductFacts = @(
+            Merge-UniqueKnowledgeLearningStrings `
+                -Existing $existingStable `
+                -NewValues $curatedStable
+        )
+        navigationFacts = @(
+            Merge-UniqueKnowledgeLearningStrings `
+                -Existing $existingNavigation `
+                -NewValues $curatedNavigation
+        )
+        apiNetworkFacts = @(
+            Merge-UniqueKnowledgeLearningStrings `
+                -Existing $existingApi `
+                -NewValues $curatedApi
+        )
+        testDataRules = @(
+            Merge-UniqueKnowledgeLearningStrings `
+                -Existing $existingDataRules `
+                -NewValues $curatedDataRules
+        )
+        automationLessons = @(
+            Merge-UniqueKnowledgeLearningStrings `
+                -Existing $existingAutomation `
+                -NewValues $curatedAutomation
+        )
+        regressionCandidates = @(
+            Merge-UniqueKnowledgeLearningStrings `
+                -Existing $existingRegression `
+                -NewValues $curatedRegression
+        )
+        projectRuleCandidates = @(
+            Merge-UniqueKnowledgeLearningStrings `
+                -Existing $existingRuleCandidates `
+                -NewValues $curatedRuleCandidates
+        )
+    }
+
+    $json = $doc | ConvertTo-Json -Depth 12
+    Write-Utf8NoBomFile -Path $path -Content $json
+
+    $learnedCount = (
+        @($doc.stableProductFacts).Count +
+        @($doc.navigationFacts).Count +
+        @($doc.apiNetworkFacts).Count +
+        @($doc.testDataRules).Count +
+        @($doc.automationLessons).Count +
+        @($doc.regressionCandidates).Count +
+        @($doc.projectRuleCandidates).Count
+    )
+
+    $script:LastKnowledgeLearning = [pscustomobject]@{
+        JiraKey = [string]$Task.Key
+        Module = [string]$Task.Module
+        File = $path
+        LearnedCount = $learnedCount
+        AcceptanceCount = @($verifiedAcceptance).Count
+        CuratorStatus = [string]$doc.curatorStatus
+    }
+    $script:LastKnowledgeLearningFile = $path
+
+    Append-AgentLog "KNOWLEDGE AUTO-LEARN → saved $learnedCount reusable item(s) + $(@($verifiedAcceptance).Count) verified acceptance result(s)."
+    Append-AgentLog "KNOWLEDGE AUTO-LEARN FILE → $path"
+
+    if ($knowledgeSyncInfo) {
+        $knowledgeSyncInfo.Text = "Auto-Learning: $($Task.Key) → $learnedCount новых/накопленных знаний. Готово для Commit / Synchronize."
+        $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
+    }
+
+    Refresh-KnowledgeUI -PreserveActionText
+
+    return $script:LastKnowledgeLearning
+}
+
+function Update-KnowledgeFromCompletedRun {
+    param(
+        $Task,
+        $Summary
+    )
+
+    if (-not $Task -or -not $Summary) { return $null }
+
+    # Trust boundary: only a completed live Smart QA result may teach project facts.
+    # If MCP never produced a result, skip auto-learning instead of learning from guesses.
+    if (-not $script:AgentMcpExecution) {
+        $script:LastKnowledgeWriteWarning = 'Новые знания не сохранены: отсутствует завершённое live Smart QA evidence.'
+        Append-AgentLog "KNOWLEDGE AUTO-LEARN → skipped | $($script:LastKnowledgeWriteWarning)"
+        return $null
+    }
+
+    try {
+        if (-not (Test-KnowledgeAutoLearningSelfTest)) {
+            $script:LastKnowledgeWriteWarning = 'Knowledge Base self-test не пройден. Новые знания не записаны, чтобы не повредить базу.'
+            Append-AgentLog "KNOWLEDGE AUTO-LEARN → self-test blocked write."
+            return $null
+        }
+
+        Append-AgentLog 'KNOWLEDGE SELF-TEST → PASS'
+
+        $jiraTaskStatus.Text = "$(Get-KnowledgeLearningCurrentResult) — тест завершён; обновляю Knowledge Base…"
+        $jiraTaskStatus.ForeColor = [System.Drawing.Color]::FromArgb(37,99,235)
+        [System.Windows.Forms.Application]::DoEvents()
+
+        $curated = Invoke-PostRunKnowledgeCurator `
+            -Task $Task `
+            -Summary $Summary
+
+        $saved = Save-PostRunKnowledge `
+            -Task $Task `
+            -Summary $Summary `
+            -Curated $curated
+
+        if (-not $saved) {
+            $script:LastKnowledgeWriteWarning = 'Не удалось сохранить новые знания в локальную Knowledge Base.'
+        }
+        else {
+            $script:LastKnowledgeWriteWarning = $null
+        }
+
+        return $saved
+    }
+    catch {
+        # Auto-learning must never rewrite the product verdict.
+        $script:LastKnowledgeWriteWarning = "Не удалось сохранить новые знания: $($_.Exception.Message)"
+        Append-AgentLog "KNOWLEDGE AUTO-LEARN → warning: $($script:LastKnowledgeWriteWarning)"
+        return $null
+    }
+}
+
+
+function Get-AutoGitSyncResultLabel {
+    param($Result)
+
+    if (-not $Result) { return 'not-run' }
+
+    if ($Result.Success -and $Result.Pushed) { return 'pushed' }
+    if ($Result.Success -and $Result.Committed) { return 'committed-local' }
+    if ($Result.Success) { return 'already-synced' }
+
+    return 'warning'
+}
+
+function Invoke-AutoGitCommitPushAfterJiraRun {
+    param(
+        $Task,
+        $Summary
+    )
+
+    $result = [ordered]@{
+        Success = $false
+        Committed = $false
+        Pushed = $false
+        CommitHash = ''
+        Branch = ''
+        Message = ''
+        Warning = ''
+        FinishedAt = (Get-Date).ToString('o')
+    }
+
+    if (-not $script:AutoGitAfterJiraRun) {
+        $result.Success = $true
+        $result.Message = 'Automatic Git sync is disabled.'
+        return [pscustomobject]$result
+    }
+
+    if (-not $Task -or -not $Task.Key) {
+        $result.Warning = 'No Jira task context for automatic Git sync.'
+        return [pscustomobject]$result
+    }
+
+    if ($script:GitBusy) {
+        $result.Warning = 'Git is busy; automatic sync skipped.'
+        return [pscustomobject]$result
+    }
+
+    $script:GitBusy = $true
+
+    try {
+        Append-AgentLog "AUTO GIT → preparing managed project changes for $($Task.Key)"
+
+        if (-not (Test-GitInstalled)) {
+            $result.Warning = 'Git is not installed.'
+            Append-AgentLog "AUTO GIT → warning | $($result.Warning)"
+            return [pscustomobject]$result
+        }
+
+        Initialize-KnowledgeGit -Silent
+
+        $git = Get-GitState
+        if (-not $git.Repository) {
+            $result.Warning = 'Git repository is not available.'
+            Append-AgentLog "AUTO GIT → warning | $($result.Warning)"
+            return [pscustomobject]$result
+        }
+
+        if (-not (Set-KnowledgeOriginToSsh)) {
+            $result.Warning = 'Could not configure SSH origin.'
+            Append-AgentLog "AUTO GIT → warning | $($result.Warning)"
+            return [pscustomobject]$result
+        }
+
+        $git = Get-GitState
+        $result.Branch = [string]$git.Branch
+
+        # Stage only explicitly whitelisted safe project paths.
+        $pathArgs = @(Get-KnowledgeGitPathArgs)
+        if ($pathArgs.Count -eq 0) {
+            $result.Warning = 'Managed Git path list is empty.'
+            Append-AgentLog "AUTO GIT → warning | $($result.Warning)"
+            return [pscustomobject]$result
+        }
+
+        $addArgs = New-Object System.Collections.ArrayList
+        [void]$addArgs.Add('add')
+        [void]$addArgs.Add('-A')
+        [void]$addArgs.Add('--')
+
+        foreach ($path in $pathArgs) {
+            [void]$addArgs.Add([string]$path)
+        }
+
+        $addResult = Invoke-Git @($addArgs) 120000
+        if ($addResult.ExitCode -ne 0) {
+            $result.Warning = "git add failed: $($addResult.Error) $($addResult.Output)".Trim()
+            Append-AgentLog "AUTO GIT → warning | $($result.Warning)"
+            return [pscustomobject]$result
+        }
+
+        $staged = Invoke-Git @('diff','--cached','--name-only') 15000
+        $stagedFiles = @()
+
+        if ($staged.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($staged.Output)) {
+            $stagedFiles = @(
+                $staged.Output -split "`r?`n" |
+                    Where-Object { $_ }
+            )
+
+            $productResult = try {
+                Get-JiraReportOverallResult
+            }
+            catch {
+                if ($Summary -and $Summary.Fail -gt 0) { 'FAIL' } else { 'PASS' }
+            }
+
+            $commitMessage = "Auto QA $($Task.Key) $productResult " + (Get-Date -Format 'yyyy-MM-dd HH:mm')
+
+            $commit = Invoke-Git @(
+                'commit','-m',$commitMessage
+            ) 30000
+
+            if ($commit.ExitCode -ne 0) {
+                $combinedCommit = (
+                    ([string]$commit.Error) + "`n" +
+                    ([string]$commit.Output)
+                ).Trim()
+
+                if ($combinedCommit -notmatch '(?i)nothing to commit') {
+                    $result.Warning = "git commit failed: $combinedCommit"
+                    Append-AgentLog "AUTO GIT → warning | $($result.Warning)"
+                    return [pscustomobject]$result
+                }
+            }
+            else {
+                $result.Committed = $true
+
+                $hash = Invoke-Git @('rev-parse','--short','HEAD') 10000
+                if ($hash.ExitCode -eq 0) {
+                    $result.CommitHash = [string]$hash.Output
+                }
+
+                Append-AgentLog "AUTO GIT → commit created | files=$($stagedFiles.Count) | hash=$($result.CommitHash)"
+            }
+        }
+        else {
+            Append-AgentLog 'AUTO GIT → no new managed file changes to commit.'
+        }
+
+        # Push previously unpushed local commits too.
+        $privateKey = Get-GitHubSshPrivateKeyPath
+
+        if (-not (Test-Path $privateKey)) {
+            $result.Warning = 'SSH key is not configured. Local commit is preserved.'
+            $result.Success = $result.Committed
+            Append-AgentLog "AUTO GIT → warning | $($result.Warning)"
+            return [pscustomobject]$result
+        }
+
+        $auth = Invoke-SshGitHubAuthCheck
+        if (-not $auth.Success) {
+            $result.Warning = "SSH authentication is not ready: $($auth.Message)"
+            $result.Success = $result.Committed
+            Append-AgentLog "AUTO GIT → warning | local commit preserved | $($result.Warning)"
+            return [pscustomobject]$result
+        }
+
+        $git = Get-GitState
+        $branch = [string]$git.Branch
+        $result.Branch = $branch
+
+        if ([string]::IsNullOrWhiteSpace($branch) -or $branch -eq 'detached') {
+            $result.Warning = 'Cannot auto-push a detached Git HEAD.'
+            $result.Success = $result.Committed
+            Append-AgentLog "AUTO GIT → warning | $($result.Warning)"
+            return [pscustomobject]$result
+        }
+
+        $remoteBranch = Invoke-Git @(
+            'ls-remote','--exit-code','--heads','origin',$branch
+        ) 30000
+
+        if ($remoteBranch.ExitCode -ne 0) {
+            $remoteMessage = (
+                ([string]$remoteBranch.Error) + "`n" +
+                ([string]$remoteBranch.Output)
+            ).Trim()
+
+            if (
+                $remoteBranch.ExitCode -eq 2 -or
+                [string]::IsNullOrWhiteSpace($remoteMessage)
+            ) {
+                $firstPush = Invoke-Git @(
+                    'push','-u','origin',$branch
+                ) 60000
+
+                if ($firstPush.ExitCode -ne 0) {
+                    $pushReason = (
+                        ([string]$firstPush.Error) + "`n" +
+                        ([string]$firstPush.Output)
+                    ).Trim()
+
+                    $result.Warning = "Initial push failed: $pushReason"
+                    $result.Success = $result.Committed
+                    Append-AgentLog "AUTO GIT → warning | local commit preserved | $($result.Warning)"
+                    return [pscustomobject]$result
+                }
+
+                $result.Pushed = $true
+                $result.Success = $true
+                $result.Message = "Initial push completed to origin/$branch."
+                Append-AgentLog "AUTO GIT → PUSH PASS | created origin/$branch"
+
+                return [pscustomobject]$result
+            }
+
+            $result.Warning = "Could not inspect remote branch: $remoteMessage"
+            $result.Success = $result.Committed
+            Append-AgentLog "AUTO GIT → warning | $($result.Warning)"
+
+            return [pscustomobject]$result
+        }
+
+        $fetch = Invoke-Git @(
+            'fetch','origin',$branch
+        ) 60000
+
+        if ($fetch.ExitCode -ne 0) {
+            $fetchReason = (
+                ([string]$fetch.Error) + "`n" +
+                ([string]$fetch.Output)
+            ).Trim()
+
+            $result.Warning = "Fetch failed: $fetchReason"
+            $result.Success = $result.Committed
+            Append-AgentLog "AUTO GIT → warning | local commit preserved | $($result.Warning)"
+
+            return [pscustomobject]$result
+        }
+
+        $remoteRef = "origin/$branch"
+
+        $behindRaw = (Invoke-Git @(
+            'rev-list','--count',"HEAD..$remoteRef"
+        ) 10000).Output
+
+        $aheadRaw = (Invoke-Git @(
+            'rev-list','--count',"$remoteRef..HEAD"
+        ) 10000).Output
+
+        $behind = 0
+        $ahead = 0
+
+        [void][int]::TryParse([string]$behindRaw, [ref]$behind)
+        [void][int]::TryParse([string]$aheadRaw, [ref]$ahead)
+
+        if ($behind -gt 0) {
+            $git = Get-GitState
+
+            if ($git.OtherChanges -gt 0) {
+                $result.Warning = "Remote is ahead by $behind commit(s), but $($git.OtherChanges) unrelated local change(s) exist. Local commit preserved; auto-push paused for safety."
+                $result.Success = $result.Committed
+                Append-AgentLog "AUTO GIT → SAFE PAUSE | $($result.Warning)"
+
+                return [pscustomobject]$result
+            }
+
+            $rebase = Invoke-Git @(
+                'rebase',$remoteRef
+            ) 60000
+
+            if ($rebase.ExitCode -ne 0) {
+                [void](Invoke-Git @('rebase','--abort') 15000)
+
+                $rebaseReason = (
+                    ([string]$rebase.Error) + "`n" +
+                    ([string]$rebase.Output)
+                ).Trim()
+
+                $result.Warning = "Automatic rebase failed; rebase aborted and local commit preserved: $rebaseReason"
+                $result.Success = $result.Committed
+                Append-AgentLog "AUTO GIT → SAFE PAUSE | $($result.Warning)"
+
+                return [pscustomobject]$result
+            }
+
+            Append-AgentLog "AUTO GIT → rebased onto $remoteRef"
+        }
+
+        $aheadRaw = (Invoke-Git @(
+            'rev-list','--count',"$remoteRef..HEAD"
+        ) 10000).Output
+
+        $ahead = 0
+        [void][int]::TryParse([string]$aheadRaw, [ref]$ahead)
+
+        if ($ahead -le 0) {
+            $result.Success = $true
+            $result.Message = 'GitHub is already synchronized.'
+            Append-AgentLog 'AUTO GIT → already synchronized.'
+
+            return [pscustomobject]$result
+        }
+
+        $push = Invoke-Git @(
+            'push','-u','origin',$branch
+        ) 60000
+
+        if ($push.ExitCode -ne 0) {
+            $pushReason = (
+                ([string]$push.Error) + "`n" +
+                ([string]$push.Output)
+            ).Trim()
+
+            $result.Warning = "Push failed; local commit preserved: $pushReason"
+            $result.Success = $result.Committed
+            Append-AgentLog "AUTO GIT → warning | $($result.Warning)"
+
+            return [pscustomobject]$result
+        }
+
+        $result.Pushed = $true
+        $result.Success = $true
+        $result.Message = "Pushed $ahead commit(s) to origin/$branch."
+
+        Append-AgentLog "AUTO GIT → PUSH PASS | $($result.Message)"
+
+        return [pscustomobject]$result
+    }
+    catch {
+        $result.Warning = $_.Exception.Message
+        $result.Success = $result.Committed
+        Append-AgentLog "AUTO GIT → exception | local commit state preserved | $($result.Warning)"
+
+        return [pscustomobject]$result
+    }
+    finally {
+        $result.FinishedAt = (Get-Date).ToString('o')
+        $script:GitBusy = $false
+        Refresh-KnowledgeUI -PreserveActionText
+    }
+}
+
+function Update-AutoGitUiStatus {
+    param($GitResult)
+
+    if (-not $GitResult) { return }
+
+    if ($GitResult.Success -and $GitResult.Pushed) {
+        if ($knowledgeSyncInfo) {
+            $knowledgeSyncInfo.Text = "Auto Git: Commit + Push ✓  $($GitResult.CommitHash) → origin/$($GitResult.Branch)"
+            $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
+        }
+
+        return
+    }
+
+    if ($GitResult.Success -and -not [string]::IsNullOrWhiteSpace([string]$GitResult.Message)) {
+        if ($knowledgeSyncInfo) {
+            $knowledgeSyncInfo.Text = "Auto Git: $($GitResult.Message)"
+            $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
+        }
+
+        return
+    }
+
+    if ($knowledgeSyncInfo) {
+        $knowledgeSyncInfo.Text = "Auto Git warning: $($GitResult.Warning)"
+        $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::FromArgb(161,98,7)
+    }
+}
 
 function Complete-JiraRun {
     if (-not $script:JiraRunActive) { return }
@@ -5815,10 +13830,62 @@ function Complete-JiraRun {
         }
 
         Save-JiraKnowledgeCase $script:CurrentJiraTask $script:LastJiraPlan $s
+
+        # Automatic post-run learning:
+        # persists verified current-run knowledge before the readable Jira report
+        # so the report can state exactly what was learned.
+        [void](Update-KnowledgeFromCompletedRun `
+            -Task $script:CurrentJiraTask `
+            -Summary $s)
+
+        $script:LastAutoGitSync = Invoke-AutoGitCommitPushAfterJiraRun `
+            -Task $script:CurrentJiraTask `
+            -Summary $s
+
+        Update-AutoGitUiStatus -GitResult $script:LastAutoGitSync
+
+        if ($script:LastKnowledgeLearning) {
+            try {
+                Refresh-KnowledgeSaveState -VerifyRemote
+            }
+            catch { }
+        }
+
+        Show-KnowledgeWriteWarningAfterRun
+
         [void](Save-JiraReadableReport)
     }
 
     $notifyResult = Get-JiraProductNotificationResult
+
+    if ($notifyResult -eq 'PASS') {
+        if ($script:LastKnowledgeLearning -and $script:LastAutoGitSync -and $script:LastAutoGitSync.Pushed) {
+            $jiraTaskStatus.Text = "PASS — тест завершён; Knowledge обновлена; GitHub синхронизирован автоматически"
+        }
+        elseif ($script:LastKnowledgeLearning -and $script:LastAutoGitSync -and -not $script:LastAutoGitSync.Pushed) {
+            $jiraTaskStatus.Text = "PASS — тест завершён; Knowledge обновлена; Git sync warning"
+        }
+        elseif ($script:LastKnowledgeLearning) {
+            $jiraTaskStatus.Text = "PASS — тест завершён; Knowledge Base обновлена ($($script:LastKnowledgeLearning.LearnedCount) знаний)"
+        }
+        else {
+            $jiraTaskStatus.Text = 'PASS — тест завершён'
+        }
+        $jiraTaskStatus.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
+    }
+    elseif ($notifyResult -eq 'FAIL') {
+        if ($script:LastKnowledgeLearning -and $script:LastAutoGitSync -and $script:LastAutoGitSync.Pushed) {
+            $jiraTaskStatus.Text = "FAIL — тест завершён; Knowledge обновлена; GitHub синхронизирован автоматически"
+        }
+        elseif ($script:LastKnowledgeLearning -and $script:LastAutoGitSync -and -not $script:LastAutoGitSync.Pushed) {
+            $jiraTaskStatus.Text = "FAIL — тест завершён; Knowledge обновлена; Git sync warning"
+        }
+        elseif ($script:LastKnowledgeLearning) {
+            $jiraTaskStatus.Text = "FAIL — тест завершён; Knowledge Base обновлена ($($script:LastKnowledgeLearning.LearnedCount) знаний)"
+        }
+        $jiraTaskStatus.ForeColor = [System.Drawing.Color]::Firebrick
+    }
+
     if ($notifyResult -eq 'PASS') {
         $taskKey = if ($script:CurrentJiraTask) { [string]$script:CurrentJiraTask.Key } else { 'Jira task' }
         Show-QAResultToast `
@@ -5847,6 +13914,12 @@ function Complete-JiraRun {
     $jiraCopyReportButton.Enabled = $true
     $jiraRegressionButton.Enabled = $true
 
+    # Final overwrite after RCA + Knowledge Auto-Learning + Git sync + final UI result.
+    # This prevents an earlier intermediate report from remaining on disk with
+    # "ФИНАЛЬНЫЙ PLAYWRIGHT: ещё не завершён".
+    [void](Save-JiraReadableReport)
+    Append-AgentLog 'JIRA REPORT FINALIZED → contains final Playwright/RCA/Knowledge/Git state.'
+
     $script:JiraRunActive = $false
 
     # The browser stayed alive for potential MCP failure triage. Respect the user's
@@ -5857,6 +13930,11 @@ function Complete-JiraRun {
     }
     else {
         Append-AgentLog 'BROWSER SESSION → left open by user preference.'
+    }
+
+    if ($script:QueueWorkerMode) {
+        $queueResult = if ($notifyResult -in @('PASS','FAIL')) { $notifyResult } else { 'ERROR' }
+        Complete-QueueWorkerResult -Result $queueResult -Details ([string]$jiraTaskStatus.Text)
     }
 }
 
@@ -5946,10 +14024,16 @@ $resultsText
 RUN LOG TAIL:
 $runLogTail
 
+RETRIEVED KNOWLEDGE MEMORY:
+$(Get-KnowledgeMemoryPrompt)
+
 RULES:
+- Use prior failure patterns only as supporting comparison; diagnose the current failure from current evidence.
 - Do not automatically call every FAIL a product bug.
 - Distinguish bad selector/assertion, auth, missing test data, environment/network and genuine product behavior.
 - Prefer concrete runtime evidence over assumptions.
+- For date-format tasks, if FAIL was inferred only from a native input[type=date] screenshot captured under the wrong browser locale, classify it as TEST_AUTOMATION_BUG or ENVIRONMENT_ERROR, not PRODUCT_BUG.
+- Reusing test data visibly marked with another Jira key is TEST_DATA_ERROR, not product evidence.
 - Never expose credentials/tokens/cookies.
 - Do not modify files; return diagnosis only.
 "@
@@ -6007,8 +14091,6 @@ function Test-RunRequiresFreshData {
         $Task,
         [string]$QaComment
     )
-
-    if (-not $jiraMutatingCheck.Checked) { return $false }
 
     $parts = New-Object System.Collections.Generic.List[string]
 
@@ -6130,12 +14212,12 @@ function Start-JiraTaskCheck {
         if (-not (Test-CodexAgentRunner)) {
             $jiraTaskStatus.Text = "Codex self-test failed: $($script:LastAgentError)"
             $jiraTaskStatus.ForeColor = [System.Drawing.Color]::Firebrick
-            [System.Windows.Forms.MessageBox]::Show(
-                "Codex runner не прошёл self-test.`r`n`r`n$($script:LastAgentError)`r`n`r`nСмотри reports\ai\agents\SELFTEST.",
-                'Rx2GO QA — Codex',
-                'OK',
-                'Error'
-            ) | Out-Null
+            if (-not $script:QueueWorkerMode) {
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Codex runner не прошёл self-test.`r`n`r`n$($script:LastAgentError)`r`n`r`nСмотри reports\ai\agents\SELFTEST.",
+                    'Rx2GO QA — Codex','OK','Error'
+                ) | Out-Null
+            }
             return
         }
         $script:CodexRunnerVerified = $true
@@ -6147,15 +14229,36 @@ function Start-JiraTaskCheck {
         return
     }
 
+    if (-not $script:IntegrityGuardVerified) {
+        $jiraTaskStatus.Text = 'Проверяю Result Integrity Guard…'
+        $jiraTaskStatus.ForeColor = [System.Drawing.Color]::FromArgb(37,99,235)
+        [System.Windows.Forms.Application]::DoEvents()
+
+        if (-not (Test-SmartQaIntegrityGuardSelfTest)) {
+            $jiraTaskStatus.Text = 'Result Integrity Guard self-test failed'
+            $jiraTaskStatus.ForeColor = [System.Drawing.Color]::Firebrick
+            if (-not $script:QueueWorkerMode) {
+                [System.Windows.Forms.MessageBox]::Show(
+                    'Встроенная проверка Result Integrity Guard не прошла. Тест остановлен, чтобы не получить ложный PASS/FAIL.',
+                    'Rx2GO QA — Integrity Guard','OK','Error'
+                ) | Out-Null
+            }
+            return
+        }
+
+        $script:IntegrityGuardVerified = $true
+        Append-AgentLog 'RESULT INTEGRITY SELF-TEST → PASS'
+    }
+
     if (-not (Ensure-PlaywrightMcpForCodex)) {
         $jiraTaskStatus.Text = "Playwright MCP precheck failed: $($script:LastAgentError)"
         $jiraTaskStatus.ForeColor = [System.Drawing.Color]::Firebrick
-        [System.Windows.Forms.MessageBox]::Show(
-            "Microsoft Playwright MCP не подключён к Codex.`r`n`r`n$($script:LastAgentError)`r`n`r`nSmart QA не будет продолжать тест вслепую.",
-            'Rx2GO QA — Playwright MCP',
-            'OK',
-            'Error'
-        ) | Out-Null
+        if (-not $script:QueueWorkerMode) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "Microsoft Playwright MCP не подключён к Codex.`r`n`r`n$($script:LastAgentError)`r`n`r`nSmart QA не будет продолжать тест вслепую.",
+                'Rx2GO QA — Playwright MCP','OK','Error'
+            ) | Out-Null
+        }
         return
     }
 
@@ -6174,31 +14277,87 @@ function Start-JiraTaskCheck {
                 $script:LoadedJiraIssueKey = $issueKey
                 Move-AdhocScreenshotsToIssue -IssueKey $issueKey
                 Restore-JiraScreenshotsForIssue -IssueKey $issueKey
-                $jiraImportedBox.Text = Format-JiraIssueForPreview $jiraIssue
-                $jiraImportedInfo.Text = "$issueKey загружена • Jira comments: $(@($jiraIssue.comments).Count)"
+                $script:SuppressJiraImportedEditEvent = $true
+                try {
+                    $jiraImportedBox.Text = Format-JiraIssueForPreview $jiraIssue
+                }
+                finally {
+                    $script:SuppressJiraImportedEditEvent = $false
+                }
+                $script:JiraImportedEdited = $false
+                $jiraImportedInfo.Text = "$issueKey загружена • Jira comments: $(@($jiraIssue.comments).Count) • поле редактируемое"
             }
         }
 
         if (-not $jiraIssue) {
-            [System.Windows.Forms.MessageBox]::Show(
-                "Не удалось загрузить $issueKey через Jira API.`r`n`r`n$($script:JiraFetchedSource)",
-                'Rx2GO QA','OK','Error'
-            ) | Out-Null
+            if (-not $script:QueueWorkerMode) {
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Не удалось загрузить $issueKey через Jira API.`r`n`r`n$($script:JiraFetchedSource)",
+                    'Rx2GO QA','OK','Error'
+                ) | Out-Null
+            }
             return
         }
     }
 
     $qaComment = $jiraQaCommentBox.Text.Trim()
     $projectRules = @(Get-Rx2GOProjectRules)
-    $analysisText = if ($jiraIssue) { Convert-JiraIssueToAnalysisText $jiraIssue } else { $rawInput }
+
+    if (
+        $jiraIssue -and
+        $jiraImportedBox -and
+        -not [string]::IsNullOrWhiteSpace([string]$jiraImportedBox.Text)
+    ) {
+        $analysisText = $jiraImportedBox.Text.Trim()
+
+        if ($script:JiraImportedEdited) {
+            Append-AgentLog "JIRA SOURCE → editable imported Description/comments (MANUALLY EDITED)."
+        }
+        else {
+            Append-AgentLog "JIRA SOURCE → editable imported Description/comments (unchanged from Jira load)."
+        }
+    }
+    else {
+        $analysisText = $rawInput
+        Append-AgentLog "JIRA SOURCE → direct task input."
+    }
+
+    # Knowledge Retrieval runs BEFORE AI analysis.
+    # It safely fetches the remote Git snapshot without changing the working tree,
+    # then retrieves only task-relevant prior cases/scenarios/tests/helpers.
+    $jiraTaskStatus.Text = 'Knowledge Retrieval: ищу релевантный опыт в GitHub/local repository…'
+    $jiraTaskStatus.ForeColor = [System.Drawing.Color]::FromArgb(37,99,235)
+    [System.Windows.Forms.Application]::DoEvents()
+
+    $preMemory = Get-RelevantKnowledgeContext `
+        -JiraText $analysisText `
+        -QaComment $qaComment `
+        -IssueKey $issueKey `
+        -Stage 'pre-analysis'
+
+    $preMemoryContext = if ($preMemory) {
+        [string]$preMemory.Context
+    } else {
+        'No relevant retrieved memory available.'
+    }
+
+    if ($preMemory) {
+        Append-AgentLog "KNOWLEDGE RETRIEVAL PRE → $($preMemory.Count) relevant file(s) | $($preMemory.RemoteSnapshot)"
+        Append-AgentLog "KNOWLEDGE RETRIEVAL ARTIFACT → $($preMemory.TextArtifact)"
+        Show-KnowledgeReadWarningOnce -RemoteStatus ([string]$preMemory.RemoteSnapshot)
+    }
+    else {
+        Show-KnowledgeReadWarningOnce -RemoteStatus 'LOCAL ONLY'
+    }
 
     # 1/3 — Requirements Analyst
-    $jiraTaskStatus.Text = '1/3 Requirements Analyst: разбираю Jira…'
+    $jiraTaskStatus.Text = '1/3 Requirements Analyst: строю и проверяю понимание задачи…'
     $jiraTaskStatus.ForeColor = [System.Drawing.Color]::FromArgb(37,99,235)
     $aiAnalysis = Invoke-AgentJiraAnalyst `
         -JiraText $analysisText `
         -QaComment $qaComment `
-        -ProjectRules $projectRules
+        -ProjectRules $projectRules `
+        -KnowledgeContext $preMemoryContext
 
     if (-not $aiAnalysis) {
         $jiraTaskStatus.Text = "Requirements Analyst failed: $($script:LastAgentError)"
@@ -6207,17 +14366,78 @@ function Start-JiraTaskCheck {
         return
     }
 
+    $script:TaskUnderstandingGate = Test-TaskUnderstandingContract -Analysis $aiAnalysis -JiraText $analysisText
+    if (-not $script:TaskUnderstandingGate.Success) {
+        $understandingError = [string]$script:TaskUnderstandingGate.Error
+        $jiraAutomationValue.Text = 'TASK UNDERSTANDING - BLOCKED'
+        $jiraAutomationValue.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
+        $jiraTaskStatus.Text = "ЗАДАЧА ПОНЯТА НЕОДНОЗНАЧНО - $understandingError"
+        $jiraTaskStatus.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
+        $jiraPlanBox.Text = "TASK UNDERSTANDING GATE: BLOCKED`r`n`r`n$understandingError`r`n`r`nИсправь/уточни редактируемое описание Jira и запусти проверку повторно."
+        Append-AgentLog "TASK UNDERSTANDING GATE -> BLOCKED | $understandingError"
+        if ($script:QueueWorkerMode) { Complete-QueueWorkerResult -Result BLOCKED -Details "[TASK_UNDERSTANDING] $understandingError" }
+        return
+    }
+    Append-AgentLog "TASK UNDERSTANDING GATE -> PASS | confidence $([int]$aiAnalysis.confidence)%"
+    foreach($understandingWarning in @($script:TaskUnderstandingGate.Warnings)){if($understandingWarning){Append-AgentLog "TASK UNDERSTANDING WARNING -> $understandingWarning"}}
+
     $task = Get-JiraTaskInfo $analysisText $aiAnalysis $qaComment $projectRules
     $script:CurrentJiraTask = $task
+
+    # Refine retrieval now that the Analyst resolved the module and acceptance.
+    $refinedMemoryText = @(
+        $analysisText
+        $qaComment
+        [string]$task.Module
+        (@($task.Criteria) -join "`n")
+        (@($task.RiskAreas) -join "`n")
+    ) -join "`n"
+
+    $refinedMemory = Get-RelevantKnowledgeContext `
+        -JiraText $refinedMemoryText `
+        -QaComment $qaComment `
+        -IssueKey $task.Key `
+        -Module ([string]$task.Module) `
+        -Stage 'refined'
+
+    if ($refinedMemory) {
+        $script:LastKnowledgeRetrieval = $refinedMemory
+        $script:LastKnowledgeContext = [string]$refinedMemory.Context
+        Append-AgentLog "KNOWLEDGE RETRIEVAL REFINED → $($refinedMemory.Count) relevant file(s) | module $($task.Module)"
+        Append-AgentLog "KNOWLEDGE RETRIEVAL ARTIFACT → $($refinedMemory.TextArtifact)"
+    }
+    else {
+        $script:LastKnowledgeRetrieval = $preMemory
+        $script:LastKnowledgeContext = $preMemoryContext
+    }
+
+    $jiraTaskStatus.Text = 'Проектирую дополнительные негативные и регрессионные кейсы…'
+    $script:SmartCoverageDesign = Invoke-SmartCoverageDesigner `
+        -Task $task `
+        -JiraText $analysisText `
+        -QaComment $qaComment `
+        -ProjectRules $projectRules `
+        -KnowledgeContext (Get-KnowledgeMemoryPrompt)
+
     $jiraModuleValue.Text = $task.Module
     $jiraAutomationValue.Text = 'SMART QA RUNNING'
     $jiraAutomationValue.ForeColor = [System.Drawing.Color]::FromArgb(37,99,235)
-    $jiraPlanBox.Text = New-JiraTestPlan $task
+
+    $memoryPlan = Get-KnowledgeMemorySummary
+    $jiraPlanBox.Text = (New-JiraTestPlan $task) + "`r`n`r`nMEMORY:`r`n$memoryPlan"
     [System.Windows.Forms.Application]::DoEvents()
 
     # Bootstrap ONE authenticated Chrome only.
     # Do NOT run the old Live Browser Context diagnostic here: MCP itself
     # owns live page discovery and must work against this exact persistent session.
+    $env:RX2GO_BROWSER_LOCALE = 'en-US'
+    if (Test-TaskRequiresUsDateLocale -JiraText $analysisText -QaComment $qaComment) {
+        Append-AgentLog 'BROWSER LOCALE → en-US (required by MM/DD/YYYY task).'
+    }
+    else {
+        Append-AgentLog 'BROWSER LOCALE → en-US (Rx2GO QA default).'
+    }
+
     $jiraTaskStatus.Text = 'Browser bootstrap: авторизация и запуск одной Chrome-сессии…'
     if (-not (Bootstrap-PersistentBrowserSession -Environment ([string]$jiraEnvironmentCombo.SelectedItem))) {
         $jiraAutomationValue.Text = 'BROWSER BOOTSTRAP FAILED'
@@ -6228,12 +14448,12 @@ function Start-JiraTaskCheck {
         Append-AgentLog 'PIPELINE STOPPED before MCP preflight.'
         Append-AgentLog 'Chrome is intentionally NOT killed on bootstrap failure when a session was created.'
 
-        [System.Windows.Forms.MessageBox]::Show(
-            "Browser bootstrap не завершён.`r`n`r`n$($script:LastAgentError)`r`n`r`nЕсли Chrome успел открыться, он оставлен открытым для проверки.",
-            'Rx2GO QA — Browser bootstrap',
-            'OK',
-            'Error'
-        ) | Out-Null
+        if (-not $script:QueueWorkerMode) {
+            [System.Windows.Forms.MessageBox]::Show(
+                "Browser bootstrap не завершён.`r`n`r`n$($script:LastAgentError)`r`n`r`nЕсли Chrome успел открыться, он оставлен открытым для проверки.",
+                'Rx2GO QA — Browser bootstrap','OK','Error'
+            ) | Out-Null
+        }
 
         return
     }
@@ -6269,9 +14489,41 @@ function Start-JiraTaskCheck {
         -Task $task `
         -JiraText $analysisText `
         -QaComment $qaComment `
-        -ProjectRules $projectRules
+        -ProjectRules $projectRules `
+        -KnowledgeContext (Get-KnowledgeMemoryPrompt) `
+        -CoverageDesign $script:SmartCoverageDesign
 
     if (-not $mcpExecution) {
+        if (
+            [string]$script:LastAgentFailureKind -eq 'CODEX_USAGE_LIMIT' -or
+            (Test-CodexUsageLimitText -Text ([string]$script:LastAgentError))
+        ) {
+            $limitMessage = Get-CodexFailureUserMessage `
+                -FailureKind 'CODEX_USAGE_LIMIT' `
+                -ErrorText ([string]$script:LastAgentError)
+
+            $jiraAutomationValue.Text = 'CODEX LIMIT — ПАУЗА'
+            $jiraAutomationValue.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
+            $jiraTaskStatus.Text = "ПРОВЕРКА ПРЕРВАНА — $limitMessage"
+            $jiraTaskStatus.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
+
+            Append-AgentLog "PIPELINE PAUSED → CODEX_USAGE_LIMIT | $limitMessage"
+
+            # No product PASS/FAIL and no Knowledge Auto-Learning:
+            # the live Smart QA execution did not produce a complete verdict.
+            $jiraCopyReportButton.Enabled = $false
+            $jiraRegressionButton.Enabled = $true
+
+            if ($script:QueueWorkerMode) {
+                try { Stop-PersistentBrowserSession } catch {}
+                Complete-QueueWorkerResult `
+                    -Result BLOCKED `
+                    -Details "[CODEX_USAGE_LIMIT] $limitMessage"
+            }
+
+            return
+        }
+
         $jiraAutomationValue.Text = 'MCP QA FAILED'
         $jiraAutomationValue.ForeColor = [System.Drawing.Color]::Firebrick
         $jiraTaskStatus.Text = "Playwright MCP QA failed: $($script:LastAgentError)"
@@ -6282,12 +14534,25 @@ function Start-JiraTaskCheck {
 
     if (([string]$mcpExecution.status).ToUpperInvariant() -eq 'BLOCKED') {
         $task.Automated = $false
-        $jiraAutomationValue.Text = 'BLOCKED — TEST DATA/UI'
+
+        $blockReason = (@($mcpExecution.blockers) | Where-Object { $_ } | Select-Object -First 1)
+        if (-not $blockReason) {
+            $blockReason = 'Не удалось получить достаточно данных для полного доказательства acceptance criteria.'
+        }
+
+        $jiraAutomationValue.Text = 'НЕДОСТАТОЧНО ДАННЫХ'
         $jiraAutomationValue.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
-        $jiraTaskStatus.Text = "BLOCKED: $($script:LastAgentError)"
+
+        $jiraTaskStatus.Text = "НЕДОСТАТОЧНО ДАННЫХ — $blockReason"
         $jiraTaskStatus.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
-        $jiraPlanBox.AppendText((New-SmartPipelineSummary -McpExecution $mcpExecution))
-        $jiraCopyReportButton.Enabled = $true
+
+        Append-AgentLog "FINAL LIVE STATE → НЕДОСТАТОЧНО ДАННЫХ | $blockReason"
+
+        Complete-JiraBlockedLiveRun `
+            -Task $task `
+            -McpExecution $mcpExecution `
+            -Reason ([string]$blockReason)
+
         return
     }
 
@@ -6296,12 +14561,17 @@ function Start-JiraTaskCheck {
 
     if (-not (Test-McpFreshDataSatisfied -Task $task -McpExecution $mcpExecution -QaComment $qaComment)) {
         $task.Automated = $false
-        $jiraAutomationValue.Text = 'BLOCKED — FRESH TEST DATA REQUIRED'
+        $jiraAutomationValue.Text = 'НЕДОСТАТОЧНО ДАННЫХ — FRESH FIXTURE'
         $jiraAutomationValue.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
-        $jiraTaskStatus.Text = "BLOCKED: $($script:LastAgentError)"
+        $jiraTaskStatus.Text = "НЕДОСТАТОЧНО ДАННЫХ — $($script:LastAgentError)"
         $jiraTaskStatus.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
-        Append-AgentLog "FRESH DATA GUARD → BLOCKED | $($script:LastAgentError)"
-        $jiraCopyReportButton.Enabled = $true
+        Append-AgentLog "FRESH DATA GUARD → НЕДОСТАТОЧНО ДАННЫХ | $($script:LastAgentError)"
+
+        Complete-JiraBlockedLiveRun `
+            -Task $task `
+            -McpExecution $mcpExecution `
+            -Reason ([string]$script:LastAgentError)
+
         return
     }
 
@@ -6312,7 +14582,9 @@ function Start-JiraTaskCheck {
         -McpExecution $mcpExecution `
         -McpExecutionRaw $script:AgentMcpExecutionRaw `
         -QaComment $qaComment `
-        -ProjectRules $projectRules
+        -ProjectRules $projectRules `
+        -KnowledgeContext (Get-KnowledgeMemoryPrompt) `
+        -CoverageDesign $script:SmartCoverageDesign
 
     if (-not $generatedSpec) {
         $task.Automated = $false
@@ -6344,6 +14616,12 @@ function Start-JiraTaskCheck {
     $jiraAutomationValue.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
 
     $plan = New-JiraTestPlan $task
+    $plan += "`r`n`r`nKNOWLEDGE MEMORY USED:`r`n$(Get-KnowledgeMemorySummary)"
+    if ($script:LastKnowledgeRetrieval -and $script:LastKnowledgeRetrieval.Items) {
+        foreach ($memoryItem in @($script:LastKnowledgeRetrieval.Items | Select-Object -First 10)) {
+            $plan += "`r`n- [$($memoryItem.Category)/$($memoryItem.Source)] $($memoryItem.Path)"
+        }
+    }
     $plan += New-SmartPipelineSummary -McpExecution $mcpExecution
     $plan += "`r`n`r`nTASK-SPECIFIC PLAYWRIGHT:`r`n$generatedSpec"
     if ($script:AgentRunDir) { $plan += "`r`nAGENT ARTIFACTS:`r`n$($script:AgentRunDir)" }
@@ -6364,7 +14642,8 @@ function Start-JiraTaskCheck {
     $environmentCombo.SelectedItem = [string]$jiraEnvironmentCombo.SelectedItem
     $suiteCombo.SelectedItem = 'Все тесты'
     $headedCheck.Checked = $true
-    $mutatingCheck.Checked = $jiraMutatingCheck.Checked
+    $jiraMutatingCheck.Checked = $true
+    $mutatingCheck.Checked = $true
 
     $script:JiraRunActive = $true
     Append-AgentLog "3/3 SMART QA READY → final Playwright reuses SAME Chrome for $($task.Key)"
@@ -6392,18 +14671,24 @@ function Get-JiraReportFacility {
 
 function Show-QAResultToast {
     param(
-        [ValidateSet('PASS','FAIL')]
+        [ValidateSet('PASS','FAIL','BLOCKED')]
         [string]$Result,
         [string]$Title = '',
         [string]$Details = '',
         [int]$DurationMs = 6500
     )
 
+    if ($script:QueueWorkerMode) { return }
+
     try {
         $isPass = ($Result -eq 'PASS')
+        $isBlocked = ($Result -eq 'BLOCKED')
 
         if ($isPass) {
             try { [System.Media.SystemSounds]::Asterisk.Play() } catch {}
+        }
+        elseif ($isBlocked) {
+            try { [System.Media.SystemSounds]::Exclamation.Play() } catch {}
         }
         else {
             try { [System.Media.SystemSounds]::Hand.Play() } catch {}
@@ -6420,6 +14705,9 @@ function Show-QAResultToast {
 
         if ($isPass) {
             $toast.BackColor = [System.Drawing.Color]::FromArgb(22, 163, 74)
+        }
+        elseif ($isBlocked) {
+            $toast.BackColor = [System.Drawing.Color]::FromArgb(202, 138, 4)
         }
         else {
             $toast.BackColor = [System.Drawing.Color]::FromArgb(220, 38, 38)
@@ -6458,6 +14746,9 @@ function Show-QAResultToast {
         }
         elseif ($isPass) {
             '✓ TEST PASSED'
+        }
+        elseif ($isBlocked) {
+            '⚠ НЕДОСТАТОЧНО ДАННЫХ'
         }
         else {
             '✕ TEST FAILED'
@@ -6621,7 +14912,7 @@ function Get-JiraStatusMark {
         'PASS' { return '✅ PASS' }
         'FAIL' { return '❌ FAIL' }
         'SKIP' { return '⏭ SKIP' }
-        'BLOCKED' { return '⛔ BLOCKED' }
+        'BLOCKED' { return '⚠ НЕДОСТАТОЧНО ДАННЫХ' }
         default { return $Status }
     }
 }
@@ -6659,7 +14950,36 @@ function New-JiraTaskReportText {
     $lines.Add("*Пользователь:* $user")
     $lines.Add("*Дата:* $date")
     $lines.Add("*Метод:* $method")
-    $lines.Add("*Изменение тестовых данных:* $(if ($jiraMutatingCheck.Checked) { 'разрешено' } else { 'запрещено' })")
+    if ($script:LoadedJiraIssueKey) {
+        $lines.Add("*Jira source:* $(if ($script:JiraImportedEdited) { 'импортированный текст отредактирован вручную перед тестом' } else { 'импортированный текст без ручных изменений' })")
+    }
+    if ($script:AgentMcpExecution -and $script:AgentMcpExecution.integrity) {
+        $lines.Add("*Result Integrity Gate:* PASS")
+    }
+    if ($script:LastKnowledgeRetrieval) {
+        $lines.Add("*Knowledge Memory:* $($script:LastKnowledgeRetrieval.Count) релевантных файлов; $($script:LastKnowledgeRetrieval.RemoteSnapshot)")
+    }
+    if ($script:LastKnowledgeLearning) {
+        $lines.Add("*Knowledge Auto-Learning:* сохранено/накоплено $($script:LastKnowledgeLearning.LearnedCount) reusable знаний + $($script:LastKnowledgeLearning.AcceptanceCount) verified acceptance result(s)")
+        $lines.Add("*Knowledge file:* knowledge/learned/$(Get-KnowledgeLearningModuleSlug -Module ([string]$script:LastKnowledgeLearning.Module))/$($script:LastKnowledgeLearning.JiraKey).json")
+    }
+    if ($script:LastAutoGitSync) {
+        $gitLabel = Get-AutoGitSyncResultLabel -Result $script:LastAutoGitSync
+        $lines.Add("*Auto Git:* $gitLabel")
+
+        if ($script:LastAutoGitSync.CommitHash) {
+            $lines.Add("*Git commit:* $($script:LastAutoGitSync.CommitHash)")
+        }
+
+        if ($script:LastAutoGitSync.Message) {
+            $lines.Add("*Git sync:* $($script:LastAutoGitSync.Message)")
+        }
+
+        if ($script:LastAutoGitSync.Warning) {
+            $lines.Add("*Git sync warning:* $($script:LastAutoGitSync.Warning)")
+        }
+    }
+    $lines.Add("*Действия с тестовыми данными:* ВСЕГДА РАЗРЕШЕНЫ — create / update / modify / transition / link / assign / delete / recreate / cleanup по необходимости")
     $taskScreens = @(Get-JiraScreenshotPaths)
     if ($taskScreens.Count -gt 0) {
         $lines.Add("*Скриншоты задачи:* $($taskScreens.Count) — переданы AI как visual context")
@@ -6746,6 +15066,40 @@ function New-JiraTaskReportText {
             }
 
             $caseNo++
+        }
+
+        $additionalCases = @($mcp.additionalResults | Where-Object { $_ })
+        if ($additionalCases.Count -gt 0) {
+            $lines.Add('')
+            $lines.Add('*ДОПОЛНИТЕЛЬНЫЕ НЕГАТИВНЫЕ / ГРАНИЧНЫЕ / РЕГРЕССИОННЫЕ КЕЙСЫ*')
+
+            foreach ($extra in $additionalCases) {
+                $status = if ($extra.status) {
+                    ([string]$extra.status).ToUpperInvariant()
+                } else {
+                    'BLOCKED'
+                }
+
+                $mark = Get-JiraStatusMark $status
+                $type = if ($extra.type) { [string]$extra.type } else { 'ADDITIONAL' }
+                $priority = if ($extra.priority) { [string]$extra.priority } else { 'P1' }
+                $caseText = if ($extra.case) { [string]$extra.case } else { 'Risk-based check' }
+
+                $lines.Add("$caseNo. $mark — [$type/$priority] $caseText")
+
+                if (-not [string]::IsNullOrWhiteSpace([string]$extra.evidence)) {
+                    $lines.Add("   Проверено: $([string]$extra.evidence)")
+                }
+
+                if ([bool]$extra.affectsOverallResult) {
+                    $lines.Add('   Влияет на итог задачи: да')
+                }
+                else {
+                    $lines.Add('   Влияет на итог задачи: нет / advisory')
+                }
+
+                $caseNo++
+            }
         }
 
         # If acceptanceResults are missing, fall back to actual browser steps so the
@@ -6848,6 +15202,14 @@ function New-JiraTaskReportText {
         $lines.Add("Следующее действие: $($script:FailureTriage.recommendedAction)")
     }
 
+    if ($script:LastKnowledgeRetrieval -and @($script:LastKnowledgeRetrieval.Items).Count -gt 0) {
+        $lines.Add('')
+        $lines.Add('*ИСПОЛЬЗОВАННАЯ ПАМЯТЬ*')
+        foreach ($memoryItem in @($script:LastKnowledgeRetrieval.Items | Select-Object -First 8)) {
+            $lines.Add("- [$($memoryItem.Category)/$($memoryItem.Source)] $($memoryItem.Path)")
+        }
+    }
+
     if (-not [string]::IsNullOrWhiteSpace([string]$task.QAComment)) {
         $lines.Add('')
         $lines.Add('*QA COMMENT*')
@@ -6904,7 +15266,7 @@ function Set-RunningState([bool]$running) {
     $environmentCombo.Enabled = -not $running
     $suiteCombo.Enabled = -not $running
     $headedCheck.Enabled = -not $running
-    $mutatingCheck.Enabled = -not $running
+    $mutatingCheck.Enabled = $false
     $dailyPassword.Enabled = (-not $running) -and (Test-GatewayRequired ([string]$environmentCombo.SelectedItem))
     if ($script:GatewayLoginBox) {
         $script:GatewayLoginBox.Enabled = (-not $running) -and (Test-GatewayRequired ([string]$environmentCombo.SelectedItem))
@@ -6930,6 +15292,10 @@ function Set-RunningState([bool]$running) {
 
 function Start-QATest {
     if ($script:RunningProcess -and -not $script:RunningProcess.HasExited) { return }
+
+    if ($script:QueueWorkerMode -and $script:JiraRunActive) {
+        Write-QueueWorkerStatus -Status 'RUNNING' -Phase 'PLAYWRIGHT' -Detail 'Deterministic Playwright execution'
+    }
 
     $appLogin = 'sergeyqa'
     if ($script:InlineAppLoginBox -and -not [string]::IsNullOrWhiteSpace($script:InlineAppLoginBox.Text)) {
@@ -7127,6 +15493,14 @@ $form.StartPosition = 'CenterScreen'
 $form.BackColor = [System.Drawing.Color]::FromArgb(246, 248, 251)
 $form.Font = New-Font 9
 
+if ($script:QueueWorkerMode) {
+    $form.ShowInTaskbar = $false
+    $form.WindowState = [System.Windows.Forms.FormWindowState]::Minimized
+    $form.StartPosition = [System.Windows.Forms.FormStartPosition]::Manual
+    $form.Location = New-Object System.Drawing.Point(-32000,-32000)
+    $form.Opacity = 0.01
+}
+
 $header = New-Object System.Windows.Forms.Panel
 $header.Dock = 'Top'
 $header.Height = 88
@@ -7268,9 +15642,10 @@ $headedCheck.Add_CheckedChanged({
 })
 
 $mutatingCheck = New-Object System.Windows.Forms.CheckBox
-$mutatingCheck.Text = 'Разрешить изменение тестовых данных'
+$mutatingCheck.Text = 'Тестовые данные: любые изменения всегда разрешены'
 $mutatingCheck.Font = New-Font 9
-$mutatingCheck.Checked = $false
+$mutatingCheck.Checked = $true
+$mutatingCheck.Enabled = $false
 $mutatingCheck.AutoSize = $true
 $mutatingCheck.Location = New-Object System.Drawing.Point(785, 130)
 $configPanel.Controls.Add($mutatingCheck)
@@ -7486,6 +15861,21 @@ $form.Add_ResizeEnd({
 })
 
 $form.Add_FormClosing({
+    if ($script:QueueWorkerMode) { return }
+
+    $queueActive = @($script:QueueItems | Where-Object { $_.Status -in @('STARTING','ANALYZING','TESTING','REVIEWING','PLAYWRIGHT','RCA','SYNCING') }).Count
+    if ($queueActive -gt 0) {
+        $answerQueue = [System.Windows.Forms.MessageBox]::Show(
+            "В Jira Queue ещё выполняется $queueActive Worker(s). Остановить их и закрыть Launcher?",
+            'Rx2GO QA — Jira Queue','YesNo','Warning'
+        )
+        if ($answerQueue -ne [System.Windows.Forms.DialogResult]::Yes) {
+            $_.Cancel = $true
+            return
+        }
+        Stop-AllQueueWorkers
+    }
+
     if ($script:RunningProcess -and -not $script:RunningProcess.HasExited) {
         $answer = [System.Windows.Forms.MessageBox]::Show('Тестирование еще выполняется. Остановить его и закрыть программу?', 'Rx2GO QA', 'YesNo', 'Warning')
         if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) {
@@ -7862,6 +16252,12 @@ $jiraTab.BackColor = [System.Drawing.Color]::FromArgb(246,248,251)
 $jiraTab.AutoScroll = $true
 $tabs.TabPages.Add($jiraTab) | Out-Null
 
+$queueTab = New-Object System.Windows.Forms.TabPage
+$queueTab.Text = 'Jira Queue'
+$queueTab.BackColor = [System.Drawing.Color]::FromArgb(246,248,251)
+$queueTab.AutoScroll = $false
+$tabs.TabPages.Add($queueTab) | Out-Null
+
 $knowledgeTab = New-Object System.Windows.Forms.TabPage
 $knowledgeTab.Text = 'Knowledge'
 $knowledgeTab.BackColor = [System.Drawing.Color]::FromArgb(246,248,251)
@@ -7944,6 +16340,7 @@ $jiraTab.Controls.Add($jiraTaskBox)
 $jiraTaskBox.Add_TextChanged({
     $script:LoadedJiraIssue = $null
     $script:LoadedJiraIssueKey = $null
+    $script:JiraImportedEdited = $false
     if ($jiraImportedInfo) {
         $jiraImportedInfo.Text = 'Jira ещё не загружена'
         $jiraImportedInfo.ForeColor = [System.Drawing.Color]::DimGray
@@ -8024,14 +16421,28 @@ $jiraImportedInfo.Location = New-Object System.Drawing.Point(180, 208)
 $jiraTab.Controls.Add($jiraImportedInfo)
 
 $jiraImportedBox = New-Object System.Windows.Forms.RichTextBox
-$jiraImportedBox.ReadOnly = $true
+$jiraImportedBox.ReadOnly = $false
 $jiraImportedBox.Font = New-Object System.Drawing.Font('Consolas', 9)
 $jiraImportedBox.BackColor = [System.Drawing.Color]::White
 $jiraImportedBox.Location = New-Object System.Drawing.Point(18, 240)
 $jiraImportedBox.Size = New-Object System.Drawing.Size(1132, 150)
 $jiraImportedBox.Anchor = 'Top,Left,Right'
-$jiraImportedBox.Text = 'Нажми «Загрузить Jira». Здесь будут реальный Description и все Jira comments.'
+$jiraImportedBox.Text = 'Нажми «Загрузить Jira». Здесь будут реальный Description и все Jira comments. После загрузки текст можно редактировать — Smart QA использует именно этот вариант.'
 $jiraTab.Controls.Add($jiraImportedBox)
+
+$jiraImportedBox.Add_TextChanged({
+    if (
+        -not $script:SuppressJiraImportedEditEvent -and
+        $script:LoadedJiraIssueKey
+    ) {
+        $script:JiraImportedEdited = $true
+
+        if ($jiraImportedInfo) {
+            $jiraImportedInfo.Text = "$($script:LoadedJiraIssueKey) • изменено вручную • этот текст пойдёт в Smart QA"
+            $jiraImportedInfo.ForeColor = [System.Drawing.Color]::FromArgb(161,98,7)
+        }
+    }
+})
 
 
 $jiraRuleLabel = New-Object System.Windows.Forms.Label
@@ -8117,8 +16528,9 @@ $jiraHeadedCheck.Location = New-Object System.Drawing.Point(580, 528)
 $jiraTab.Controls.Add($jiraHeadedCheck)
 
 $jiraMutatingCheck = New-Object System.Windows.Forms.CheckBox
-$jiraMutatingCheck.Text = 'Разрешить изменение данных'
-$jiraMutatingCheck.Checked = $false
+$jiraMutatingCheck.Text = 'Тестовые данные: любые изменения всегда разрешены'
+$jiraMutatingCheck.Checked = $true
+$jiraMutatingCheck.Enabled = $false
 $jiraMutatingCheck.AutoSize = $true
 $jiraMutatingCheck.Location = New-Object System.Drawing.Point(740, 528)
 $jiraTab.Controls.Add($jiraMutatingCheck)
@@ -8266,7 +16678,7 @@ $knowledgeTitle.Location = New-Object System.Drawing.Point(20,18)
 $knowledgeTab.Controls.Add($knowledgeTitle)
 
 $knowledgeHint = New-Object System.Windows.Forms.Label
-$knowledgeHint.Text = 'Переносимые знания хранятся в Git. Секреты, временные отчёты, screenshots и traces в репозиторий не попадают.'
+$knowledgeHint.Text = 'Переносимые знания хранятся в GitHub через SSH. Browser OAuth для GitHub не используется. Секреты, отчёты, screenshots и traces в репозиторий не попадают.'
 $knowledgeHint.Font = New-Font 9
 $knowledgeHint.ForeColor = [System.Drawing.Color]::DimGray
 $knowledgeHint.AutoSize = $true
@@ -8299,6 +16711,107 @@ $knowledgeRulesValue = Add-KnowledgeCard 'Project rules' 20
 $knowledgeJiraValue = Add-KnowledgeCard 'Jira cases' 230
 $knowledgeRegressionValue = Add-KnowledgeCard 'Regression scenarios' 440
 $knowledgeTestsValue = Add-KnowledgeCard 'Automated tests' 650
+$knowledgeExplorerValue = Add-KnowledgeCard 'Explored modules' 860
+
+# Knowledge Explorer controls are reparented into a responsive TableLayoutPanel
+# inside Apply-ResponsiveLayout. No absolute layout is used for the final UI.
+
+$knowledgeExplorerEnvironmentCombo = New-Object System.Windows.Forms.ComboBox
+$knowledgeExplorerEnvironmentCombo.DropDownStyle = 'DropDownList'
+[void]$knowledgeExplorerEnvironmentCombo.Items.Add('ADM')
+[void]$knowledgeExplorerEnvironmentCombo.Items.Add('HOT')
+[void]$knowledgeExplorerEnvironmentCombo.Items.Add('BRANCH')
+$knowledgeExplorerEnvironmentCombo.SelectedIndex = 0
+$knowledgeExplorerEnvironmentCombo.Add_SelectedIndexChanged({
+    Update-KnowledgeExplorerEnvironmentUi
+})
+
+$knowledgeExplorerBaselineValueLabel = New-Object System.Windows.Forms.Label
+$knowledgeExplorerBaselineValueLabel.Text = '—  основная база'
+$knowledgeExplorerBaselineValueLabel.AutoEllipsis = $true
+
+$knowledgeExplorerModeCombo = New-Object System.Windows.Forms.ComboBox
+$knowledgeExplorerModeCombo.DropDownStyle = 'DropDownList'
+[void]$knowledgeExplorerModeCombo.Items.Add('Быстрый crawl — структура')
+[void]$knowledgeExplorerModeCombo.Items.Add('Глубокий crawl — UI + API + Network')
+[void]$knowledgeExplorerModeCombo.Items.Add('Полный проект — карта + все модули')
+[void]$knowledgeExplorerModeCombo.Items.Add('Изучить модуль')
+[void]$knowledgeExplorerModeCombo.Items.Add('Изучить workflow')
+[void]$knowledgeExplorerModeCombo.Items.Add('Обновить устаревшие знания')
+$knowledgeExplorerModeCombo.SelectedIndex = 0
+$knowledgeExplorerModeCombo.Add_SelectedIndexChanged({
+    Update-KnowledgeExplorerModeUi
+})
+
+$knowledgeExplorerModuleCombo = New-Object System.Windows.Forms.ComboBox
+$knowledgeExplorerModuleCombo.DropDownStyle = 'DropDownList'
+
+foreach ($module in @(Get-KnowledgeExplorerModuleDefinitions)) {
+    [void]$knowledgeExplorerModuleCombo.Items.Add([string]$module.Name)
+}
+
+$knowledgeExplorerModuleCombo.SelectedIndex = 0
+
+$knowledgeExplorerTargetBox = New-Object System.Windows.Forms.TextBox
+$knowledgeExplorerTargetBox.Text = ''
+$knowledgeExplorerTargetBox.Font = New-Font 9
+
+$knowledgeAdmDailyPasswordLabel = New-Object System.Windows.Forms.Label
+$knowledgeAdmDailyPasswordLabel.Text = 'ADM код Telegram'
+$knowledgeAdmDailyPasswordLabel.Font = New-Font 8 ([System.Drawing.FontStyle]::Bold)
+$knowledgeAdmDailyPasswordLabel.AutoEllipsis = $true
+
+$knowledgeAdmDailyPasswordBox = New-Object System.Windows.Forms.TextBox
+$knowledgeAdmDailyPasswordBox.UseSystemPasswordChar = $true
+$knowledgeAdmDailyPasswordBox.Font = New-Font 9
+$knowledgeAdmDailyPasswordBox.Text = if ($dailyPassword) { [string]$dailyPassword.Text } else { '' }
+$knowledgeAdmDailyPasswordBox.Add_TextChanged({
+    Sync-AdmDailyPasswordFields `
+        -Source 'Knowledge' `
+        -Value ([string]$knowledgeAdmDailyPasswordBox.Text)
+})
+
+if ($dailyPassword) {
+    $dailyPassword.Add_TextChanged({
+        Sync-AdmDailyPasswordFields `
+            -Source 'QuickRun' `
+            -Value ([string]$dailyPassword.Text)
+    })
+}
+
+$knowledgeExplorerStartButton = New-Object System.Windows.Forms.Button
+$knowledgeExplorerStartButton.Text = '▶ ИЗУЧИТЬ ADM'
+$knowledgeExplorerStartButton.Font = New-Font 9 ([System.Drawing.FontStyle]::Bold)
+$knowledgeExplorerStartButton.Add_Click({ Start-KnowledgeExplorer })
+
+$knowledgeExplorerStopButton = New-Object System.Windows.Forms.Button
+$knowledgeExplorerStopButton.Text = '■ Стоп'
+$knowledgeExplorerStopButton.Enabled = $false
+$knowledgeExplorerStopButton.Add_Click({ Stop-KnowledgeExplorer })
+
+$knowledgeExplorerOpenButton = New-Object System.Windows.Forms.Button
+$knowledgeExplorerOpenButton.Text = '📂 Knowledge files'
+$knowledgeExplorerOpenButton.Add_Click({ Open-KnowledgeExplorerFolder })
+
+$knowledgeExplorerProgress = New-Object System.Windows.Forms.ProgressBar
+$knowledgeExplorerProgress.Minimum = 0
+$knowledgeExplorerProgress.Maximum = 8
+$knowledgeExplorerProgress.Value = 0
+
+$knowledgeExplorerStatusLabel = New-Object System.Windows.Forms.Label
+$knowledgeExplorerStatusLabel.Text = 'ADM = основная база знаний / baseline.'
+$knowledgeExplorerStatusLabel.ForeColor = [System.Drawing.Color]::DimGray
+$knowledgeExplorerStatusLabel.AutoEllipsis = $true
+
+$knowledgeExplorerLogBox = New-Object System.Windows.Forms.RichTextBox
+$knowledgeExplorerLogBox.ReadOnly = $true
+$knowledgeExplorerLogBox.BackColor = [System.Drawing.Color]::FromArgb(17,24,39)
+$knowledgeExplorerLogBox.ForeColor = [System.Drawing.Color]::FromArgb(229,231,235)
+$knowledgeExplorerLogBox.Font = New-Object System.Drawing.Font('Consolas',8)
+$knowledgeExplorerLogBox.Text = ''
+
+Update-KnowledgeExplorerEnvironmentUi
+Update-KnowledgeExplorerModeUi
 
 $knowledgeGitPanel = New-Object System.Windows.Forms.Panel
 $knowledgeGitPanel.Location = New-Object System.Drawing.Point(20,194)
@@ -8320,6 +16833,21 @@ $knowledgeGitStatus.Font = New-Font 9 ([System.Drawing.FontStyle]::Bold)
 $knowledgeGitStatus.AutoSize = $true
 $knowledgeGitStatus.Location = New-Object System.Drawing.Point(16,45)
 $knowledgeGitPanel.Controls.Add($knowledgeGitStatus)
+
+$knowledgeSshStatusCaption = New-Object System.Windows.Forms.Label
+$knowledgeSshStatusCaption.Text = 'GitHub SSH:'
+$knowledgeSshStatusCaption.Font = New-Font 8 ([System.Drawing.FontStyle]::Bold)
+$knowledgeSshStatusCaption.AutoSize = $true
+$knowledgeSshStatusCaption.Location = New-Object System.Drawing.Point(16,67)
+$knowledgeGitPanel.Controls.Add($knowledgeSshStatusCaption)
+
+$knowledgeSshStatusValue = New-Object System.Windows.Forms.Label
+$knowledgeSshStatusValue.Text = 'SSH: not checked'
+$knowledgeSshStatusValue.AutoEllipsis = $true
+$knowledgeSshStatusValue.ForeColor = [System.Drawing.Color]::DimGray
+$knowledgeSshStatusValue.Location = New-Object System.Drawing.Point(94,66)
+$knowledgeSshStatusValue.Size = New-Object System.Drawing.Size(470,20)
+$knowledgeGitPanel.Controls.Add($knowledgeSshStatusValue)
 
 $branchCaption = New-Object System.Windows.Forms.Label
 $branchCaption.Text = 'Branch:'
@@ -8360,14 +16888,14 @@ $knowledgeCommitValue.Size = New-Object System.Drawing.Size(480,20)
 $knowledgeGitPanel.Controls.Add($knowledgeCommitValue)
 
 $knowledgeSetupButton = New-Object System.Windows.Forms.Button
-$knowledgeSetupButton.Text = '⚙ Проверить GitHub SSH'
+$knowledgeSetupButton.Text = 'Проверить SSH'
 $knowledgeSetupButton.Size = New-Object System.Drawing.Size(175,36)
 $knowledgeSetupButton.Location = New-Object System.Drawing.Point(625,18)
 $knowledgeSetupButton.Add_Click({ Test-KnowledgeGitHubConnection })
 $knowledgeGitPanel.Controls.Add($knowledgeSetupButton)
 
 $knowledgeSshCreateButton = New-Object System.Windows.Forms.Button
-$knowledgeSshCreateButton.Text = '🔑 Создать SSH key'
+$knowledgeSshCreateButton.Text = 'Создать SSH key'
 $knowledgeSshCreateButton.Font = New-Font 8
 $knowledgeSshCreateButton.Size = New-Object System.Drawing.Size(210, 34)
 $knowledgeSshCreateButton.Location = New-Object System.Drawing.Point(790, 76)
@@ -8375,7 +16903,7 @@ $knowledgeSshCreateButton.Add_Click({ [void](Configure-KnowledgeGitHubSsh) })
 $knowledgeGitPanel.Controls.Add($knowledgeSshCreateButton)
 
 $knowledgeSshCopyButton = New-Object System.Windows.Forms.Button
-$knowledgeSshCopyButton.Text = '📋 Скопировать public key'
+$knowledgeSshCopyButton.Text = 'Копировать public key'
 $knowledgeSshCopyButton.Font = New-Font 8
 $knowledgeSshCopyButton.Size = New-Object System.Drawing.Size(210, 34)
 $knowledgeSshCopyButton.Location = New-Object System.Drawing.Point(790, 114)
@@ -8383,7 +16911,7 @@ $knowledgeSshCopyButton.Add_Click({ [void](Copy-GitHubSshPublicKey) })
 $knowledgeGitPanel.Controls.Add($knowledgeSshCopyButton)
 
 $knowledgeSyncButton = New-Object System.Windows.Forms.Button
-$knowledgeSyncButton.Text = '↻ Synchronize'
+$knowledgeSyncButton.Text = 'Git Sync'
 $knowledgeSyncButton.Font = New-Font 9 ([System.Drawing.FontStyle]::Bold)
 $knowledgeSyncButton.Size = New-Object System.Drawing.Size(175,36)
 $knowledgeSyncButton.Location = New-Object System.Drawing.Point(625,62)
@@ -8400,8 +16928,31 @@ $knowledgeRefreshButton.Location = New-Object System.Drawing.Point(625,106)
 $knowledgeRefreshButton.Add_Click({ Refresh-KnowledgeStatusInteractive })
 $knowledgeGitPanel.Controls.Add($knowledgeRefreshButton)
 
+$knowledgeChangesButton = New-Object System.Windows.Forms.Button
+$knowledgeChangesButton.Text = 'Показать изменения'
+$knowledgeChangesButton.Size = New-Object System.Drawing.Size(175,32)
+$knowledgeChangesButton.Location = New-Object System.Drawing.Point(625,142)
+$knowledgeChangesButton.Add_Click({ Show-GitLocalChanges })
+$knowledgeGitPanel.Controls.Add($knowledgeChangesButton)
+
+$knowledgeSaveStatusValue = New-Object System.Windows.Forms.Label
+$knowledgeSaveStatusValue.Text = '⚪ СТАТУС ЗНАНИЙ НЕ ПРОВЕРЕН'
+$knowledgeSaveStatusValue.Font = New-Font 11 ([System.Drawing.FontStyle]::Bold)
+$knowledgeSaveStatusValue.AutoEllipsis = $true
+$knowledgeSaveStatusValue.ForeColor = [System.Drawing.Color]::DimGray
+
+$knowledgeSaveDetailsLabel = New-Object System.Windows.Forms.Label
+$knowledgeSaveDetailsLabel.Text = 'Статус GitHub ещё не проверен.'
+$knowledgeSaveDetailsLabel.AutoEllipsis = $true
+$knowledgeSaveDetailsLabel.ForeColor = [System.Drawing.Color]::DimGray
+
+$knowledgeSaveButton = New-Object System.Windows.Forms.Button
+$knowledgeSaveButton.Text = '☁ СОХРАНИТЬ ЗНАНИЯ В GITHUB'
+$knowledgeSaveButton.Font = New-Font 10 ([System.Drawing.FontStyle]::Bold)
+$knowledgeSaveButton.Add_Click({ Save-AllKnowledgeToGitHub })
+
 $knowledgeCommitLabel = New-Object System.Windows.Forms.Label
-$knowledgeCommitLabel.Text = 'Commit message'
+$knowledgeCommitLabel.Text = 'Технический commit message'
 $knowledgeCommitLabel.Font = New-Font 9 ([System.Drawing.FontStyle]::Bold)
 $knowledgeCommitLabel.AutoSize = $true
 $knowledgeCommitLabel.Location = New-Object System.Drawing.Point(20,394)
@@ -8415,7 +16966,7 @@ $knowledgeCommitMessage.Text = ''
 $knowledgeTab.Controls.Add($knowledgeCommitMessage)
 
 $knowledgeCommitButton = New-Object System.Windows.Forms.Button
-$knowledgeCommitButton.Text = '💾 Commit'
+$knowledgeCommitButton.Text = 'Commit локально'
 $knowledgeCommitButton.Font = New-Font 9 ([System.Drawing.FontStyle]::Bold)
 $knowledgeCommitButton.Size = New-Object System.Drawing.Size(245,34)
 $knowledgeCommitButton.Location = New-Object System.Drawing.Point(605,418)
@@ -8423,7 +16974,7 @@ $knowledgeCommitButton.Add_Click({ Commit-KnowledgeChanges })
 $knowledgeTab.Controls.Add($knowledgeCommitButton)
 
 $knowledgeSyncInfo = New-Object System.Windows.Forms.Label
-$knowledgeSyncInfo.Text = 'GitHub по умолчанию: Gamazzz/rx2go-ai-qa. При старте выполняется безопасная синхронизация, если нет локальных изменений.'
+$knowledgeSyncInfo.Text = 'Commit/Git Sync — дополнительные инструменты. Главный статус выше показывает, сохранены ли знания в GitHub.'
 $knowledgeSyncInfo.Font = New-Font 8
 $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::DimGray
 $knowledgeSyncInfo.AutoSize = $true
@@ -8452,6 +17003,218 @@ $knowledgePolicy.Location = New-Object System.Drawing.Point(20,700)
 $knowledgeTab.Controls.Add($knowledgePolicy)
 
 
+
+
+# --- Jira Queue tab (fully responsive: no absolute-position content) ---
+$queueRoot = New-Object System.Windows.Forms.Panel
+$queueRoot.Dock = 'Fill'
+$queueRoot.Padding = New-Object System.Windows.Forms.Padding(12)
+$queueRoot.BackColor = [System.Drawing.Color]::FromArgb(246,248,251)
+$queueTab.Controls.Add($queueRoot) | Out-Null
+
+$queueLayout = New-Object System.Windows.Forms.TableLayoutPanel
+$queueLayout.Dock = 'Fill'
+$queueLayout.ColumnCount = 1
+$queueLayout.RowCount = 4
+$queueLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent,100))) | Out-Null
+$queueLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute,82))) | Out-Null
+$queueLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute,118))) | Out-Null
+$queueLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent,100))) | Out-Null
+$queueLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute,125))) | Out-Null
+$queueRoot.Controls.Add($queueLayout) | Out-Null
+
+$queueHeaderGroup = New-Object System.Windows.Forms.GroupBox
+$queueHeaderGroup.Text = 'Очередь Jira задач'
+$queueHeaderGroup.Dock = 'Fill'
+$queueHeaderGroup.Padding = New-Object System.Windows.Forms.Padding(10)
+$queueLayout.Controls.Add($queueHeaderGroup,0,0)
+
+$queueHeaderPanel = New-Object System.Windows.Forms.TableLayoutPanel
+$queueHeaderPanel.Dock = 'Fill'
+$queueHeaderPanel.ColumnCount = 2
+$queueHeaderPanel.RowCount = 1
+$queueHeaderPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent,70))) | Out-Null
+$queueHeaderPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent,30))) | Out-Null
+$queueHeaderGroup.Controls.Add($queueHeaderPanel) | Out-Null
+
+$queueHintLabel = New-Object System.Windows.Forms.Label
+$queueHintLabel.Text = 'До 3 задач одновременно. Каждая задача запускается в отдельном Worker-процессе и отдельной Chrome/CDP-сессии. Knowledge читается перед стартом Worker, Auto-Learning объединяется после завершения, Git commit/push выполняется последовательно основным Launcher.'
+$queueHintLabel.Dock = 'Fill'
+$queueHintLabel.AutoEllipsis = $true
+$queueHintLabel.TextAlign = 'MiddleLeft'
+$queueHintLabel.ForeColor = [System.Drawing.Color]::DimGray
+$queueHeaderPanel.Controls.Add($queueHintLabel,0,0)
+
+$queueSummaryLabel = New-Object System.Windows.Forms.Label
+$queueSummaryLabel.Text = 'WAITING 0  •  RUNNING 0/3  •  PASS 0  •  FAIL 0  •  BLOCKED 0'
+$queueSummaryLabel.Dock = 'Fill'
+$queueSummaryLabel.TextAlign = 'MiddleRight'
+$queueSummaryLabel.Font = New-Font 9 ([System.Drawing.FontStyle]::Bold)
+$queueHeaderPanel.Controls.Add($queueSummaryLabel,1,0)
+
+$queueControlsGroup = New-Object System.Windows.Forms.GroupBox
+$queueControlsGroup.Text = 'Добавить и управлять'
+$queueControlsGroup.Dock = 'Fill'
+$queueControlsGroup.Padding = New-Object System.Windows.Forms.Padding(8)
+$queueLayout.Controls.Add($queueControlsGroup,0,1)
+
+$queueControlsLayout = New-Object System.Windows.Forms.TableLayoutPanel
+$queueControlsLayout.Dock = 'Fill'
+$queueControlsLayout.ColumnCount = 1
+$queueControlsLayout.RowCount = 2
+$queueControlsLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent,50))) | Out-Null
+$queueControlsLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent,50))) | Out-Null
+$queueControlsGroup.Controls.Add($queueControlsLayout) | Out-Null
+
+$queueAddFlow = New-Object System.Windows.Forms.FlowLayoutPanel
+$queueAddFlow.Dock = 'Fill'
+$queueAddFlow.WrapContents = $false
+$queueAddFlow.AutoScroll = $true
+$queueControlsLayout.Controls.Add($queueAddFlow,0,0)
+
+$queueInputLabel = New-Object System.Windows.Forms.Label
+$queueInputLabel.Text = 'Jira key/URL:'
+$queueInputLabel.AutoSize = $true
+$queueInputLabel.Margin = New-Object System.Windows.Forms.Padding(0,9,6,0)
+$queueAddFlow.Controls.Add($queueInputLabel) | Out-Null
+
+$queueInputBox = New-Object System.Windows.Forms.TextBox
+$queueInputBox.Width = 320
+$queueInputBox.Font = New-Font 9
+$queueInputBox.Margin = New-Object System.Windows.Forms.Padding(0,5,10,0)
+$queueAddFlow.Controls.Add($queueInputBox) | Out-Null
+
+$queueEnvironmentLabel = New-Object System.Windows.Forms.Label
+$queueEnvironmentLabel.Text = 'Окружение:'
+$queueEnvironmentLabel.AutoSize = $true
+$queueEnvironmentLabel.Margin = New-Object System.Windows.Forms.Padding(0,9,6,0)
+$queueAddFlow.Controls.Add($queueEnvironmentLabel) | Out-Null
+
+$queueEnvironmentCombo = New-Object System.Windows.Forms.ComboBox
+$queueEnvironmentCombo.DropDownStyle = 'DropDownList'
+$queueEnvironmentCombo.Items.AddRange(@('BRANCH','HOT','ADM'))
+$queueEnvironmentCombo.SelectedItem = 'HOT'
+$queueEnvironmentCombo.Width = 105
+$queueEnvironmentCombo.Margin = New-Object System.Windows.Forms.Padding(0,4,10,0)
+$queueAddFlow.Controls.Add($queueEnvironmentCombo) | Out-Null
+
+$queueParallelLabel = New-Object System.Windows.Forms.Label
+$queueParallelLabel.Text = 'Параллельно:'
+$queueParallelLabel.AutoSize = $true
+$queueParallelLabel.Margin = New-Object System.Windows.Forms.Padding(0,9,6,0)
+$queueAddFlow.Controls.Add($queueParallelLabel) | Out-Null
+
+$queueParallelNumeric = New-Object System.Windows.Forms.NumericUpDown
+$queueParallelNumeric.Minimum = 1
+$queueParallelNumeric.Maximum = 3
+$queueParallelNumeric.Value = 3
+$queueParallelNumeric.Width = 55
+$queueParallelNumeric.Margin = New-Object System.Windows.Forms.Padding(0,4,10,0)
+$queueParallelNumeric.Add_ValueChanged({ $script:QueueMaxParallel = [int]$queueParallelNumeric.Value; Refresh-QueueGrid; Save-QueueState })
+$queueAddFlow.Controls.Add($queueParallelNumeric) | Out-Null
+
+$queueAddButton = New-Object System.Windows.Forms.Button
+$queueAddButton.Text = '+ Добавить Jira'
+$queueAddButton.Size = New-Object System.Drawing.Size(135,32)
+$queueAddButton.Margin = New-Object System.Windows.Forms.Padding(0,2,0,0)
+$queueAddButton.Add_Click({ Add-QueueTasksFromInput })
+$queueAddFlow.Controls.Add($queueAddButton) | Out-Null
+
+$queueActionFlow = New-Object System.Windows.Forms.FlowLayoutPanel
+$queueActionFlow.Dock = 'Fill'
+$queueActionFlow.WrapContents = $false
+$queueActionFlow.AutoScroll = $true
+$queueControlsLayout.Controls.Add($queueActionFlow,0,1)
+
+function Add-QueueActionButton([string]$Text,[int]$Width,[scriptblock]$Handler) {
+    $button = New-Object System.Windows.Forms.Button
+    $button.Text = $Text
+    $button.Size = New-Object System.Drawing.Size($Width,32)
+    $button.Margin = New-Object System.Windows.Forms.Padding(0,3,8,0)
+    $button.Add_Click($Handler)
+    $queueActionFlow.Controls.Add($button) | Out-Null
+    return $button
+}
+
+$queueStartButton = Add-QueueActionButton '▶ Start Queue' 130 { Start-JiraQueue }
+$queuePauseButton = Add-QueueActionButton 'Pause' 85 { Pause-JiraQueue }
+$queueResumeButton = Add-QueueActionButton 'Resume' 85 { Resume-JiraQueue }
+$queueRetryButton = Add-QueueActionButton 'Retry' 80 { Retry-SelectedQueueItem }
+$queueStopButton = Add-QueueActionButton 'Stop Worker' 105 { Stop-SelectedQueueWorker }
+$queueRemoveButton = Add-QueueActionButton 'Удалить' 85 { Remove-SelectedQueueItem }
+$queueUpButton = Add-QueueActionButton '↑' 45 { Move-SelectedQueueItem -Direction -1 }
+$queueDownButton = Add-QueueActionButton '↓' 45 { Move-SelectedQueueItem -Direction 1 }
+$queueLogsButton = Add-QueueActionButton 'Открыть логи' 115 { Open-SelectedQueueLogs }
+
+$queueGridGroup = New-Object System.Windows.Forms.GroupBox
+$queueGridGroup.Text = 'Задачи'
+$queueGridGroup.Dock = 'Fill'
+$queueGridGroup.Padding = New-Object System.Windows.Forms.Padding(8)
+$queueLayout.Controls.Add($queueGridGroup,0,2)
+
+$queueGrid = New-Object System.Windows.Forms.DataGridView
+$queueGrid.Dock = 'Fill'
+$queueGrid.ReadOnly = $true
+$queueGrid.AllowUserToAddRows = $false
+$queueGrid.AllowUserToDeleteRows = $false
+$queueGrid.AllowUserToResizeRows = $false
+$queueGrid.RowHeadersVisible = $false
+$queueGrid.SelectionMode = 'FullRowSelect'
+$queueGrid.MultiSelect = $false
+$queueGrid.AutoGenerateColumns = $false
+$queueGrid.BackgroundColor = [System.Drawing.Color]::White
+$queueGrid.BorderStyle = 'FixedSingle'
+$queueGrid.AutoSizeRowsMode = 'DisplayedCells'
+$queueGrid.DefaultCellStyle.WrapMode = [System.Windows.Forms.DataGridViewTriState]::False
+$queueGrid.ColumnHeadersHeightSizeMode = 'AutoSize'
+$queueGridGroup.Controls.Add($queueGrid) | Out-Null
+
+function Add-QueueGridColumn([string]$Name,[string]$Header,[int]$Width,[string]$AutoSizeMode='None') {
+    $col = New-Object System.Windows.Forms.DataGridViewTextBoxColumn
+    $col.Name = $Name
+    $col.HeaderText = $Header
+    if ($AutoSizeMode -eq 'Fill') { $col.AutoSizeMode = [System.Windows.Forms.DataGridViewAutoSizeColumnMode]::Fill }
+    else { $col.Width = $Width }
+    [void]$queueGrid.Columns.Add($col)
+}
+Add-QueueGridColumn 'Order' '#' 42
+Add-QueueGridColumn 'Key' 'Jira' 120
+Add-QueueGridColumn 'Environment' 'Env' 70
+Add-QueueGridColumn 'Status' 'Status' 120
+Add-QueueGridColumn 'Worker' 'Worker' 70
+Add-QueueGridColumn 'Started' 'Started' 82
+Add-QueueGridColumn 'Result' 'Result' 85
+Add-QueueGridColumn 'Details' 'Details' 200 'Fill'
+$queueGrid.Add_CellDoubleClick({ if ($_.RowIndex -ge 0) { Open-SelectedQueueLogs } })
+
+$queueLogGroup = New-Object System.Windows.Forms.GroupBox
+$queueLogGroup.Text = 'Queue log'
+$queueLogGroup.Dock = 'Fill'
+$queueLogGroup.Padding = New-Object System.Windows.Forms.Padding(8)
+$queueLayout.Controls.Add($queueLogGroup,0,3)
+
+$queueLogLayout = New-Object System.Windows.Forms.TableLayoutPanel
+$queueLogLayout.Dock = 'Fill'
+$queueLogLayout.ColumnCount = 1
+$queueLogLayout.RowCount = 2
+$queueLogLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent,100))) | Out-Null
+$queueLogLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute,24))) | Out-Null
+$queueLogGroup.Controls.Add($queueLogLayout) | Out-Null
+
+$queueLogBox = New-Object System.Windows.Forms.RichTextBox
+$queueLogBox.Dock = 'Fill'
+$queueLogBox.ReadOnly = $true
+$queueLogBox.BackColor = [System.Drawing.Color]::FromArgb(17,24,39)
+$queueLogBox.ForeColor = [System.Drawing.Color]::FromArgb(229,231,235)
+$queueLogBox.Font = New-Object System.Drawing.Font('Consolas',8.5)
+$queueLogLayout.Controls.Add($queueLogBox,0,0)
+
+$queueStatusLabel = New-Object System.Windows.Forms.Label
+$queueStatusLabel.Text = 'Готово. Добавь Jira задачи и нажми Start Queue.'
+$queueStatusLabel.Dock = 'Fill'
+$queueStatusLabel.TextAlign = 'MiddleLeft'
+$queueStatusLabel.ForeColor = [System.Drawing.Color]::DimGray
+$queueLogLayout.Controls.Add($queueStatusLabel,0,1)
 
 function Move-ControlToParent {
     param(
@@ -8510,6 +17273,7 @@ function Apply-ResponsiveLayout {
     $quickTab.SuspendLayout()
     $jiraTab.SuspendLayout()
     $knowledgeTab.SuspendLayout()
+    $queueTab.SuspendLayout()
 
     # Hide obsolete captions replaced by structured containers.
     foreach ($oldCtrl in @($resultsTitle, $failedTitle, $logTitle, $jiraPlanTitle, $jiraRuleLabel, $jiraEnvLabel, $jiraQaCommentLabel, $knowledgeTitle, $knowledgeHint, $knowledgeCommitLabel, $knowledgeRecentTitle)) {
@@ -9089,7 +17853,7 @@ function Apply-ResponsiveLayout {
     Move-ControlToParent $jiraScreenshotInfo $jiraScreenshotPanel
 
     $jiraImportedGroup = New-Object System.Windows.Forms.GroupBox
-    $jiraImportedGroup.Text = 'Импортированное описание и комментарии Jira'
+    $jiraImportedGroup.Text = 'Импортированное описание и комментарии Jira — можно редактировать'
     $jiraImportedGroup.Dock = 'Fill'
     $jiraImportedGroup.Padding = New-Object System.Windows.Forms.Padding(10)
     $jiraGrid.Controls.Add($jiraImportedGroup, 0, 2)
@@ -9366,12 +18130,13 @@ function Apply-ResponsiveLayout {
     $knowledgeGrid = New-Object System.Windows.Forms.TableLayoutPanel
     $knowledgeGrid.Dock = 'Fill'
     $knowledgeGrid.ColumnCount = 1
-    $knowledgeGrid.RowCount = 5
+    $knowledgeGrid.RowCount = 6
     Add-ColumnStylePercent $knowledgeGrid 100
     Add-RowStyleAbsolute $knowledgeGrid 72
     Add-RowStyleAbsolute $knowledgeGrid 108
     Add-RowStyleAbsolute $knowledgeGrid 245
-    Add-RowStyleAbsolute $knowledgeGrid 118
+    Add-RowStyleAbsolute $knowledgeGrid 220
+    Add-RowStyleAbsolute $knowledgeGrid 110
     Add-RowStylePercent $knowledgeGrid 100
     $knowledgeRoot.Controls.Add($knowledgeGrid) | Out-Null
 
@@ -9403,16 +18168,144 @@ function Apply-ResponsiveLayout {
     $knowledgeStatsFlow.AutoScroll = $true
     $knowledgeStatsGroup.Controls.Add($knowledgeStatsFlow) | Out-Null
 
-    foreach ($card in @($knowledgeRulesValue.Parent, $knowledgeJiraValue.Parent, $knowledgeRegressionValue.Parent, $knowledgeTestsValue.Parent)) {
+    foreach ($card in @(
+        $knowledgeRulesValue.Parent,
+        $knowledgeJiraValue.Parent,
+        $knowledgeRegressionValue.Parent,
+        $knowledgeTestsValue.Parent,
+        $knowledgeExplorerValue.Parent
+    )) {
         $card.Size = New-Object System.Drawing.Size(210, 82)
         Move-ControlToParent $card $knowledgeStatsFlow
     }
 
-    $knowledgeGitGroup = New-Object System.Windows.Forms.GroupBox
+    # --------------------------------------------------------------
+    # Knowledge Explorer — managed layout only
+    # --------------------------------------------------------------
+    
+$knowledgeExplorerGroup = New-Object System.Windows.Forms.GroupBox
+    $knowledgeExplorerGroup.Text = 'Knowledge Explorer — ADM baseline / HOT delta / BRANCH temporary'
+    $knowledgeExplorerGroup.Dock = 'Fill'
+    $knowledgeExplorerGroup.Padding = New-Object System.Windows.Forms.Padding(10)
+    $knowledgeGrid.Controls.Add($knowledgeExplorerGroup, 0, 2)
+
+    $knowledgeExplorerGrid = New-Object System.Windows.Forms.TableLayoutPanel
+    $knowledgeExplorerGrid.Dock = 'Fill'
+    $knowledgeExplorerGrid.ColumnCount = 6
+    $knowledgeExplorerGrid.RowCount = 5
+    Add-ColumnStyleAbsolute $knowledgeExplorerGrid 145
+    Add-ColumnStylePercent $knowledgeExplorerGrid 28
+    Add-ColumnStyleAbsolute $knowledgeExplorerGrid 115
+    Add-ColumnStylePercent $knowledgeExplorerGrid 30
+    Add-ColumnStyleAbsolute $knowledgeExplorerGrid 145
+    Add-ColumnStyleAbsolute $knowledgeExplorerGrid 105
+    Add-RowStyleAbsolute $knowledgeExplorerGrid 34
+    Add-RowStyleAbsolute $knowledgeExplorerGrid 34
+    Add-RowStyleAbsolute $knowledgeExplorerGrid 34
+    Add-RowStyleAbsolute $knowledgeExplorerGrid 24
+    Add-RowStylePercent $knowledgeExplorerGrid 100
+    $knowledgeExplorerGroup.Controls.Add($knowledgeExplorerGrid) | Out-Null
+
+    $knowledgeExplorerEnvironmentLabel = New-Object System.Windows.Forms.Label
+    $knowledgeExplorerEnvironmentLabel.Text = 'Окружение'
+    $knowledgeExplorerEnvironmentLabel.Dock = 'Fill'
+    $knowledgeExplorerEnvironmentLabel.TextAlign = 'MiddleLeft'
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerEnvironmentLabel,0,0)
+
+    $knowledgeExplorerEnvironmentCombo.Dock = 'Fill'
+    $knowledgeExplorerEnvironmentCombo.Margin = New-Object System.Windows.Forms.Padding(0,3,8,3)
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerEnvironmentCombo,1,0)
+
+    $knowledgeExplorerBaselineLabel = New-Object System.Windows.Forms.Label
+    $knowledgeExplorerBaselineLabel.Text = 'Baseline'
+    $knowledgeExplorerBaselineLabel.Dock = 'Fill'
+    $knowledgeExplorerBaselineLabel.TextAlign = 'MiddleLeft'
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerBaselineLabel,2,0)
+
+    $knowledgeExplorerBaselineValueLabel.Dock = 'Fill'
+    $knowledgeExplorerBaselineValueLabel.TextAlign = 'MiddleLeft'
+    $knowledgeExplorerBaselineValueLabel.Margin = New-Object System.Windows.Forms.Padding(0,0,8,0)
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerBaselineValueLabel,3,0)
+
+    $knowledgeExplorerStartButton.Dock = 'Fill'
+    $knowledgeExplorerStartButton.Margin = New-Object System.Windows.Forms.Padding(0,2,6,2)
+    Style-PrimaryButton $knowledgeExplorerStartButton
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerStartButton,4,0)
+
+    $knowledgeExplorerStopButton.Dock = 'Fill'
+    $knowledgeExplorerStopButton.Margin = New-Object System.Windows.Forms.Padding(0,2,0,2)
+    Style-SecondaryButton $knowledgeExplorerStopButton
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerStopButton,5,0)
+
+    $knowledgeExplorerModeLabel = New-Object System.Windows.Forms.Label
+    $knowledgeExplorerModeLabel.Text = 'Режим'
+    $knowledgeExplorerModeLabel.Dock = 'Fill'
+    $knowledgeExplorerModeLabel.TextAlign = 'MiddleLeft'
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerModeLabel,0,1)
+
+    $knowledgeExplorerModeCombo.Dock = 'Fill'
+    $knowledgeExplorerModeCombo.Margin = New-Object System.Windows.Forms.Padding(0,3,8,3)
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerModeCombo,1,1)
+
+    $knowledgeExplorerModuleLabel = New-Object System.Windows.Forms.Label
+    $knowledgeExplorerModuleLabel.Text = 'Модуль'
+    $knowledgeExplorerModuleLabel.Dock = 'Fill'
+    $knowledgeExplorerModuleLabel.TextAlign = 'MiddleLeft'
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerModuleLabel,2,1)
+
+    $knowledgeExplorerModuleCombo.Dock = 'Fill'
+    $knowledgeExplorerModuleCombo.Margin = New-Object System.Windows.Forms.Padding(0,3,8,3)
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerModuleCombo,3,1)
+
+    $knowledgeExplorerOpenButton.Dock = 'Fill'
+    $knowledgeExplorerOpenButton.Margin = New-Object System.Windows.Forms.Padding(0,2,0,2)
+    Style-SecondaryButton $knowledgeExplorerOpenButton
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerOpenButton,4,1)
+    $knowledgeExplorerGrid.SetColumnSpan($knowledgeExplorerOpenButton,2)
+
+    $knowledgeExplorerTargetLabel = New-Object System.Windows.Forms.Label
+    $knowledgeExplorerTargetLabel.Text = 'Workflow / цель'
+    $knowledgeExplorerTargetLabel.Dock = 'Fill'
+    $knowledgeExplorerTargetLabel.TextAlign = 'MiddleLeft'
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerTargetLabel,0,2)
+
+    $knowledgeExplorerTargetBox.Dock = 'Fill'
+    $knowledgeExplorerTargetBox.Margin = New-Object System.Windows.Forms.Padding(0,3,8,3)
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerTargetBox,1,2)
+    $knowledgeExplorerGrid.SetColumnSpan($knowledgeExplorerTargetBox,3)
+
+    $knowledgeAdmDailyPasswordLabel.Dock = 'Fill'
+    $knowledgeAdmDailyPasswordLabel.TextAlign = 'MiddleLeft'
+    $knowledgeAdmDailyPasswordLabel.Margin = New-Object System.Windows.Forms.Padding(0,0,6,0)
+    Move-ControlToParent $knowledgeAdmDailyPasswordLabel $knowledgeExplorerGrid
+    $knowledgeExplorerGrid.Controls.Add($knowledgeAdmDailyPasswordLabel,4,2)
+
+    $knowledgeAdmDailyPasswordBox.Dock = 'Fill'
+    $knowledgeAdmDailyPasswordBox.Margin = New-Object System.Windows.Forms.Padding(0,3,0,3)
+    Move-ControlToParent $knowledgeAdmDailyPasswordBox $knowledgeExplorerGrid
+    $knowledgeExplorerGrid.Controls.Add($knowledgeAdmDailyPasswordBox,5,2)
+
+    $knowledgeExplorerStatusLabel.Dock = 'Fill'
+    $knowledgeExplorerStatusLabel.TextAlign = 'MiddleLeft'
+    $knowledgeExplorerStatusLabel.Margin = New-Object System.Windows.Forms.Padding(0,0,8,0)
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerStatusLabel,0,3)
+    $knowledgeExplorerGrid.SetColumnSpan($knowledgeExplorerStatusLabel,4)
+
+    $knowledgeExplorerProgress.Dock = 'Fill'
+    $knowledgeExplorerProgress.Margin = New-Object System.Windows.Forms.Padding(0,4,0,4)
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerProgress,4,3)
+    $knowledgeExplorerGrid.SetColumnSpan($knowledgeExplorerProgress,2)
+
+    $knowledgeExplorerLogBox.Dock = 'Fill'
+    $knowledgeExplorerLogBox.Margin = New-Object System.Windows.Forms.Padding(0,4,0,0)
+    $knowledgeExplorerGrid.Controls.Add($knowledgeExplorerLogBox,0,4)
+    $knowledgeExplorerGrid.SetColumnSpan($knowledgeExplorerLogBox,6)
+
+$knowledgeGitGroup = New-Object System.Windows.Forms.GroupBox
     $knowledgeGitGroup.Text = 'Git repository'
     $knowledgeGitGroup.Dock = 'Fill'
     $knowledgeGitGroup.Padding = New-Object System.Windows.Forms.Padding(10)
-    $knowledgeGrid.Controls.Add($knowledgeGitGroup, 0, 2)
+    $knowledgeGrid.Controls.Add($knowledgeGitGroup, 0, 3)
 
     # Replace the old fixed-coordinate Git panel with a responsive two-column grid.
     $knowledgeGitPanel.BorderStyle = 'None'
@@ -9424,43 +18317,65 @@ function Apply-ResponsiveLayout {
     $knowledgeGitGrid.Dock = 'Fill'
     $knowledgeGitGrid.ColumnCount = 2
     $knowledgeGitGrid.RowCount = 1
-    Add-ColumnStylePercent $knowledgeGitGrid 72
-    Add-ColumnStylePercent $knowledgeGitGrid 28
+    Add-ColumnStylePercent $knowledgeGitGrid 66
+    Add-ColumnStylePercent $knowledgeGitGrid 34
     Add-RowStylePercent $knowledgeGitGrid 100
     $knowledgeGitPanel.Controls.Add($knowledgeGitGrid) | Out-Null
 
     $knowledgeGitInfoPanel = New-Object System.Windows.Forms.TableLayoutPanel
     $knowledgeGitInfoPanel.Dock = 'Fill'
     $knowledgeGitInfoPanel.ColumnCount = 2
-    $knowledgeGitInfoPanel.RowCount = 5
+    $knowledgeGitInfoPanel.RowCount = 7
     Add-ColumnStyleAbsolute $knowledgeGitInfoPanel 92
     Add-ColumnStylePercent $knowledgeGitInfoPanel 100
-    Add-RowStyleAbsolute $knowledgeGitInfoPanel 34
+    Add-RowStyleAbsolute $knowledgeGitInfoPanel 36
     Add-RowStyleAbsolute $knowledgeGitInfoPanel 28
-    Add-RowStyleAbsolute $knowledgeGitInfoPanel 28
-    Add-RowStyleAbsolute $knowledgeGitInfoPanel 28
+    Add-RowStyleAbsolute $knowledgeGitInfoPanel 24
+    Add-RowStyleAbsolute $knowledgeGitInfoPanel 24
+    Add-RowStyleAbsolute $knowledgeGitInfoPanel 24
+    Add-RowStyleAbsolute $knowledgeGitInfoPanel 24
     Add-RowStylePercent $knowledgeGitInfoPanel 100
     $knowledgeGitGrid.Controls.Add($knowledgeGitInfoPanel, 0, 0)
 
-    $knowledgeGitTitle.Text = 'Git repository'
-    $knowledgeGitTitle.Dock = 'Fill'
-    $knowledgeGitTitle.TextAlign = 'MiddleLeft'
-    $knowledgeGitTitle.Margin = New-Object System.Windows.Forms.Padding(2,0,2,0)
-    Move-ControlToParent $knowledgeGitTitle $knowledgeGitInfoPanel
-    $knowledgeGitInfoPanel.Controls.Add($knowledgeGitTitle, 0, 0)
-    $knowledgeGitInfoPanel.SetColumnSpan($knowledgeGitTitle, 2)
+    $knowledgeGitTitle.Visible = $false
+
+    $knowledgeSaveStatusValue.Dock = 'Fill'
+    $knowledgeSaveStatusValue.TextAlign = 'MiddleLeft'
+    $knowledgeSaveStatusValue.Margin = New-Object System.Windows.Forms.Padding(2,0,2,0)
+    Move-ControlToParent $knowledgeSaveStatusValue $knowledgeGitInfoPanel
+    $knowledgeGitInfoPanel.Controls.Add($knowledgeSaveStatusValue,0,0)
+    $knowledgeGitInfoPanel.SetColumnSpan($knowledgeSaveStatusValue,2)
+
+    $knowledgeSaveDetailsLabel.Dock = 'Fill'
+    $knowledgeSaveDetailsLabel.TextAlign = 'MiddleLeft'
+    $knowledgeSaveDetailsLabel.Margin = New-Object System.Windows.Forms.Padding(2,0,2,0)
+    Move-ControlToParent $knowledgeSaveDetailsLabel $knowledgeGitInfoPanel
+    $knowledgeGitInfoPanel.Controls.Add($knowledgeSaveDetailsLabel,0,1)
+    $knowledgeGitInfoPanel.SetColumnSpan($knowledgeSaveDetailsLabel,2)
 
     $knowledgeGitStatus.Dock = 'Fill'
     $knowledgeGitStatus.TextAlign = 'MiddleLeft'
     $knowledgeGitStatus.Margin = New-Object System.Windows.Forms.Padding(2,0,2,0)
     Move-ControlToParent $knowledgeGitStatus $knowledgeGitInfoPanel
-    $knowledgeGitInfoPanel.Controls.Add($knowledgeGitStatus, 0, 1)
-    $knowledgeGitInfoPanel.SetColumnSpan($knowledgeGitStatus, 2)
+    $knowledgeGitInfoPanel.Controls.Add($knowledgeGitStatus,0,2)
+    $knowledgeGitInfoPanel.SetColumnSpan($knowledgeGitStatus,2)
+
+    $knowledgeSshStatusCaption.Dock = 'Fill'
+    $knowledgeSshStatusCaption.TextAlign = 'MiddleLeft'
+    $knowledgeSshStatusCaption.Margin = New-Object System.Windows.Forms.Padding(2,0,4,0)
+    Move-ControlToParent $knowledgeSshStatusCaption $knowledgeGitInfoPanel
+    $knowledgeGitInfoPanel.Controls.Add($knowledgeSshStatusCaption,0,3)
+
+    $knowledgeSshStatusValue.Dock = 'Fill'
+    $knowledgeSshStatusValue.TextAlign = 'MiddleLeft'
+    $knowledgeSshStatusValue.Margin = New-Object System.Windows.Forms.Padding(0)
+    Move-ControlToParent $knowledgeSshStatusValue $knowledgeGitInfoPanel
+    $knowledgeGitInfoPanel.Controls.Add($knowledgeSshStatusValue,1,3)
 
     foreach ($pair in @(
-        @($branchCaption,$knowledgeBranchValue,2),
-        @($remoteCaption,$knowledgeRemoteValue,3),
-        @($commitCaption,$knowledgeCommitValue,4)
+        @($branchCaption,$knowledgeBranchValue,4),
+        @($remoteCaption,$knowledgeRemoteValue,5),
+        @($commitCaption,$knowledgeCommitValue,6)
     )) {
         $caption = $pair[0]
         $value = $pair[1]
@@ -9482,37 +18397,45 @@ function Apply-ResponsiveLayout {
 
     $knowledgeGitActions = New-Object System.Windows.Forms.TableLayoutPanel
     $knowledgeGitActions.Dock = 'Fill'
-    $knowledgeGitActions.ColumnCount = 1
-    $knowledgeGitActions.RowCount = 5
-    Add-ColumnStylePercent $knowledgeGitActions 100
-    Add-RowStylePercent $knowledgeGitActions 20
-    Add-RowStylePercent $knowledgeGitActions 20
-    Add-RowStylePercent $knowledgeGitActions 20
-    Add-RowStylePercent $knowledgeGitActions 20
-    Add-RowStylePercent $knowledgeGitActions 20
+    $knowledgeGitActions.ColumnCount = 2
+    $knowledgeGitActions.RowCount = 4
+    Add-ColumnStylePercent $knowledgeGitActions 50
+    Add-ColumnStylePercent $knowledgeGitActions 50
+    Add-RowStyleAbsolute $knowledgeGitActions 52
+    Add-RowStylePercent $knowledgeGitActions 33
+    Add-RowStylePercent $knowledgeGitActions 33
+    Add-RowStylePercent $knowledgeGitActions 34
     $knowledgeGitActions.Padding = New-Object System.Windows.Forms.Padding(8,2,2,2)
     $knowledgeGitGrid.Controls.Add($knowledgeGitActions, 1, 0)
 
+    $knowledgeSaveButton.Dock = 'Fill'
+    $knowledgeSaveButton.Margin = New-Object System.Windows.Forms.Padding(2,3,2,5)
+    Move-ControlToParent $knowledgeSaveButton $knowledgeGitActions
+    $knowledgeGitActions.Controls.Add($knowledgeSaveButton,0,0)
+    $knowledgeGitActions.SetColumnSpan($knowledgeSaveButton,2)
+
     foreach ($action in @(
-        @($knowledgeSetupButton,0),
-        @($knowledgeSshCreateButton,1),
-        @($knowledgeSshCopyButton,2),
-        @($knowledgeRefreshButton,3),
-        @($knowledgeSyncButton,4)
+        @($knowledgeSetupButton,0,1),
+        @($knowledgeSshCreateButton,1,1),
+        @($knowledgeSshCopyButton,0,2),
+        @($knowledgeRefreshButton,1,2),
+        @($knowledgeChangesButton,0,3),
+        @($knowledgeSyncButton,1,3)
     )) {
         $button = $action[0]
-        $row = [int]$action[1]
+        $column = [int]$action[1]
+        $row = [int]$action[2]
         $button.Dock = 'Fill'
-        $button.Margin = New-Object System.Windows.Forms.Padding(0,3,0,3)
+        $button.Margin = New-Object System.Windows.Forms.Padding(2,3,2,3)
         Move-ControlToParent $button $knowledgeGitActions
-        $knowledgeGitActions.Controls.Add($button, 0, $row)
+        $knowledgeGitActions.Controls.Add($button,$column,$row)
     }
 
     $knowledgeCommitGroup = New-Object System.Windows.Forms.GroupBox
-    $knowledgeCommitGroup.Text = 'Commit knowledge'
+    $knowledgeCommitGroup.Text = 'Git — дополнительные инструменты'
     $knowledgeCommitGroup.Dock = 'Fill'
     $knowledgeCommitGroup.Padding = New-Object System.Windows.Forms.Padding(10)
-    $knowledgeGrid.Controls.Add($knowledgeCommitGroup, 0, 3)
+    $knowledgeGrid.Controls.Add($knowledgeCommitGroup, 0, 4)
 
     $knowledgeCommitPanel = New-Object System.Windows.Forms.TableLayoutPanel
     $knowledgeCommitPanel.Dock = 'Fill'
@@ -9551,7 +18474,7 @@ function Apply-ResponsiveLayout {
     $knowledgeRecentGroup.Text = 'Последние изменения Knowledge Base'
     $knowledgeRecentGroup.Dock = 'Fill'
     $knowledgeRecentGroup.Padding = New-Object System.Windows.Forms.Padding(10)
-    $knowledgeGrid.Controls.Add($knowledgeRecentGroup, 0, 4)
+    $knowledgeGrid.Controls.Add($knowledgeRecentGroup, 0, 5)
 
     $knowledgeRecentList.Dock = 'Fill'
     Move-ControlToParent $knowledgeRecentList $knowledgeRecentGroup
@@ -9565,6 +18488,7 @@ function Apply-ResponsiveLayout {
     $quickTab.ResumeLayout($true)
     $jiraTab.ResumeLayout($true)
     $knowledgeTab.ResumeLayout($true)
+    $queueTab.ResumeLayout($true)
     $tabs.ResumeLayout($true)
     $form.ResumeLayout($true)
 }
@@ -9595,20 +18519,23 @@ function Apply-VisualPolish {
     $tabs.ItemSize = New-Object System.Drawing.Size(150,32)
     $tabs.SizeMode = 'Fixed'
 
-    foreach ($tab in @($quickTab,$jiraTab,$knowledgeTab)) {
+    foreach ($tab in @($quickTab,$jiraTab,$queueTab,$knowledgeTab)) {
         $tab.BackColor = [System.Drawing.Color]::FromArgb(248,250,252)
     }
 
     Style-PrimaryButton $runButton
     Style-PrimaryButton $jiraRunButton
-    Style-PrimaryButton $knowledgeSyncButton
+    Style-PrimaryButton $knowledgeSaveButton
+    Style-PrimaryButton $queueStartButton
+    Style-PrimaryButton $queueAddButton
 
     foreach ($button in @(
         $cancelButton,$jiraButton,$htmlButton,$credentialButton,$quickChatGptButton,$quickRecheckConnectionsButton,
         $chatGptConnectButton,$jiraConnectButton,$jiraLoadButton,
         $jiraSaveRuleButton,$jiraCopyReportButton,$jiraRegressionButton,
-        $knowledgeSetupButton,$knowledgeRefreshButton,$knowledgeCommitButton,
-        $openAgentLogsButton,$clearAgentLogsButton
+        $knowledgeSetupButton,$knowledgeRefreshButton,$knowledgeCommitButton,$knowledgeSyncButton,$knowledgeChangesButton,
+        $openAgentLogsButton,$clearAgentLogsButton,
+        $queuePauseButton,$queueResumeButton,$queueRetryButton,$queueStopButton,$queueRemoveButton,$queueUpButton,$queueDownButton,$queueLogsButton
     )) {
         Style-SecondaryButton $button
     }
@@ -9624,7 +18551,8 @@ function Apply-VisualPolish {
         $jiraIntegrationGroup,$jiraSourceGroup,$jiraCommentGroup,$jiraImportedGroup,
         $jiraRuleGroup,$jiraSettingsGroup,$jiraExecutionGroup,$jiraPlanGroup,
         $knowledgeHeaderGroup,$knowledgeStatsGroup,$knowledgeGitGroup,
-        $knowledgeCommitGroup,$knowledgeRecentGroup
+        $knowledgeCommitGroup,$knowledgeRecentGroup,
+        $queueHeaderGroup,$queueControlsGroup,$queueGridGroup,$queueLogGroup
     )) {
         if ($group) {
             $group.ForeColor = [System.Drawing.Color]::FromArgb(51,65,85)
@@ -9672,7 +18600,7 @@ function Update-LayoutHealth {
     if (-not $layoutHealthLabel) { return }
 
     $issues = @()
-    foreach ($tab in @($quickTab,$jiraTab,$knowledgeTab)) {
+    foreach ($tab in @($quickTab,$jiraTab,$queueTab,$knowledgeTab)) {
         foreach ($issue in (Find-LayoutOverflow $tab)) {
             if ($issue) { $issues += [string]$issue }
         }
@@ -9690,36 +18618,92 @@ function Update-LayoutHealth {
     }
 }
 
+
 function Invoke-StartupKnowledgePull {
+    if ($script:QueueWorkerMode) {
+        Refresh-KnowledgeUI
+        return
+    }
+
     if (Test-GitInstalled) {
         Initialize-KnowledgeGit -Silent
     }
+
     $git = Get-GitState
-    if (-not $git.Repository -or $git.Remote -eq 'не настроен' -or $git.Dirty) {
+
+    if (
+        -not $git.Repository -or
+        $git.Remote -eq 'не настроен' -or
+        $git.Dirty
+    ) {
         Refresh-KnowledgeUI
         return
     }
-    $remoteBranch = Invoke-Git @('ls-remote','--exit-code','--heads','origin',$git.Branch) 10000
-    if ($remoteBranch.ExitCode -ne 0) {
+
+    if (([string]$git.Remote) -match '^https?://') {
+        [void](Set-KnowledgeOriginToSsh)
+        $git = Get-GitState
+    }
+
+    $privateKey = Get-GitHubSshPrivateKeyPath
+
+    if (
+        ([string]$git.Remote) -notmatch '^git@github\.com:' -or
+        -not (Test-Path $privateKey)
+    ) {
         if ($knowledgeSyncInfo) {
-            $knowledgeSyncInfo.Text = 'Startup sync: remote-ветка ещё не создана; после первого commit нажми Synchronize.'
+            $knowledgeSyncInfo.Text = 'Startup sync: SSH ещё не готов; используется локальная Knowledge Base.'
             $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::DimGray
         }
-        Refresh-KnowledgeUI
+
+        Refresh-KnowledgeUI -PreserveActionText
         return
     }
-    $pull = Invoke-Git @('pull','--ff-only','origin',$git.Branch) 20000
+
+    $sshCheck = Invoke-SshGitHubAuthCheck
+
+    if (-not $sshCheck.Success) {
+        if ($knowledgeSyncInfo) {
+            $knowledgeSyncInfo.Text = 'Startup sync: SSH авторизация не готова; browser auth не запускается.'
+            $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::DimGray
+        }
+
+        Refresh-KnowledgeUI -PreserveActionText
+        return
+    }
+
+    $remoteBranch = Invoke-Git @(
+        'ls-remote','--exit-code','--heads','origin',$git.Branch
+    ) 10000
+
+    if ($remoteBranch.ExitCode -ne 0) {
+        if ($knowledgeSyncInfo) {
+            $knowledgeSyncInfo.Text = 'Startup sync: remote-ветка ещё не создана; кнопка «СОХРАНИТЬ ЗНАНИЯ В GITHUB» создаст её автоматически.'
+            $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::DimGray
+        }
+
+        Refresh-KnowledgeUI -PreserveActionText
+        return
+    }
+
+    $pull = Invoke-Git @(
+        'pull','--ff-only','origin',$git.Branch
+    ) 20000
+
     if ($knowledgeSyncInfo) {
         if ($pull.ExitCode -eq 0) {
-            $knowledgeSyncInfo.Text = 'Startup sync: последние knowledge-изменения получены.'
+            $knowledgeSyncInfo.Text = 'Startup sync: последние knowledge-изменения получены по SSH.'
             $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::FromArgb(32,120,72)
-        } else {
-            $knowledgeSyncInfo.Text = 'Startup sync пропущен/не выполнен. Нажми Synchronize для повторной попытки.'
+        }
+        else {
+            $knowledgeSyncInfo.Text = 'Startup sync не выполнен. Используй «СОХРАНИТЬ ЗНАНИЯ В GITHUB» для безопасной синхронизации.'
             $knowledgeSyncInfo.ForeColor = [System.Drawing.Color]::FromArgb(161,98,7)
         }
     }
-    Refresh-KnowledgeUI
+
+    Refresh-KnowledgeUI -PreserveActionText
 }
+
 
 $script:ChatGPTAuthTimer = New-Object System.Windows.Forms.Timer
 $script:ChatGPTAuthTimer.Interval = 2000
@@ -9760,6 +18744,11 @@ $script:KnowledgeStartupTimer.Add_Tick({
         [System.Windows.Forms.Application]::DoEvents()
     }
     Invoke-StartupKnowledgePull
+
+    try {
+        Refresh-KnowledgeSaveState -VerifyRemote
+    }
+    catch { }
 })
 
 $tabs.Add_SelectedIndexChanged({
@@ -9786,4 +18775,109 @@ $jiraStartupTimer.Add_Tick({
 })
 $jiraStartupTimer.Start()
 
+
+# Jira Queue timer is owned by the parent Launcher only.
+if (-not $script:QueueWorkerMode) {
+    New-Item -ItemType Directory -Path $script:QueueWorkersRoot -Force | Out-Null
+    New-Item -ItemType Directory -Path $script:QueueJobsRoot -Force | Out-Null
+
+    $script:QueueTimer = New-Object System.Windows.Forms.Timer
+    $script:QueueTimer.Interval = 1000
+    $script:QueueTimer.Add_Tick({ Process-QueueTick })
+
+    Load-QueueState
+    if ($queueParallelNumeric) {
+        $queueParallelNumeric.Value = [Math]::Max(1,[Math]::Min(3,$script:QueueMaxParallel))
+    }
+
+    if (-not (Test-QueueEngineSelfTest)) {
+        $queueStatusLabel.Text = 'Queue self-test FAILED — очередь отключена, основной Launcher доступен.'
+        $queueStatusLabel.ForeColor = [System.Drawing.Color]::FromArgb(197,119,0)
+        $queueStartButton.Enabled = $false
+        Write-QueueLog 'QUEUE SELF-TEST FAILED → Queue disabled; main Launcher remains available.'
+    }
+    else {
+        Refresh-QueueGrid
+    }
+}
+
+# Isolated Queue Worker auto-starts exactly one Jira task and exits itself when finished.
+if ($script:QueueWorkerMode) {
+    $script:AutoGitAfterJiraRun = $false
+    $keepBrowserOpenCheck.Checked = $false
+    $headedCheck.Checked = $true
+    $jiraMutatingCheck.Checked = $true
+    $mutatingCheck.Checked = $true
+
+    if (-not [string]::IsNullOrWhiteSpace([string]$env:RX2GO_QUEUE_DAILY_PASSWORD)) {
+        $dailyPassword.Text = [string]$env:RX2GO_QUEUE_DAILY_PASSWORD
+    }
+
+    $script:QueueWorkerKickoffTimer = New-Object System.Windows.Forms.Timer
+    $script:QueueWorkerKickoffTimer.Interval = 1000
+    $script:QueueWorkerWaitStarted = Get-Date
+
+    $script:QueueWorkerKickoffTimer.Add_Tick({
+        if ($script:QueueWorkerFinalWritten) {
+            $script:QueueWorkerKickoffTimer.Stop()
+            try { Stop-PersistentBrowserSession } catch {}
+            try { $form.Close() } catch {}
+            return
+        }
+
+        if (-not $script:QueueWorkerStarted) {
+            $elapsed = ((Get-Date) - $script:QueueWorkerWaitStarted).TotalSeconds
+
+            if (-not $script:ChatGPTConnected) {
+                Write-QueueWorkerStatus -Status 'RUNNING' -Phase 'STARTING' -Detail 'Waiting for Codex/ChatGPT startup precheck'
+                if ($elapsed -gt 120) {
+                    Complete-QueueWorkerResult -Result ERROR -Details 'Codex/ChatGPT startup timeout in Queue Worker.'
+                }
+                return
+            }
+
+            if ([string]::IsNullOrWhiteSpace($script:QueueWorkerTaskKey)) {
+                Complete-QueueWorkerResult -Result ERROR -Details 'Queue Worker task key is missing.'
+                return
+            }
+
+            $targetEnv = if ($script:QueueWorkerEnvironment -in @('BRANCH','HOT','ADM')) { $script:QueueWorkerEnvironment } else { 'HOT' }
+            $jiraTaskBox.Text = $script:QueueWorkerTaskKey
+            $jiraEnvironmentCombo.SelectedItem = $targetEnv
+            $environmentCombo.SelectedItem = $targetEnv
+            $keepBrowserOpenCheck.Checked = $false
+            $headedCheck.Checked = $true
+            $jiraMutatingCheck.Checked = $true
+            $mutatingCheck.Checked = $true
+
+            $script:QueueWorkerStarted = $true
+            $script:QueueWorkerStartedAt = Get-Date
+            Write-QueueWorkerStatus -Status 'RUNNING' -Phase 'STARTING' -Detail "Starting $($script:QueueWorkerTaskKey) on $targetEnv"
+
+            try {
+                Start-JiraTaskCheck
+
+                # Start-JiraTaskCheck returns immediately only when final deterministic Playwright is launched,
+                # or returns after an early terminal error/BLOCKED. PASS/FAIL completion is written by Complete-JiraRun.
+                if (-not $script:QueueWorkerFinalWritten) {
+                    $hasRunningPlaywright = ($script:RunningProcess -and -not $script:RunningProcess.HasExited)
+                    if (-not $hasRunningPlaywright -and -not $script:JiraRunActive) {
+                        $detail = if ($jiraTaskStatus -and $jiraTaskStatus.Text) { [string]$jiraTaskStatus.Text } elseif ($script:LastAgentError) { [string]$script:LastAgentError } else { 'Queue Worker ended before final test result.' }
+                        Complete-QueueWorkerResult -Result ERROR -Details $detail
+                    }
+                }
+            }
+            catch {
+                Complete-QueueWorkerResult -Result ERROR -Details $_.Exception.Message
+            }
+        }
+    })
+
+    $form.Add_Shown({
+        Write-QueueWorkerStatus -Status 'RUNNING' -Phase 'STARTING' -Detail 'Queue Worker process initialized'
+        $script:QueueWorkerKickoffTimer.Start()
+    })
+}
+
 [void]$form.ShowDialog()
+

@@ -26,3 +26,4 @@ The previous Test Designer / UI / API agents could only reason about serialized 
 ## v0.12.1 MCP runtime contract
 
 The Playwright MCP registration is not considered usable merely because `codex mcp list` shows `playwright`. The launcher requires the server policy to forward the dynamic `PLAYWRIGHT_MCP_CDP_ENDPOINT` from the current Codex process and to approve Playwright MCP browser tools non-interactively. Before the main Smart QA agent runs, a preflight proves that Playwright MCP can list tabs, snapshot the page, and see the selected Rx2GO host in the same persistent Chrome session.
+

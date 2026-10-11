@@ -1,0 +1,472 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Get Route Name",
+    "moduleSlug":  "get-route-name",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:22:19.8044344+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Get Route Name",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/get-route-name",
+                   "endUrl":  "https://adm.rx2go.ai/get-route-name",
+                   "pagePurpose":  "Provides an Order Id scanning field and a browsable route/stop view, with hub and route-status filters, for identifying route context.",
+                   "routes":  [
+                                  {
+                                      "name":  "Get Route Name",
+                                      "url":  "https://adm.rx2go.ai/get-route-name",
+                                      "howToOpen":  "Open the Main navigation link named Get Route Name, whose observed href is /get-route-name.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Order Id",
+                                        "type":  "input",
+                                        "purpose":  "Accepts an order identifier for the scan workflow.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, { name: \u0027Order Id\u0027 })",
+                                                             "placeholder text \u0027Order Id\u0027"
+                                                         ],
+                                        "notes":  "Observed as an initially empty text input. It retained focus after Enter was pressed with no value."
+                                    },
+                                    {
+                                        "name":  "Scan",
+                                        "type":  "button",
+                                        "purpose":  "Visible scan action adjacent to the Order Id input.",
+                                        "locatorHints":  [
+                                                             "text \u0027Scan\u0027 adjacent to the Order Id textbox"
+                                                         ],
+                                        "notes":  "Rendered as a clickable generic element rather than a semantic button in the accessibility snapshot."
+                                    },
+                                    {
+                                        "name":  "Unlabeled switch",
+                                        "type":  "other",
+                                        "purpose":  "Purpose could not be proven safely from the visible text or accessibility metadata.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027switch\u0027)"
+                                                         ],
+                                        "notes":  "Observed unchecked. It had no accessible name and was not toggled."
+                                    },
+                                    {
+                                        "name":  "Full Size",
+                                        "type":  "button",
+                                        "purpose":  "Appears to control the page display size.",
+                                        "locatorHints":  [
+                                                             "text \u0027Full Size\u0027"
+                                                         ],
+                                        "notes":  "Observed as a clickable generic element; it was not activated."
+                                    },
+                                    {
+                                        "name":  "Filter by hub",
+                                        "type":  "select",
+                                        "purpose":  "Filters route data by hub.",
+                                        "locatorHints":  [
+                                                             "text \u0027Filter by hub:\u0027",
+                                                             "text \u0027ALL\u0027",
+                                                             "text \u0027Hawaii\u0027",
+                                                             "text \u0027Long Ilend\u0027"
+                                                         ],
+                                        "notes":  "Observed options were ALL, Hawaii, and Long Ilend. Selecting Hawaii caused route-data requests with filterHubId=81. ALL was restored before completion."
+                                    },
+                                    {
+                                        "name":  "Filter by routes",
+                                        "type":  "select",
+                                        "purpose":  "Filters route data by route workflow status.",
+                                        "locatorHints":  [
+                                                             "text \u0027Filter by routes:\u0027",
+                                                             "text \u0027All\u0027",
+                                                             "text \u0027Accounting calculation\u0027",
+                                                             "text \u0027Route ready to start\u0027",
+                                                             "text \u0027Driver assigner\u0027",
+                                                             "text \u0027Route started\u0027",
+                                                             "text \u0027Driver finished\u0027",
+                                                             "text \u0027QAQC checked\u0027",
+                                                             "text \u0027Accounting checked\u0027"
+                                                         ],
+                                        "notes":  "Selecting Route started caused route-data requests with filterRoutes=ROUTE STARTED. All was restored before completion."
+                                    },
+                                    {
+                                        "name":  "Route cards",
+                                        "type":  "table",
+                                        "purpose":  "Displays route-name headings with numbered stop items.",
+                                        "locatorHints":  [
+                                                             "route-name heading text",
+                                                             "numbered stop text within a route card"
+                                                         ],
+                                        "notes":  "The restored ALL/ALL state contained 1335 route-card elements at the time observed. A sample card contained a route title followed by numbered stop items."
+                                    },
+                                    {
+                                        "name":  "Service context selector",
+                                        "type":  "select",
+                                        "purpose":  "Selects the service context used by the authenticated ADM session.",
+                                        "locatorHints":  [
+                                                             "combobox containing option \u0027Hawaii\u0027"
+                                                         ],
+                                        "notes":  "The first navigation combobox showed Hawaii selected, with other service options available."
+                                    },
+                                    {
+                                        "name":  "Facility or client context selector",
+                                        "type":  "select",
+                                        "purpose":  "Provides a secondary context selection associated with the current service.",
+                                        "locatorHints":  [
+                                                             "combobox containing options \u0027Hawaii\u0027 and \u0027Long Ilend\u0027"
+                                                         ],
+                                        "notes":  "Hawaii was selected during observation. The precise business entity type was not explicitly labeled."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Scanner page at /scanner/order-editor",
+                                          "action":  "Navigate to the discovered module URL https://adm.rx2go.ai/get-route-name",
+                                          "to":  "Get Route Name page",
+                                          "evidence":  "The page loaded with URL /get-route-name, title \u0027Get Route Name | Rx2Go\u0027, and heading \u0027Get Route Name\u0027."
+                                      },
+                                      {
+                                          "from":  "Main navigation",
+                                          "action":  "Open the link named Get Route Name",
+                                          "to":  "Get Route Name page",
+                                          "evidence":  "The live navigation contained a link named Get Route Name with href /get-route-name."
+                                      },
+                                      {
+                                          "from":  "Get Route Name default state",
+                                          "action":  "Select Route started under Filter by routes",
+                                          "to":  "Route-started filtered state",
+                                          "evidence":  "The selected item acquired the observed selected class and GET requests used filterRoutes=ROUTE STARTED."
+                                      },
+                                      {
+                                          "from":  "Route-started filtered state",
+                                          "action":  "Select Hawaii under Filter by hub",
+                                          "to":  "Route-started plus Hawaii-hub filtered state",
+                                          "evidence":  "Hawaii acquired the observed hub-selection class and GET requests used filterHubId=81."
+                                      },
+                                      {
+                                          "from":  "Filtered state",
+                                          "action":  "Select All for route status and ALL for hub",
+                                          "to":  "Default ALL/ALL state",
+                                          "evidence":  "Live DOM inspection showed routeFilter=[\u0027All\u0027] and hubFilter=[\u0027ALL\u0027]; the subsequent completed request used filterRoutes=ALL and filterHubId=0."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullRoutes.php?action=getRoutesStopsItems\u0026filterRoutes=ALL\u0026filterHubId=0",
+                                               "trigger":  "Initial page load and restoration of the ALL route-status and ALL hub filters.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads route, stop, and item data for the selected route-status and hub filters.",
+                                               "importantFields":  [
+                                                                       "action",
+                                                                       "filterRoutes",
+                                                                       "filterHubId"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullRoutes.php?action=getRoutesStopsItems\u0026filterRoutes=ROUTE+STARTED\u0026filterHubId=0",
+                                               "trigger":  "Select Route started under Filter by routes.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads route data restricted to the Route started status across all hubs.",
+                                               "importantFields":  [
+                                                                       "action",
+                                                                       "filterRoutes",
+                                                                       "filterHubId"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullRoutes.php?action=getRoutesStopsItems\u0026filterRoutes=ROUTE+STARTED\u0026filterHubId=81",
+                                               "trigger":  "Select Hawaii while Route started is selected.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads route data for the combined route-status and hub selection.",
+                                               "importantFields":  [
+                                                                       "action",
+                                                                       "filterRoutes",
+                                                                       "filterHubId"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullRoutes.php?action=getFacilitiesHub",
+                                               "trigger":  "Load the Get Route Name page.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads the hubs used by the hub filter.",
+                                               "importantFields":  [
+                                                                       "title",
+                                                                       "uid",
+                                                                       "facility",
+                                                                       "address",
+                                                                       "runtime"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=1",
+                                               "trigger":  "Load the Get Route Name page in the current facility context.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to load hub information for the current facility context.",
+                                               "importantFields":  [
+                                                                       "action",
+                                                                       "facility"
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Hub",
+                                                              "Route"
+                                                          ],
+                                             "relationship":  "A hub selection is sent as filterHubId when route data is loaded.",
+                                             "evidence":  "Selecting Hawaii changed route-data requests from filterHubId=0 to filterHubId=81."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Route status",
+                                                              "Route"
+                                                          ],
+                                             "relationship":  "The selected route workflow status filters the returned route collection.",
+                                             "evidence":  "Selecting Route started changed filterRoutes from ALL to ROUTE STARTED."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Route",
+                                                              "Stop"
+                                                          ],
+                                             "relationship":  "Each displayed route card contains a route-name title and one or more numbered stop elements.",
+                                             "evidence":  "A live route-card inspection showed a title element followed by span elements with class \u0027stop\u0027 and numeric text."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order Id",
+                                                              "Route context"
+                                                          ],
+                                             "relationship":  "The page presents Order Id scanning alongside the route-name and stop collection, indicating that order scanning participates in route identification.",
+                                             "evidence":  "The live module body showed the Order Id input and Scan action directly above the route filters and route-card results.",
+                                             "confidence":  "MEDIUM"
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Browse routes by route status and hub",
+                                         "steps":  [
+                                                       "Open Get Route Name.",
+                                                       "Select a route-status filter such as Route started.",
+                                                       "Select a hub such as Hawaii.",
+                                                       "Observe the route collection refresh.",
+                                                       "Restore route status to All and hub to ALL."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Authenticated ADM session.",
+                                                                       "Current service and secondary context were both set to Hawaii."
+                                                                   ],
+                                         "resultObserved":  "The route-data request reflected both selected filters and the route-card collection refreshed without leaving the page.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Attempt an empty scan submission",
+                                         "steps":  [
+                                                       "Focus the empty Order Id input.",
+                                                       "Press Enter.",
+                                                       "Inspect the page for visible alerts and input state."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Order Id input was empty."
+                                                                   ],
+                                         "resultObserved":  "The input remained empty and focused, the URL did not change, and no visible alert was observed.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Inspect a displayed stop",
+                                         "steps":  [
+                                                       "Identify the first displayed route card.",
+                                                       "Activate its first numbered stop.",
+                                                       "Inspect for navigation, dialogs, alerts, and route-data traffic."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "At least one route card with a numbered stop was displayed."
+                                                                   ],
+                                         "resultObserved":  "The page remained at /get-route-name with no visible dialog or alert; a route-data refresh request was observed.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Order Id submission with Enter",
+                                                       "observedRule":  "Submitting while the field was empty produced no visible validation alert during the observation window.",
+                                                       "evidence":  "After Enter, the input remained empty and focused and visibleAlerts was an empty list."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Get Route Name navigation link",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Get Route Name\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "sidebar listitem indexes",
+                                                           "generated accessibility references"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Order Id scan input",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Order Id\u0027 })",
+                                                               "locator(\"input[placeholder=\u0027Order Id\u0027]\")"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated accessibility references",
+                                                           "positional input selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Route-status filter",
+                                             "preferred":  [
+                                                               "getByText(\u0027Route started\u0027, { exact: true })",
+                                                               "getByText(\u0027All\u0027, { exact: true }) scoped under \u0027Filter by routes:\u0027"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated accessibility references",
+                                                           "unscoped text \u0027All\u0027"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Hub filter",
+                                             "preferred":  [
+                                                               "getByText(\u0027Hawaii\u0027, { exact: true }) scoped under \u0027Filter by hub:\u0027",
+                                                               "getByText(\u0027ALL\u0027, { exact: true }) scoped under \u0027Filter by hub:\u0027"
+                                                           ],
+                                             "avoid":  [
+                                                           "unscoped text \u0027Hawaii\u0027 because the same text appears in context comboboxes"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Scan-mode switch",
+                                             "preferred":  [
+                                                               "getByRole(\u0027switch\u0027)"
+                                                           ],
+                                             "avoid":  [
+                                                           "assuming a label or purpose that was not present in the accessibility metadata"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Numbered stop",
+                                             "preferred":  [
+                                                               "numeric stop text scoped within a route card identified by its route-title text"
+                                                           ],
+                                             "avoid":  [
+                                                           "unscoped numeric text",
+                                                           "positional stop indexes across the whole page"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "ADM served the Get Route Name module at /get-route-name with a matching page title and heading.",
+                                             "evidence":  "Live URL, page title, and accessibility snapshot.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The module is directly represented in Main navigation by a Get Route Name link.",
+                                             "evidence":  "Navigation snapshot showed link name Get Route Name and href /get-route-name.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The page supports filtering route data by both hub and route workflow status.",
+                                             "evidence":  "Visible filter controls and corresponding getRoutesStopsItems query parameters.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Route results are presented as route-name cards containing numbered stop elements.",
+                                             "evidence":  "Live DOM inspection of .cont__route, .title_route, and .stop elements.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The selected filter state is represented visually and in route-data query parameters.",
+                                             "evidence":  "Selected-state classes and observed GET requests for ALL, ROUTE STARTED, hub 0, and hub 81.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The default filter state was restored to route status All and hub ALL before exploration ended.",
+                                             "evidence":  "Final live DOM inspection and a completed getRoutesStopsItems request using filterRoutes=ALL and filterHubId=0.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A",
+                                                  "currentFact":  "This exploration establishes the current ADM stable baseline for Get Route Name.",
+                                                  "evidence":  "baselineEnvironment is NONE and no prior baseline was supplied."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "After selecting the Hawaii hub filter, sampled visible route titles still included names containing other location labels such as BROOKLYN.",
+                                         "evidence":  "The selected hub state was Hawaii and requests used filterHubId=81, while the live route-card sample included a BROOKLYN-prefixed title.",
+                                         "impact":  "QA should avoid assuming that route-name geography must textually match the selected hub; the naming relationship requires product-context confirmation."
+                                     },
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The scan-mode switch lacked an accessible name.",
+                                         "evidence":  "The input had role=\u0027switch\u0027 but no aria-label or associated visible label could be proven.",
+                                         "impact":  "Automated tests and assistive-technology users may have difficulty identifying the switch\u0027s purpose."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+
+                                           ],
+                   "uncertainties":  [
+                                         "A valid QA-safe Order Id was not available, so successful route-name resolution through scanning was not exercised.",
+                                         "The purpose of the unlabeled switch could not be proven without changing it.",
+                                         "The precise meaning of the secondary Hawaii/Long Ilend context combobox was not explicitly labeled.",
+                                         "The semantic meaning of numbered stop activation was not exposed by a dialog or navigation change.",
+                                         "Route response bodies were not inspected because they could contain business or customer-level data.",
+                                         "No previous ADM baseline was supplied, so changes from a prior observation cannot be classified."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM currently exposes Get Route Name at /get-route-name. The page combines an Order Id scan entry with route cards and numbered stops, plus hub and route-status filtering backed by read-only route and hub endpoints. Filter behavior was verified live and restored to ALL/ALL; no business data was mutated."
+               }
+}

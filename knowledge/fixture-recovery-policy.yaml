@@ -1,0 +1,20 @@
+version: 1
+topic: fixture_recovery_before_blocked
+scope: all Jira Smart QA runs
+rules:
+  - BLOCKED is not an automation error; in UI it is "Недостаточно данных".
+  - When mutation is allowed and an existing safe fixture has empty/zero rows or unsuitable state, Smart QA must not stop immediately.
+  - Before final BLOCKED, attempt one fresh isolated fixture recovery.
+  - Fresh entities must belong to the current Jira run and must not reuse another Jira marker.
+  - If acceptance requires Activity History/audit rows, fixture setup must generate at least one safe QA-only history entry before asserting fields inside that history.
+  - If a route/gig is required, create/assign a fresh QA route when the live UI provides a safe confirmed path.
+  - If a fresh order is required, follow Rx2GO test-data policy and current facility constraints.
+  - Final BLOCKED is allowed only after concrete fixture-creation attempts fail or required state cannot safely be produced.
+  - Final blocker text must explain what setup was attempted and why it could not complete.
+  - BLOCKED live runs are still saved to Knowledge Base because fixture requirements are reusable QA knowledge.
+ui:
+  blocked_label: "НЕДОСТАТОЧНО ДАННЫХ"
+  color: amber
+  toast: true
+  product_fail: false
+

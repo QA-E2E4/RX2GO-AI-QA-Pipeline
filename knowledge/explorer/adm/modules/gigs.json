@@ -1,0 +1,630 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Gigs",
+    "moduleSlug":  "gigs",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T00:36:21.1417611+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Gigs",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/routes/",
+                   "endUrl":  "https://adm.rx2go.ai/routes/1992711",
+                   "pagePurpose":  "View delivery gigs, filter the gig list, inspect a selected gig\u0027s operational and financial summary, map, assigned vendor, stops, order statuses, payout data, ETA graph, and activity history.",
+                   "routes":  [
+                                  {
+                                      "name":  "Gigs",
+                                      "url":  "https://adm.rx2go.ai/routes/",
+                                      "howToOpen":  "Open the Main navigation link named Gigs. The observed entry automatically selected a gig and changed to a /routes/{id} URL.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Gig detail",
+                                      "url":  "https://adm.rx2go.ai/routes/1992711",
+                                      "howToOpen":  "Open a gig link in the left-side gig list.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Service area selectors",
+                                        "type":  "select",
+                                        "purpose":  "Select the active facility and service area context.",
+                                        "locatorHints":  [
+                                                             "role=combobox with selected option New York",
+                                                             "role=combobox with selected option The Bronx"
+                                                         ],
+                                        "notes":  "New York and The Bronx were visibly selected throughout observation."
+                                    },
+                                    {
+                                        "name":  "Filter by Hub",
+                                        "type":  "select",
+                                        "purpose":  "Filter gigs by hub.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Filter by Hub\u0027})",
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Filter by Hub\u0027})"
+                                                         ],
+                                        "notes":  "A selectedHubId field was observed in the gig-list request shape."
+                                    },
+                                    {
+                                        "name":  "All / Only mine",
+                                        "type":  "button",
+                                        "purpose":  "Switch between all visible gigs and gigs associated with the current user.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, {name: \u0027All\u0027, exact: true})",
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Only mine\u0027})"
+                                                         ],
+                                        "notes":  "Choosing Only mine changed the displayed category totals to zero in the observed context; choosing All restored the list."
+                                    },
+                                    {
+                                        "name":  "Show only pending",
+                                        "type":  "other",
+                                        "purpose":  "Limit the gig list to pending gigs.",
+                                        "locatorHints":  [
+                                                             "text=Show only pending",
+                                                             "role=switch within Show only pending"
+                                                         ],
+                                        "notes":  "The switch was checked. Network evidence showed onlyPending=true."
+                                    },
+                                    {
+                                        "name":  "Route Search",
+                                        "type":  "input",
+                                        "purpose":  "Filter the gig list by route/gig name.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Route Search\u0027})"
+                                                         ],
+                                        "notes":  "Entering a nonmatching QA string reduced all visible gig-list counters to zero; clearing it restored the list."
+                                    },
+                                    {
+                                        "name":  "Driver Search",
+                                        "type":  "input",
+                                        "purpose":  "Filter gigs by assigned vendor/driver.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Driver Search\u0027})"
+                                                         ],
+                                        "notes":  "Present beside Route Search."
+                                    },
+                                    {
+                                        "name":  "Dispatcher Search",
+                                        "type":  "input",
+                                        "purpose":  "Filter gigs by dispatcher.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Dispatcher Search\u0027})"
+                                                         ],
+                                        "notes":  "Present beside Route Search."
+                                    },
+                                    {
+                                        "name":  "Gig state filters",
+                                        "type":  "tab",
+                                        "purpose":  "Filter gigs by workflow state.",
+                                        "locatorHints":  [
+                                                             "text=All",
+                                                             "text=Calculation",
+                                                             "text=Ready to start",
+                                                             "text=Vendor assigned",
+                                                             "text=Gig started",
+                                                             "text=Vendor finished",
+                                                             "text=QAQC Checked",
+                                                             "text=Checked",
+                                                             "text=Back to hub"
+                                                         ],
+                                        "notes":  "Each state displayed a current count."
+                                    },
+                                    {
+                                        "name":  "Gig list",
+                                        "type":  "link",
+                                        "purpose":  "Select a gig and open its detail view.",
+                                        "locatorHints":  [
+                                                             "role=link with href matching /routes/{id}"
+                                                         ],
+                                        "notes":  "Links visibly combined gig name, assigned personnel, date/time, and status counts."
+                                    },
+                                    {
+                                        "name":  "Gig Options",
+                                        "type":  "button",
+                                        "purpose":  "Expose additional actions for the selected gig.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, {name: /Gig Options/})"
+                                                         ],
+                                        "notes":  "Menu contents were not opened because available actions could include mutations."
+                                    },
+                                    {
+                                        "name":  "Map controls",
+                                        "type":  "other",
+                                        "purpose":  "Inspect the gig route geographically.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Zoom in\u0027})",
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Zoom out\u0027})",
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Full Screen\u0027})",
+                                                             "text=Show Pickups",
+                                                             "text=All Pickup Orders",
+                                                             "text=Show Actual Route"
+                                                         ],
+                                        "notes":  "An Allow bypass geofence control was also visible but not used."
+                                    },
+                                    {
+                                        "name":  "Stops table",
+                                        "type":  "table",
+                                        "purpose":  "Show the selected gig\u0027s start, delivery stops, and end point.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027heading\u0027, {name: \u0027Stops\u0027})",
+                                                             "role=table near heading Stops"
+                                                         ],
+                                        "notes":  "Observed columns included Stop, Priority, GF, payout fields, Auto Call, Order Id, Stop Status, Order Status, Address, Call Upon Arrival, Confirmed, C.N. Patient, and C.N. Pharmacy."
+                                    },
+                                    {
+                                        "name":  "Stop status filters",
+                                        "type":  "tab",
+                                        "purpose":  "Filter the stops table by outcome.",
+                                        "locatorHints":  [
+                                                             "text=All",
+                                                             "text=Delivered",
+                                                             "text=Not Present",
+                                                             "text=Wrong Address",
+                                                             "text=Other"
+                                                         ],
+                                        "notes":  "Counts appeared next to populated outcomes."
+                                    },
+                                    {
+                                        "name":  "Stop table utilities",
+                                        "type":  "button",
+                                        "purpose":  "Search, export, copy, or select rows in the stops table.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, {name: \u0027Search...\u0027}) near Stops",
+                                                             "text=Download CSV",
+                                                             "text=Copy Table",
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Select All\u0027})",
+                                                             "getByRole(\u0027button\u0027, {name: \u0027Select None\u0027})"
+                                                         ],
+                                        "notes":  "Selection-dependent actions were disabled when zero rows were selected."
+                                    },
+                                    {
+                                        "name":  "Activity history",
+                                        "type":  "table",
+                                        "purpose":  "Show route activity by time, user, and activity category.",
+                                        "locatorHints":  [
+                                                             "text=Activity history Route",
+                                                             "text=All",
+                                                             "text=Manual",
+                                                             "text=System",
+                                                             "text=Copay"
+                                                         ],
+                                        "notes":  "The table exposed Time, User, and Activity columns plus pagination."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Orders page with Main navigation visible",
+                                          "action":  "Open Gigs using its observed /routes/ destination",
+                                          "to":  "Selected Gigs detail",
+                                          "evidence":  "The page heading became Gigs and the URL changed from /routes/ to /routes/1992718."
+                                      },
+                                      {
+                                          "from":  "Selected Gigs detail",
+                                          "action":  "Open another gig link from the gig list",
+                                          "to":  "Another selected gig detail",
+                                          "evidence":  "The URL changed to /routes/1992711 and its profile, stops, vendor, finance, and map sections loaded."
+                                      },
+                                      {
+                                          "from":  "All gigs scope",
+                                          "action":  "Click Only mine",
+                                          "to":  "Only-mine filtered list",
+                                          "evidence":  "Visible gig counters changed to zero and getBarList requests were issued."
+                                      },
+                                      {
+                                          "from":  "Only-mine filtered list",
+                                          "action":  "Click All",
+                                          "to":  "All-gigs list",
+                                          "evidence":  "The populated gig list and counts returned."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullRoutes.php?action=getRouteProfile",
+                                               "trigger":  "Load a selected gig detail",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve the selected gig profile.",
+                                               "importantFields":  [
+                                                                       "routeId"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullRoutes.php?action=getBarList",
+                                               "trigger":  "Load or change gig-list filters",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve the filtered gig list and category counts.",
+                                               "importantFields":  [
+                                                                       "selected_route",
+                                                                       "limit",
+                                                                       "offset",
+                                                                       "currentState",
+                                                                       "currentSubState",
+                                                                       "onlyMy",
+                                                                       "routeFilter",
+                                                                       "driverFilter",
+                                                                       "dispatcherFilter",
+                                                                       "onlyPending",
+                                                                       "typeFilter",
+                                                                       "selectedHubId",
+                                                                       "created_from",
+                                                                       "created_to",
+                                                                       "is_lead"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullRoutes.php?action=navigation",
+                                               "trigger":  "Load a selected gig detail",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve navigation-related information for the selected gig.",
+                                               "importantFields":  [
+                                                                       "routeId"
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullRoutes.php?action=timeGraph",
+                                               "trigger":  "Load a selected gig detail",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Populate the ETA error over time graph.",
+                                               "importantFields":  [
+                                                                       "routeId"
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullRoutes.php?action=getRoutePricing",
+                                               "trigger":  "Load a selected gig detail",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Populate gig financial and payout information.",
+                                               "importantFields":  [
+                                                                       "routeId"
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrdersTableRoute.php?action=getList",
+                                               "trigger":  "Load the Stops table",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve paginated, sorted, and status-filtered stops/orders for a gig.",
+                                               "importantFields":  [
+                                                                       "order",
+                                                                       "filters",
+                                                                       "route",
+                                                                       "status",
+                                                                       "columns",
+                                                                       "limit",
+                                                                       "offset"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs",
+                                               "trigger":  "Load Gigs",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve hubs available to the active context.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/v1/driver/{driverId}/orders-on-hand",
+                                               "trigger":  "Load vendor information for a selected gig",
+                                               "statusCodesObserved":  [
+                                                                           404
+                                                                       ],
+                                               "purpose":  "Appears to retrieve orders currently held by the assigned vendor.",
+                                               "importantFields":  [
+                                                                       "driverId"
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Service area",
+                                                              "Gig"
+                                                          ],
+                                             "relationship":  "The visible gig list is loaded within the selected facility/service-area context.",
+                                             "evidence":  "New York and The Bronx remained selected while the gig-list API included hub and filter context."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Gig",
+                                                              "Vendor"
+                                                          ],
+                                             "relationship":  "A selected gig can have an assigned vendor with rating, tenure, equipment, and vehicle information.",
+                                             "evidence":  "The selected detail displayed a Vendor Information panel and a vendor account link."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Gig",
+                                                              "Stop"
+                                                          ],
+                                             "relationship":  "A gig contains an ordered set of stops bounded by START and END rows.",
+                                             "evidence":  "The Stops table showed START, numbered delivery rows, and END."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Stop",
+                                                              "Order"
+                                                          ],
+                                             "relationship":  "A delivery stop references an order and presents both stop status and order status.",
+                                             "evidence":  "The stop-list request included id, status, and order_status columns, and the UI exposed Order Id, Stop Status, and Order Status."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Gig",
+                                                              "Dispatcher"
+                                                          ],
+                                             "relationship":  "A gig may reference a dispatcher.",
+                                             "evidence":  "Dispatcher was displayed in the profile and the list had a Dispatcher Search filter."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Gig",
+                                                              "Payout"
+                                                          ],
+                                             "relationship":  "Gig and stop views expose financial values and payout operations/history.",
+                                             "evidence":  "Finance info, Route Payout, Payout History, and multiple payout columns were visible."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Inspect a gig",
+                                         "steps":  [
+                                                       "Open Gigs from Main navigation",
+                                                       "Confirm the visible facility and service-area context",
+                                                       "Select a gig link",
+                                                       "Review profile, workflow state, map, vendor information, stops, ETA graph, finance information, and activity history"
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session exists",
+                                                                       "New York and The Bronx are visibly selected",
+                                                                       "At least one gig is visible under the active filters"
+                                                                   ],
+                                         "resultObserved":  "The selected gig opened at /routes/{id} with its read-only operational detail.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Filter gigs by route name",
+                                         "steps":  [
+                                                       "Enter text in Route Search",
+                                                       "Observe list and count updates",
+                                                       "Clear Route Search"
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Gigs page is loaded"
+                                                                   ],
+                                         "resultObserved":  "A nonmatching value reduced list counters to zero; clearing it restored the populated list.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Switch gig ownership scope",
+                                         "steps":  [
+                                                       "Click Only mine",
+                                                       "Observe filtered counters",
+                                                       "Click All"
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Gigs page is loaded"
+                                                                   ],
+                                         "resultObserved":  "Only mine produced zero visible totals in the observed context; All restored the gig list.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Route Search",
+                                                       "observedRule":  "The list updates from entered text; a nonmatching string produces zero result counts.",
+                                                       "evidence":  "Entering __qa_no_match__ changed both visible counter groups to All 0 and clearing it restored the results."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Selection-dependent stop actions",
+                                                       "observedRule":  "Transfer Stop, Force Confirm Stop, Stop Payout, Re-Request Stop, Print Delivery Slip, and Print Confirmation are disabled when no stop is selected.",
+                                                       "evidence":  "The detail displayed Selected items: 0 and these actions were disabled."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Gigs navigation",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, {name: \u0027Gigs\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "numeric accessibility references",
+                                                           "left-menu CSS classes"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Route search",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, {name: \u0027Route Search\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "positional textbox selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Ownership scope",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, {name: \u0027Only mine\u0027})",
+                                                               "getByRole(\u0027button\u0027, {name: \u0027All\u0027, exact: true})"
+                                                           ],
+                                             "avoid":  [
+                                                           "generic button index"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Hub filter",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, {name: \u0027Filter by Hub\u0027})",
+                                                               "getByRole(\u0027textbox\u0027, {name: \u0027Filter by Hub\u0027})"
+                                                           ],
+                                             "avoid":  [
+                                                           "icon-only descendants"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Gig link",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027).filter({has: locator(\u0027[href^=\"/routes/\"]\u0027)})",
+                                                               "link with observed /routes/{id} destination"
+                                                           ],
+                                             "avoid":  [
+                                                           "nth-child list selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Stops table",
+                                             "preferred":  [
+                                                               "getByRole(\u0027heading\u0027, {name: \u0027Stops\u0027})",
+                                                               "getByRole(\u0027table\u0027) near the Stops heading"
+                                                           ],
+                                             "avoid":  [
+                                                           "generated component classes"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Rows per page",
+                                             "preferred":  [
+                                                               "getByRole(\u0027combobox\u0027) near text \u0027Rows per page\u0027"
+                                                           ],
+                                             "avoid":  [
+                                                           "global combobox index because service selectors and pagination controls also use comboboxes"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The ADM Gigs module is reachable at /routes/ and automatically opens a selected /routes/{id} detail.",
+                                             "evidence":  "Live navigation reached /routes/, followed by /routes/1992718.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The active context during observation was New York and The Bronx.",
+                                             "evidence":  "Both navigation comboboxes visibly showed selected options.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Gig workflow filters include Calculation, Ready to start, Vendor assigned, Gig started, Vendor finished, QAQC Checked, Checked, and Back to hub.",
+                                             "evidence":  "These named filters and live counts appeared above the selected gig profile.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "A selected gig displays route state and sub-state independently.",
+                                             "evidence":  "The inspected profile showed separate State and Sub State controls.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Gig detail includes timestamps, starter identity, recommended start time, last-stop ETA, service time, distance, and dispatcher.",
+                                             "evidence":  "These fields were visible in the selected gig profile.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The stops table supports status filtering, search, CSV download, table copying, row selection, payout-related actions, and pagination.",
+                                             "evidence":  "Controls and columns were visible around the live Stops table.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Gig data is retrieved through PullRoutes.php actions and the Stops table through PullOrdersTableRoute.php?action=getList.",
+                                             "evidence":  "Observed successful network requests during live page loads and filtering.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; ADM is the primary baseline and no earlier ADM baseline was supplied.",
+                                                  "currentFact":  "The currently observed ADM Gigs behavior is recorded as the stable baseline.",
+                                                  "evidence":  "Live ADM UI and network observations from /routes/ and /routes/{id}."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "One selected gig produced a visible \u0027User not found\u0027 warning while its Vendor Information panel still rendered.",
+                                         "evidence":  "A GET request to /v1/driver/{driverId}/orders-on-hand returned 404 and the UI displayed a corresponding warning.",
+                                         "impact":  "Vendor-related auxiliary information may be incomplete for affected gigs."
+                                     },
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The browser title was inconsistent across selected gigs.",
+                                         "evidence":  "One /routes/{id} page used \u0027Gigs | Rx2Go\u0027; another used \u0027Delivery Dashboard | Rx2Go\u0027 while both displayed the Gigs heading and same module layout.",
+                                         "impact":  "Title-based automation or page identification may be unreliable."
+                                     },
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "Several attempted clicks timed out because visible elements did not become stable within the Playwright timeout.",
+                                         "evidence":  "The Gigs navigation link, Filters chip, and warning close button resolved but remained unstable during attempted clicks.",
+                                         "impact":  "Automation may require waiting for ongoing list/detail rendering before interaction."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+
+                                           ],
+                   "uncertainties":  [
+                                         "No previous ADM baseline was supplied, so changes from an earlier baseline could not be classified.",
+                                         "The meanings of several icon-only counter buttons in the header and gig-list filter rows could not be proven from accessible labels.",
+                                         "Gig Options was not opened because its menu may contain mutating business actions.",
+                                         "Mutation-capable controls for status changes, payouts, stop transfers, geofence bypass, equipment changes, and automated calls were not exercised.",
+                                         "The exact filtering behavior of Driver Search, Dispatcher Search, hub selection, date filters, state filters, and stop-status filters was not exercised.",
+                                         "Activity history remained loading or empty during the observed snapshots, so populated row contents were not verified."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM Gigs is a context-sensitive delivery-route dashboard at /routes/. It provides an ownership- and status-filtered gig list and a detailed /routes/{id} view covering workflow state, finance, ETA, map, assigned vendor, stops/orders, payouts, and activity history. All exploration was read-only."
+               }
+}

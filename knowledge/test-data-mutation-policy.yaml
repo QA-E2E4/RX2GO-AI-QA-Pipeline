@@ -1,0 +1,40 @@
+version: 1
+topic: test_data_mutation
+scope: all Rx2GO QA automated testing
+mode: always_allowed
+allowed_actions:
+  - create
+  - edit
+  - update
+  - modify
+  - save
+  - submit
+  - transition_status
+  - assign
+  - unassign
+  - link
+  - unlink
+  - remoderate
+  - resolve
+  - reopen
+  - attach
+  - detach
+  - delete
+  - recreate
+  - cleanup
+applies_to:
+  - current-run QA test data
+  - entities explicitly marked as QA/test data
+  - fixtures explicitly identified by the current Jira task
+safety_boundary:
+  - Never modify unmarked pre-existing business/customer entities.
+  - Prefer fresh isolated current-Jira fixtures when provenance is unclear.
+  - Historical IDs from Knowledge Base are reference-only, not mutation targets.
+  - Cleanup of current-run QA fixtures is allowed when safe and when it does not destroy required evidence.
+blocked_policy:
+  - Do not return BLOCKED solely because the necessary QA test-data state does not yet exist.
+  - First use allowed create/update/modify/transition/link/assign/delete/recreate actions to attempt to produce the required state.
+ui:
+  mutation_control: locked_on
+  label: "Тестовые данные: любые изменения всегда разрешены"
+

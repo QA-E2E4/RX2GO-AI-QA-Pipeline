@@ -13,3 +13,4 @@ test('RX2GO-TQ-002 My Tickets / All Tickets switch is available', async ({ authe
   await tickets.switchToMyTickets();
   await tickets.switchToAllTickets();
 });
+

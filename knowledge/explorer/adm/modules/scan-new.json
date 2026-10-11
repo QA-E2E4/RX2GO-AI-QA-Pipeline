@@ -1,0 +1,686 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Scan New",
+    "moduleSlug":  "scan-new",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:31:57.3755458+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Scan New",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/scan-new/",
+                   "endUrl":  "https://adm.rx2go.ai/scan-new/",
+                   "pagePurpose":  "A multi-mode scanning workspace for looking up order information, printing labels, retrieving hub/route/stop/status/activity information, filtering scans, and initiating scan-driven order-status workflows.",
+                   "routes":  [
+                                  {
+                                      "name":  "Search Info",
+                                      "url":  "https://adm.rx2go.ai/scan-new/",
+                                      "howToOpen":  "Main navigation link named Scan New or module link named Search Info.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Print Labels",
+                                      "url":  "https://adm.rx2go.ai/scan-new/print-labels",
+                                      "howToOpen":  "Select the Print Labels module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Get Hub Name",
+                                      "url":  "https://adm.rx2go.ai/scan-new/get-hub-name",
+                                      "howToOpen":  "Select the Get Hub Name module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Get Route Name",
+                                      "url":  "https://adm.rx2go.ai/scan-new/get-route-name",
+                                      "howToOpen":  "Select the Get Route Name module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Get Approximate Route Name",
+                                      "url":  "https://adm.rx2go.ai/scan-new/get-approximate-route-name",
+                                      "howToOpen":  "Select the Get Approximate Route Name module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Get Stop Number",
+                                      "url":  "https://adm.rx2go.ai/scan-new/get-stop",
+                                      "howToOpen":  "Select the Get Stop # module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Get Status Name",
+                                      "url":  "https://adm.rx2go.ai/scan-new/get-status-name",
+                                      "howToOpen":  "Select the Get Status Name module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "See Activity",
+                                      "url":  "https://adm.rx2go.ai/scan-new/see-activity",
+                                      "howToOpen":  "Select the See Activity module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Validate Queue",
+                                      "url":  "https://adm.rx2go.ai/scan-new/validate-queue",
+                                      "howToOpen":  "Select the Validate Queue module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Scan by Filter",
+                                      "url":  "https://adm.rx2go.ai/scan-new/scan-by-filter",
+                                      "howToOpen":  "Select the Scan by Filter module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Ready for Delivery",
+                                      "url":  "https://adm.rx2go.ai/scan-new/ready-for-delivery",
+                                      "howToOpen":  "Select the Ready for Delivery module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Route Optimized",
+                                      "url":  "https://adm.rx2go.ai/scan-new/route-optimized",
+                                      "howToOpen":  "Select the Route Optimized module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Driver Out",
+                                      "url":  "https://adm.rx2go.ai/scan-new/driver-out",
+                                      "howToOpen":  "Select the Driver Out module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Ready to Optimize",
+                                      "url":  "https://adm.rx2go.ai/scan-new/ready-to-optimize",
+                                      "howToOpen":  "Select the Ready to optimize module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Ready to Optimize Bronx",
+                                      "url":  "https://adm.rx2go.ai/scan-new/ready-to-optimize-bronx",
+                                      "howToOpen":  "Select the Ready to optimize Bronx module link.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "On Its Way to Facility",
+                                      "url":  "https://adm.rx2go.ai/scan-new/on-its-way-to-facility",
+                                      "howToOpen":  "Select the On its way to facility module link.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Order ID scan field",
+                                        "type":  "input",
+                                        "purpose":  "Accepts a scanned or manually entered order identifier for the selected scan mode.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, { name: \u0027Order ID...\u0027 })"
+                                                         ],
+                                        "notes":  "Displayed with the visible label Scan. It was automatically focused on observed lookup pages. No identifier was submitted."
+                                    },
+                                    {
+                                        "name":  "Ready for Delivery search field",
+                                        "type":  "input",
+                                        "purpose":  "Accepts barcode numbers, vendor IDs, or equipment identifiers for the Ready for Delivery workflow.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, { name: \u0027Enter Barcode Numbers, Vendor ID, Equipments\u0027 })"
+                                                         ],
+                                        "notes":  "Observed only on the Ready for Delivery child page; no value was entered."
+                                    },
+                                    {
+                                        "name":  "Auto Submit on Scan",
+                                        "type":  "other",
+                                        "purpose":  "Controls whether a scan value is submitted automatically.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027switch\u0027)",
+                                                             "text=Auto Submit on Scan"
+                                                         ],
+                                        "notes":  "Observed enabled."
+                                    },
+                                    {
+                                        "name":  "Auto-submit delay",
+                                        "type":  "input",
+                                        "purpose":  "Controls how long the interface waits after scanning before automatic submission.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027spinbutton\u0027)"
+                                                         ],
+                                        "notes":  "Observed value was 0.35 seconds, confirmed by the adjacent explanatory tooltip text."
+                                    },
+                                    {
+                                        "name":  "Voice",
+                                        "type":  "other",
+                                        "purpose":  "Controls voice output for scan activity.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027switch\u0027)",
+                                                             "text=Voice"
+                                                         ],
+                                        "notes":  "Observed enabled."
+                                    },
+                                    {
+                                        "name":  "Announce Type",
+                                        "type":  "other",
+                                        "purpose":  "Controls spoken announcement of order types.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027switch\u0027)",
+                                                             "text=Announce Type"
+                                                         ],
+                                        "notes":  "Observed enabled."
+                                    },
+                                    {
+                                        "name":  "Announce Type Settings",
+                                        "type":  "modal",
+                                        "purpose":  "Configures whether type announcements are enabled and which order types are announced.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027heading\u0027, { name: \u0027Announce Type Settings\u0027 })",
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Save\u0027 })",
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Cancel\u0027 })"
+                                                         ],
+                                        "notes":  "Opened from Settings and dismissed with Cancel without saving. Listed Regular, STAT, Transplant, SAME DAY, Time Window Next Day, Time Window Next Day 9am-3pm, 3pm-9pm, and Next Day Special Hours."
+                                    },
+                                    {
+                                        "name":  "Double check with hub QR",
+                                        "type":  "other",
+                                        "purpose":  "Enables an additional hub QR check in applicable scanning workflows.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027switch\u0027)",
+                                                             "text=Double check with hub QR"
+                                                         ],
+                                        "notes":  "Observed disabled."
+                                    },
+                                    {
+                                        "name":  "Scan mode links",
+                                        "type":  "tab",
+                                        "purpose":  "Switches among lookup, printing, validation, filtering, and status-oriented scan modes.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027link\u0027, { name: \u0027Search Info\u0027 })",
+                                                             "getByRole(\u0027link\u0027, { name: \u0027Print Labels\u0027 })",
+                                                             "getByRole(\u0027link\u0027, { name: \u0027Get Hub Name\u0027 })",
+                                                             "getByRole(\u0027link\u0027, { name: \u0027Scan by Filter\u0027 })"
+                                                         ],
+                                        "notes":  "Implemented as links containing named buttons and distinct /scan-new child URLs."
+                                    },
+                                    {
+                                        "name":  "Scan by Filter status",
+                                        "type":  "select",
+                                        "purpose":  "Restricts scanning by order status.",
+                                        "locatorHints":  [
+                                                             "text=Select a Status",
+                                                             "getByRole(\u0027combobox\u0027)"
+                                                         ],
+                                        "notes":  "Defaults to All and includes order statuses such as Ready to Print, Ready for Delivery, Route Optimized, Driver Out, Delivered, Returned, and Carrier."
+                                    },
+                                    {
+                                        "name":  "Scan by Filter order type",
+                                        "type":  "select",
+                                        "purpose":  "Restricts scanning by order type.",
+                                        "locatorHints":  [
+                                                             "text=Select an Order Type",
+                                                             "getByRole(\u0027combobox\u0027)"
+                                                         ],
+                                        "notes":  "Defaults to All and includes Regular, Transplant, Return to Pharmacy, Pharmacy Pickup, STAT, SAME DAY, time-window, facility, priority, driver pickup, and supply types."
+                                    },
+                                    {
+                                        "name":  "Scan by Filter activity",
+                                        "type":  "select",
+                                        "purpose":  "Restricts scanning by activity.",
+                                        "locatorHints":  [
+                                                             "text=Select an Activity",
+                                                             "getByRole(\u0027combobox\u0027)"
+                                                         ],
+                                        "notes":  "Observed default option All; no additional activity options were visible in the initial state."
+                                    },
+                                    {
+                                        "name":  "Print Route Labels",
+                                        "type":  "button",
+                                        "purpose":  "Initiates the route-label printing flow.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Print Route Labels\u0027 })"
+                                                         ],
+                                        "notes":  "Not activated because printing could cause an external side effect."
+                                    },
+                                    {
+                                        "name":  "Manual Back to Pharmacy",
+                                        "type":  "button",
+                                        "purpose":  "Provides a manual back-to-pharmacy action.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027button\u0027, { name: \u0027Manual Back to Pharmacy\u0027 })"
+                                                         ],
+                                        "notes":  "Not activated because it may change business state."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Scan | As Vendor",
+                                          "action":  "Selected the main navigation link Scan New.",
+                                          "to":  "Scan New Search Info",
+                                          "evidence":  "URL changed from /scanner/as-driver to /scan-new/ and the page heading became Scan New."
+                                      },
+                                      {
+                                          "from":  "Scan New Search Info",
+                                          "action":  "Selected Print Labels.",
+                                          "to":  "Print Labels scan mode",
+                                          "evidence":  "URL changed to /scan-new/print-labels and an Order ID scan field remained available."
+                                      },
+                                      {
+                                          "from":  "Print Labels",
+                                          "action":  "Selected Get Hub Name.",
+                                          "to":  "Get Hub Name scan mode",
+                                          "evidence":  "URL changed to /scan-new/get-hub-name and an Order ID scan field was focused."
+                                      },
+                                      {
+                                          "from":  "Get Hub Name",
+                                          "action":  "Opened Settings.",
+                                          "to":  "Announce Type Settings modal",
+                                          "evidence":  "A modal appeared with an Enable Announce Type switch, type options, Save, Cancel, and close controls."
+                                      },
+                                      {
+                                          "from":  "Announce Type Settings modal",
+                                          "action":  "Selected Cancel.",
+                                          "to":  "Get Hub Name scan mode",
+                                          "evidence":  "The modal closed without saving."
+                                      },
+                                      {
+                                          "from":  "Get Hub Name",
+                                          "action":  "Selected Scan by Filter.",
+                                          "to":  "Scan by Filter mode",
+                                          "evidence":  "URL changed to /scan-new/scan-by-filter and status, order-type, and activity selectors appeared."
+                                      },
+                                      {
+                                          "from":  "Scan by Filter",
+                                          "action":  "Selected Ready for Delivery.",
+                                          "to":  "Ready for Delivery scan mode",
+                                          "evidence":  "URL changed to /scan-new/ready-for-delivery and the input placeholder changed to Enter Barcode Numbers, Vendor ID, Equipments."
+                                      },
+                                      {
+                                          "from":  "Ready for Delivery",
+                                          "action":  "Selected Get Stop #.",
+                                          "to":  "Get Stop scan mode",
+                                          "evidence":  "URL changed to /scan-new/get-stop and the standard Order ID scan field appeared."
+                                      },
+                                      {
+                                          "from":  "Get Stop",
+                                          "action":  "Selected See Activity.",
+                                          "to":  "See Activity scan mode",
+                                          "evidence":  "URL changed to /scan-new/see-activity and the standard Order ID scan field appeared."
+                                      },
+                                      {
+                                          "from":  "See Activity",
+                                          "action":  "Navigated to the observed Search Info URL.",
+                                          "to":  "Scan New Search Info",
+                                          "evidence":  "URL returned to /scan-new/ with heading Scan New and the standard scan controls."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullOrderStatuses.php?action=getStatuses",
+                                               "trigger":  "Loading Scan New and its child pages.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads available order, stop, carrier, substatus, and property status metadata used by the scanning interface.",
+                                               "importantFields":  [
+                                                                       "statuses",
+                                                                       "stopsStatuses",
+                                                                       "carrierSubStatuses",
+                                                                       "properties",
+                                                                       "origin",
+                                                                       "label",
+                                                                       "color",
+                                                                       "icon",
+                                                                       "subStatuses",
+                                                                       "isToDo"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullScan.php",
+                                               "trigger":  "Loading the Scan New interface.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads scan configuration including whether type announcements are enabled and the configured and available order types.",
+                                               "importantFields":  [
+                                                                       "enabled",
+                                                                       "type_settings",
+                                                                       "available_types",
+                                                                       "runtime"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullScan.php?action=getOrderTypes",
+                                               "trigger":  "Opening Scan by Filter.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to provide order-type choices for scan filtering.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullScan.php?action=getOrderActivities",
+                                               "trigger":  "Opening Scan by Filter.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to provide activity choices for scan filtering.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullScan.php?action=getHubs",
+                                               "trigger":  "Opening Scan by Filter.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Appears to load hub data used by the Scan New capability.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullCalls.php?action=getCallProviderSetting",
+                                               "trigger":  "Loading Scan New child pages.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Loads a call-provider setting shared with the page shell; its direct relationship to scanning was not established.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "LOW"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Scan mode",
+                                                              "Child route"
+                                                          ],
+                                             "relationship":  "Each named scan mode is represented by a distinct /scan-new child route while retaining the shared Scan New toolbar and mode navigation.",
+                                             "evidence":  "Observed navigation among /scan-new/, /print-labels, /get-hub-name, /scan-by-filter, /ready-for-delivery, /get-stop, and /see-activity."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order",
+                                                              "Order status"
+                                                          ],
+                                             "relationship":  "Scan New uses status metadata and offers status-oriented scan modes such as Ready for Delivery, Route Optimized, and Driver Out.",
+                                             "evidence":  "Visible status-mode links and the successful getStatuses API response."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Scan filter",
+                                                              "Order status"
+                                                          ],
+                                             "relationship":  "The Scan by Filter page can constrain scanned orders by status.",
+                                             "evidence":  "Visible Select a Status combobox populated with status names."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Scan filter",
+                                                              "Order type"
+                                                          ],
+                                             "relationship":  "The Scan by Filter page can constrain scanned orders by order type.",
+                                             "evidence":  "Visible Select an Order Type combobox and getOrderTypes API request."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order",
+                                                              "Hub"
+                                                          ],
+                                             "relationship":  "The capability can retrieve a hub name for a scanned order and optionally double-check using a hub QR.",
+                                             "evidence":  "Get Hub Name route and Double check with hub QR switch."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Order type",
+                                                              "Voice announcement"
+                                                          ],
+                                             "relationship":  "Selected order types can be configured for voice announcement.",
+                                             "evidence":  "Announce Type Settings modal and PullScan configuration response."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Open a read-only lookup mode",
+                                         "steps":  [
+                                                       "Open Scan New from the main navigation.",
+                                                       "Select a lookup mode such as Get Hub Name, Get Stop #, or See Activity.",
+                                                       "Observe the focused Order ID scan field."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Authenticated ADM session.",
+                                                                       "A scannable order identifier would be needed to obtain an actual lookup result."
+                                                                   ],
+                                         "resultObserved":  "The selected child route loaded with the standard Order ID scan field.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Configure scan filtering",
+                                         "steps":  [
+                                                       "Open Scan New.",
+                                                       "Select Scan by Filter.",
+                                                       "Observe status, order-type, and activity filters, each initially set to All."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Authenticated ADM session."
+                                                                   ],
+                                         "resultObserved":  "Filter controls loaded and supporting metadata requests returned HTTP 200.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Inspect announcement configuration",
+                                         "steps":  [
+                                                       "Select Settings.",
+                                                       "Observe the Announce Type Settings modal and available order types.",
+                                                       "Select Cancel."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Scan New page loaded."
+                                                                   ],
+                                         "resultObserved":  "The modal closed without saving configuration.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Prepare Ready for Delivery scan",
+                                         "steps":  [
+                                                       "Select Ready for Delivery.",
+                                                       "Observe the Search field for barcode numbers, vendor IDs, or equipment identifiers."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "A relevant scannable identifier would be required to continue."
+                                                                   ],
+                                         "resultObserved":  "The Ready for Delivery child route loaded; no scan was submitted.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Auto-submit delay",
+                                                       "observedRule":  "The value is expressed in seconds and controls the wait before automatic submission.",
+                                                       "evidence":  "The spinbutton showed 0.35 and the adjacent help text explicitly described the delay in seconds."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Ready for Delivery search",
+                                                       "observedRule":  "The visible placeholder indicates accepted identifier categories are barcode numbers, vendor IDs, and equipment identifiers.",
+                                                       "evidence":  "Textbox accessible name was Enter Barcode Numbers, Vendor ID, Equipments."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Scan by Filter selectors",
+                                                       "observedRule":  "Status, order type, and activity default to All.",
+                                                       "evidence":  "All three comboboxes displayed a selected All option in the initial state."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Scan New main navigation",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Scan New\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Icon classes",
+                                                           "list position",
+                                                           "snapshot ref"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Order ID scan input",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Order ID...\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Generated DOM ID",
+                                                           "generic input index"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Ready for Delivery identifier input",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Enter Barcode Numbers, Vendor ID, Equipments\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "CSS ancestry",
+                                                           "input index"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Named scan modes",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Scan by Filter\u0027 })",
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Get Stop #\u0027 })",
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Ready for Delivery\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Nested button selectors",
+                                                           "route-card position"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Settings modal",
+                                             "preferred":  [
+                                                               "getByRole(\u0027heading\u0027, { name: \u0027Announce Type Settings\u0027 })",
+                                                               "getByRole(\u0027button\u0027, { name: \u0027Cancel\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "Modal class names",
+                                                           "nth-child selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Scan by Filter selectors",
+                                             "preferred":  [
+                                                               "Use adjacent visible text Select a Status, Select an Order Type, or Select an Activity with getByRole(\u0027combobox\u0027)"
+                                                           ],
+                                             "avoid":  [
+                                                           "Unqualified nth combobox selectors"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Scan New is directly available from the authenticated ADM main navigation.",
+                                             "evidence":  "Main navigation contained a Scan New link to /scan-new/, and selecting it loaded the module.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The module exposes lookup, printing, filtering, validation, and status-oriented scanning modes under /scan-new.",
+                                             "evidence":  "Live accessibility snapshots showed the named child links and their URLs.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Auto Submit on Scan was enabled with a 0.35-second delay during observation.",
+                                             "evidence":  "Checked switch and spinbutton value 0.35 on the live ADM page.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Voice and Announce Type were enabled, while Double check with hub QR was disabled.",
+                                             "evidence":  "Live switch states in the accessibility snapshot.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Regular and Transplant were enabled in the loaded announcement-type configuration; the other returned type settings were false.",
+                                             "evidence":  "HTTP 200 response from POST /ajax/PullScan.php contained enabled type_settings values.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The Ready for Delivery route presents a broader search input than the standard lookup routes.",
+                                             "evidence":  "Ready for Delivery displayed Enter Barcode Numbers, Vendor ID, Equipments, while Get Stop and See Activity displayed Order ID....",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Scan by Filter presents status, order-type, and activity filters.",
+                                             "evidence":  "Live snapshot of /scan-new/scan-by-filter and successful supporting API requests.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; this ADM observation establishes the primary stable baseline.",
+                                                  "currentFact":  "The Scan New routes, controls, configuration, and non-mutating API behavior recorded here were observed directly on ADM.",
+                                                  "evidence":  "Authenticated live exploration of adm.rx2go.ai using Playwright."
+                                              }
+                                          ],
+                   "anomalies":  [
+
+                                 ],
+                   "changesFromPrevious":  [
+                                               {
+                                                   "type":  "NEW",
+                                                   "fact":  "ADM baseline knowledge was established for the Scan New module.",
+                                                   "evidence":  "No previous baseline was supplied; current facts were verified live on ADM."
+                                               }
+                                           ],
+                   "uncertainties":  [
+                                         "No scannable QA order, vendor, hub, barcode, or equipment identifier was provided, so result panels and identifier-specific validation messages could not be observed safely.",
+                                         "The business effects of Ready for Delivery, Route Optimized, Driver Out, Ready to optimize, Ready to optimize Bronx, On its way to facility, Manual Back to Pharmacy, Return labels, and Print Stops were not executed because they may mutate business state or trigger printing.",
+                                         "The complete response shapes for getOrderTypes, getOrderActivities, and getHubs were not inspected to avoid copying unnecessary data.",
+                                         "The precise business meaning of the shared getCallProviderSetting request within Scan New was not established.",
+                                         "The initial activity selector exposed only All; context-specific activity choices may require another filter selection or valid business context.",
+                                         "The effects and persistence scope of the header service/context comboboxes were not tested because changing context could affect the authenticated session."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM Scan New was verified as a shared scanning workspace with 16 observed routes spanning information lookup, printing, filtering, queue validation, and status-related workflows. Shared controls include auto-submit timing, voice/type announcements, hub QR checking, and an announcement settings modal. Scan by Filter loads status, type, activity, and hub metadata, while Ready for Delivery accepts barcode, vendor, or equipment identifiers. Exploration remained read-only and submitted no business identifiers."
+               }
+}

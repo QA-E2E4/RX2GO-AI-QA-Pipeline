@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Stop'
 
 $localDataRoot = Join-Path $env:LOCALAPPDATA 'Rx2GO-AI-QA'
 $secretsDir = Join-Path $localDataRoot 'secrets'
@@ -14,3 +14,4 @@ $credential | Export-Clixml -Path $credentialFile
 Write-Host ''
 Write-Host 'Saved with Windows DPAPI for the current Windows user.'
 Write-Host "Credential path: $credentialFile"
+

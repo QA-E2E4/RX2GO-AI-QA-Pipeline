@@ -1,0 +1,23 @@
+version: 1
+topic: Smart QA result integrity
+scope: all Jira task testing
+rules:
+  - PASS and FAIL must be based on evidence observed in the current live run.
+  - Jira descriptions, comments, attachments, Knowledge Retrieval and prior reports are context; they cannot be reused as the current verdict.
+  - The latest explicit Jira comment can narrow an umbrella task to the current execution batch.
+  - Only current execution scope affects the current overall result.
+  - Test data must be created in the current run, explicitly required by the current Jira, or safely unmarked read-only data.
+  - An entity marked for another Jira key is contaminated and cannot be used as current product evidence.
+  - Browser-native, OS-native, locale, timezone and environment-dependent rendering must be identified before assigning a product FAIL.
+  - Non-ambiguous values must be preferred where ordering/format matters.
+  - Overall PASS requires all executed acceptance criteria to PASS.
+  - Overall FAIL requires at least one failed current acceptance criterion with concrete live evidence.
+  - Ambiguous evidence, uncertain provenance, setup failure, automation failure or environment uncertainty must produce BLOCKED/automation classification instead of a guessed product FAIL.
+machine_gate:
+  required_integrity_fields:
+    liveCurrentRunEvidence: true
+    currentScopeOnly: true
+    testDataIsolated: true
+    historicalEvidenceUsedAsVerdict: false
+    environmentAssumptionsVerified: true
+

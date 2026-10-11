@@ -1,0 +1,38 @@
+version: 1
+purpose: task_specific_retrieval_memory
+sources:
+  remote:
+    ref: origin/current_branch
+    update_mode: git_fetch_only
+    modifies_worktree: false
+    preferred_for:
+      - jira-cases
+      - scenarios
+      - knowledge
+  local:
+    preferred_for:
+      - tests
+      - pages
+      - api
+categories:
+  jira_cases:
+    max_items: 5
+  regression_scenarios:
+    max_items: 4
+  tests:
+    max_items: 6
+  knowledge:
+    max_items: 6
+  helpers:
+    max_items: 6
+global_max_items: 22
+rules:
+  - Current Jira requirements override historical memory.
+  - Live Playwright MCP behavior overrides historical selectors and UI state.
+  - Historical PASS or FAIL must never be reused as the result of the current run.
+  - Historical entity IDs must not be reused as current test data unless explicitly requested.
+  - Prior TEST_AUTOMATION_BUG patterns should be used to avoid repeating automation mistakes.
+  - Secrets, credentials, cookies, tokens, reports and runtime state are excluded.
+artifacts:
+  directory: reports/knowledge-retrieval/<JIRA-KEY>
+

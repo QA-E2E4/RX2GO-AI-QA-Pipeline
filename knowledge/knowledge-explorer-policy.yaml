@@ -1,0 +1,53 @@
+version: 2
+topic: knowledge_explorer
+deployment_hierarchy: "BRANCH -> HOT -> ADM"
+primary_baseline: ADM
+layers:
+  ADM:
+    role: PRIMARY_BASELINE
+    persistent: true
+    baseline: null
+  HOT:
+    role: DELTA
+    persistent: true
+    baseline: ADM
+  BRANCH:
+    role: TEMPORARY_DELTA
+    persistent: false
+    baseline: HOT
+promotion:
+  - HOT PASS does not modify ADM baseline.
+  - A HOT behavior becomes ADM knowledge only after it is deployed and re-observed on ADM.
+  - BRANCH observations never replace HOT/ADM knowledge.
+retrieval:
+  ADM:
+    use: [ADM]
+  HOT:
+    use: [ADM, HOT]
+    prefer: HOT
+  BRANCH:
+    use: [ADM, HOT, BRANCH]
+    prefer: BRANCH
+modes:
+  quick:
+    mutation: false
+  deep:
+    mutation: false
+  module:
+    mutation: false
+  workflow:
+    mutation: qa_test_data_only
+  refresh:
+    mutation: false
+safety:
+  - Observed current behavior is never automatically an expected requirement.
+  - Never store secrets, passwords, tokens, cookies, auth headers, or personal customer/patient data.
+  - Never mutate unmarked pre-existing business/customer entities.
+  - Prefer semantic selectors over brittle CSS/XPath.
+  - An anomaly is OBSERVED_ANOMALY_NOT_REQUIREMENT until supported by Jira.
+git:
+  ADM: auto_commit_push
+  HOT: auto_commit_push
+  BRANCH: local_only
+freshness_days: 14
+

@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Stop'
 
 $launcher = Join-Path $PSScriptRoot 'Rx2GO-QA-Launcher.ps1'
 $log = Join-Path $PSScriptRoot 'startup-error.log'
@@ -76,3 +76,4 @@ catch {
         Read-Host 'Press Enter'
     }
 }
+

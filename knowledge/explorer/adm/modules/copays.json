@@ -1,0 +1,610 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Copays",
+    "moduleSlug":  "copays",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:11:26.7468245+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Copays",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/copays",
+                   "endUrl":  "https://adm.rx2go.ai/copays",
+                   "pagePurpose":  "Operational view for locating copay orders, reviewing payment and lifecycle state, opening related order details, exporting results, and initiating copay status or return-to-pharmacy workflows.",
+                   "routes":  [
+                                  {
+                                      "name":  "Copays",
+                                      "url":  "https://adm.rx2go.ai/copays",
+                                      "howToOpen":  "Open the Main navigation link named Copays.",
+                                      "confidence":  "HIGH"
+                                  },
+                                  {
+                                      "name":  "Copay Order Details",
+                                      "url":  "https://adm.rx2go.ai/copays#o{order-id}",
+                                      "howToOpen":  "Select an order-number link in the Copays table.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Export CSV",
+                                        "type":  "button",
+                                        "purpose":  "Export the currently represented copay data as CSV.",
+                                        "locatorHints":  [
+                                                             "role=button name=Export CSV"
+                                                         ],
+                                        "notes":  "Visible and enabled with no rows selected; not activated because it initiates a download."
+                                    },
+                                    {
+                                        "name":  "Search",
+                                        "type":  "input",
+                                        "purpose":  "Search within the page.",
+                                        "locatorHints":  [
+                                                             "role=textbox name=Search..."
+                                                         ],
+                                        "notes":  "Visible in the page header; its exact matching fields were not proven."
+                                    },
+                                    {
+                                        "name":  "Enter Barcode Numbers",
+                                        "type":  "input",
+                                        "purpose":  "Accept barcode numbers for the selected copay status action.",
+                                        "locatorHints":  [
+                                                             "role=textbox name=Enter Barcode Numbers"
+                                                         ],
+                                        "notes":  "Located under Scan to status; no barcode was entered."
+                                    },
+                                    {
+                                        "name":  "Scan status actions",
+                                        "type":  "button",
+                                        "purpose":  "Choose the destination status for a scanned barcode.",
+                                        "locatorHints":  [
+                                                             "role=button name=Unpaid",
+                                                             "role=button name=Paid to Driver",
+                                                             "role=button name=Finish Transit",
+                                                             "role=button name=At Facility",
+                                                             "role=button name=Prepare Back To Pharmacy",
+                                                             "role=button name=On it\u0027s way to pharmacy",
+                                                             "role=button name=At Pharmacy"
+                                                         ],
+                                        "notes":  "Visible status-action buttons; none were activated because they may mutate business data."
+                                    },
+                                    {
+                                        "name":  "Client filter",
+                                        "type":  "select",
+                                        "purpose":  "Filter copay records by client business name or ID.",
+                                        "locatorHints":  [
+                                                             "role=textbox name=Filter Client (Business Name or ID)"
+                                                         ],
+                                        "notes":  "Client context is available but was not changed."
+                                    },
+                                    {
+                                        "name":  "Order ID filter",
+                                        "type":  "input",
+                                        "purpose":  "Filter copay records by order ID.",
+                                        "locatorHints":  [
+                                                             "role=textbox name=Order ID"
+                                                         ],
+                                        "notes":  "Visible and empty during observation."
+                                    },
+                                    {
+                                        "name":  "Driver filter",
+                                        "type":  "select",
+                                        "purpose":  "Filter copay records by driver name or ID.",
+                                        "locatorHints":  [
+                                                             "role=textbox name=Filter Driver (Name or ID)"
+                                                         ],
+                                        "notes":  "Visible and not changed."
+                                    },
+                                    {
+                                        "name":  "Hub filter",
+                                        "type":  "select",
+                                        "purpose":  "Limit copay records to a facility hub.",
+                                        "locatorHints":  [
+                                                             "role=button name=All Hubs"
+                                                         ],
+                                        "notes":  "Default visible state was All Hubs."
+                                    },
+                                    {
+                                        "name":  "Date range",
+                                        "type":  "input",
+                                        "purpose":  "Filter copay records using From and To dates.",
+                                        "locatorHints":  [
+                                                             "text=From",
+                                                             "text=To",
+                                                             "role=button name=Clear"
+                                                         ],
+                                        "notes":  "Observed range was 2026-07-09 through 2026-09-07."
+                                    },
+                                    {
+                                        "name":  "Payment method filters",
+                                        "type":  "tab",
+                                        "purpose":  "Filter records by All, Cash, Check, or Card payment type.",
+                                        "locatorHints":  [
+                                                             "text=All",
+                                                             "text=Cash",
+                                                             "text=Check",
+                                                             "text=Card"
+                                                         ],
+                                        "notes":  "Selecting Cash caused the list request to contain filters.type=[cash]."
+                                    },
+                                    {
+                                        "name":  "Lifecycle status filters",
+                                        "type":  "tab",
+                                        "purpose":  "Filter records by copay workflow status.",
+                                        "locatorHints":  [
+                                                             "text=Unpaid",
+                                                             "text=Paid To Driver",
+                                                             "text=Transit",
+                                                             "text=At Facility",
+                                                             "text=Preparing Back to Pharmacy",
+                                                             "text=On it\u0027s way to pharmacy",
+                                                             "text=At Pharmacy"
+                                                         ],
+                                        "notes":  "Selecting Unpaid caused the list request to contain filters.status=[unpaid]."
+                                    },
+                                    {
+                                        "name":  "Selection actions",
+                                        "type":  "button",
+                                        "purpose":  "Select records and perform receipt, transit, preparation, or pharmacy-return actions.",
+                                        "locatorHints":  [
+                                                             "role=button name=Select all",
+                                                             "role=button name=Select none",
+                                                             "role=button name=Print Receipt",
+                                                             "role=button name=Transit",
+                                                             "role=button name=Preparing Back to Pharmacy",
+                                                             "role=button name=Send back to pharmacy"
+                                                         ],
+                                        "notes":  "With zero rows selected, Print Receipt, Transit, Preparing Back to Pharmacy, and Send back to pharmacy were disabled."
+                                    },
+                                    {
+                                        "name":  "Solo mode",
+                                        "type":  "other",
+                                        "purpose":  "Toggle Solo mode for the copay view or workflow.",
+                                        "locatorHints":  [
+                                                             "role=switch name=Solo mode"
+                                                         ],
+                                        "notes":  "Observed checked; not changed."
+                                    },
+                                    {
+                                        "name":  "Rows per page",
+                                        "type":  "select",
+                                        "purpose":  "Control the table page size.",
+                                        "locatorHints":  [
+                                                             "text=Rows per page",
+                                                             "role=combobox"
+                                                         ],
+                                        "notes":  "Options observed: 5, 10, 25, 50, 100, 200, 500, 1000, and 2000. Changing to 5 produced limit=5, then it was restored to 25."
+                                    },
+                                    {
+                                        "name":  "Copays table",
+                                        "type":  "table",
+                                        "purpose":  "Display copay orders and related operational attributes.",
+                                        "locatorHints":  [
+                                                             "role=table",
+                                                             "role=columnheader name=Order #",
+                                                             "role=columnheader name=Copay"
+                                                         ],
+                                        "notes":  "Columns observed: Order #, Return to Pharmacy Order #, Recipient Name, Client, Driver, Deliver Date, Copay, Facility Hub, In Queue, and Last Action User."
+                                    },
+                                    {
+                                        "name":  "Order number link",
+                                        "type":  "link",
+                                        "purpose":  "Open the related order details overlay.",
+                                        "locatorHints":  [
+                                                             "role=link name matching order number"
+                                                         ],
+                                        "notes":  "Opened an Order Details overlay and added an #o{order-id} URL fragment."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "Main navigation",
+                                          "action":  "Open Copays",
+                                          "to":  "Copays page",
+                                          "evidence":  "The navigation contained a Copays link to /copays, and the reached page had title and heading Copays."
+                                      },
+                                      {
+                                          "from":  "Copays table",
+                                          "action":  "Select an order-number link",
+                                          "to":  "Order Details overlay",
+                                          "evidence":  "The URL changed to /copays#o{order-id}, and an Order Details document overlay became visible."
+                                      },
+                                      {
+                                          "from":  "Order Details overlay",
+                                          "action":  "Navigate back to the canonical Copays URL",
+                                          "to":  "Copays page",
+                                          "evidence":  "The final page URL returned to https://adm.rx2go.ai/copays."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrdersCopay.php?action=getList",
+                                               "trigger":  "Initial Copays page load and subsequent payment, status, and page-size filter changes",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve the paginated copay table using date, payment type, lifecycle status, ordering, column, limit, and offset parameters.",
+                                               "importantFields":  [
+                                                                       "order",
+                                                                       "filters",
+                                                                       "from",
+                                                                       "to",
+                                                                       "type",
+                                                                       "status",
+                                                                       "columns",
+                                                                       "limit",
+                                                                       "offset",
+                                                                       "order_uid",
+                                                                       "return_order_uid",
+                                                                       "recipient_name",
+                                                                       "client_id",
+                                                                       "driver_id",
+                                                                       "created_at_d",
+                                                                       "copay",
+                                                                       "facility_hub",
+                                                                       "in_queue",
+                                                                       "status_user_id"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullOrdersCopay.php?action=getCounters",
+                                               "trigger":  "Initial Copays page load and filter changes",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve payment-type and lifecycle-status counters for the current Copays view.",
+                                               "importantFields":  [
+                                                                       "counters",
+                                                                       "type",
+                                                                       "status",
+                                                                       "cash",
+                                                                       "check",
+                                                                       "card",
+                                                                       "unpaid",
+                                                                       "driver",
+                                                                       "facility",
+                                                                       "preparing",
+                                                                       "pharmacy",
+                                                                       "returned",
+                                                                       "all"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getAllHubs",
+                                               "trigger":  "Copays page load",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Populate facility-hub context used by the Hub filter.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=1",
+                                               "trigger":  "Copays page load under the selected facility context",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Retrieve hubs associated with the active facility.",
+                                               "importantFields":  [
+                                                                       "facility"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Copay",
+                                                              "Order"
+                                                          ],
+                                             "relationship":  "Each displayed copay record is associated with an order and may also reference a return-to-pharmacy order.",
+                                             "evidence":  "The table contains Order # and Return to Pharmacy Order # columns, and an order-number link opens Order Details."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Copay",
+                                                              "Client"
+                                                          ],
+                                             "relationship":  "Copay records are associated with clients and can be filtered by client name or ID.",
+                                             "evidence":  "The table contains a Client column and the page exposes Filter Client (Business Name or ID)."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Copay",
+                                                              "Driver"
+                                                          ],
+                                             "relationship":  "Copay records are associated with drivers and can be filtered by driver name or ID.",
+                                             "evidence":  "The table contains a Driver column and the page exposes Filter Driver (Name or ID)."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Copay",
+                                                              "Facility Hub"
+                                                          ],
+                                             "relationship":  "Copay records are associated with a facility hub and can be filtered by hub.",
+                                             "evidence":  "The table contains Facility Hub and the filter defaulted to All Hubs while the active environment context showed Hawaii."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Copay",
+                                                              "Payment Method"
+                                                          ],
+                                             "relationship":  "Copay records are categorized as Cash, Check, Card, or an unlabelled backend type.",
+                                             "evidence":  "Payment chips and getCounters type fields were observed."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Copay",
+                                                              "Lifecycle Status"
+                                                          ],
+                                             "relationship":  "Copay records progress through states including Unpaid, Paid To Driver, Transit, At Facility, Preparing Back to Pharmacy, On its way to pharmacy, and At Pharmacy.",
+                                             "evidence":  "Status filter chips and scan-status action buttons expose these states."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Filter copays by payment method and status",
+                                         "steps":  [
+                                                       "Open Copays.",
+                                                       "Select Cash.",
+                                                       "Observe the list reload with type set to cash.",
+                                                       "Select Unpaid.",
+                                                       "Observe the list reload with type cash and status unpaid.",
+                                                       "Restore both filter groups to All."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Authenticated ADM session",
+                                                                       "Active service and facility context",
+                                                                       "Copay records available in the selected date range"
+                                                                   ],
+                                         "resultObserved":  "The table was refreshed through successful getList and getCounters requests, and the default All/All state was restored.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Change table page size",
+                                         "steps":  [
+                                                       "Open Rows per page.",
+                                                       "Select 5.",
+                                                       "Observe a getList request with limit 5 and offset 0.",
+                                                       "Restore Rows per page to 25."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "Copays table loaded"
+                                                                   ],
+                                         "resultObserved":  "The page-size request parameter changed to 5 and was then restored to 25.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Inspect related order",
+                                         "steps":  [
+                                                       "Select an order-number link in the Copays table.",
+                                                       "Observe the Order Details overlay and #o{order-id} URL fragment.",
+                                                       "Return to the canonical Copays URL."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "At least one copay row is visible"
+                                                                   ],
+                                         "resultObserved":  "Order Details displayed related delivery information, documents, notes, communication, tickets, activity, route information, and status history without editing the order.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Print",
+                                                       "observedRule":  "The top-level Print button was disabled when the selected copay total was $0.00.",
+                                                       "evidence":  "Snapshot showed SELECTED COPAY TOTAL: $0.00 and disabled Print."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Bulk workflow actions",
+                                                       "observedRule":  "Print Receipt, Transit, Preparing Back to Pharmacy, and Send back to pharmacy were disabled when zero records were selected.",
+                                                       "evidence":  "Snapshot showed Selected 0 of 193 and all four buttons disabled."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Rows per page",
+                                                       "observedRule":  "Only the displayed discrete page-size options were available.",
+                                                       "evidence":  "The combobox listed 5, 10, 25, 50, 100, 200, 500, 1000, and 2000."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Copays navigation link",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Copays\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "navigation list-item index"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Barcode input",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Enter Barcode Numbers\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "icon-adjacent CSS selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Client filter",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Filter Client (Business Name or ID)\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "combobox ordinal"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Driver filter",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Filter Driver (Name or ID)\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "combobox ordinal"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Order ID filter",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Order ID\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "unnamed input selectors"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Hub filter",
+                                             "preferred":  [
+                                                               "getByRole(\u0027button\u0027, { name: \u0027All Hubs\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "nested textbox ordinal"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Solo mode",
+                                             "preferred":  [
+                                                               "getByRole(\u0027switch\u0027, { name: \u0027Solo mode\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "switch position"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Copays table",
+                                             "preferred":  [
+                                                               "getByRole(\u0027table\u0027)",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027Order #\u0027 })",
+                                                               "getByRole(\u0027columnheader\u0027, { name: \u0027Copay\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "row or cell numeric indexes"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Order details link",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: /^#\\d+$/ })"
+                                                           ],
+                                             "avoid":  [
+                                                           "javascript URL selector",
+                                                           "specific observed order number"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The discovered /copays route is live on ADM and displays the Copays page.",
+                                             "evidence":  "Live URL, page title, and heading all identified Copays.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The active service and facility context both displayed Hawaii during exploration.",
+                                             "evidence":  "Two navigation comboboxes had Hawaii selected.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The default observed date range was 2026-07-09 through 2026-09-07.",
+                                             "evidence":  "Visible From and To controls and initial getList request body.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The default view reported 193 copay records and a total of $608.00.",
+                                             "evidence":  "Visible Selected 0 of 193, All count 193, getCounters all=193, and table footer $608.00 total.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The table defaulted to 25 rows per page and descending order_uid ordering.",
+                                             "evidence":  "Rows-per-page combobox selected 25 and getList request contained order_uid=desc, limit=25, offset=0.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Payment and lifecycle filters are server-backed and refresh both the list and counters.",
+                                             "evidence":  "Cash and Unpaid selections produced successful getList and getCounters POST requests with corresponding filter values.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Opening an order from the table preserves the Copays page and presents Order Details through a URL fragment.",
+                                             "evidence":  "Selecting an order changed the URL to /copays#o{order-id} and displayed Order Details.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Bulk mutation controls are selection-dependent.",
+                                             "evidence":  "With Selected 0 of 193, receipt and status-transition buttons were disabled.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; this exploration establishes the ADM primary baseline.",
+                                                  "currentFact":  "The live ADM Copays route, controls, relationships, requests, and read-only workflows were observed directly.",
+                                                  "evidence":  "Authenticated live observation at https://adm.rx2go.ai/copays."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "The visible Cash, Check, and Card counts total 185 while All is 193. The counter response includes 8 records under an empty payment-type key, but no corresponding visible payment-type filter was observed.",
+                                         "evidence":  "Visible counts were Cash 78, Check 105, Card 2, All 193; getCounters returned an empty type key with value 8.",
+                                         "impact":  "QA checks based only on visible payment-type chips may not account for eight records lacking a labelled payment type."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+                                               {
+                                                   "type":  "NEW",
+                                                   "fact":  "ADM baseline knowledge was established for the Copays route, filters, table, order-details relationship, and supporting API requests.",
+                                                   "evidence":  "No prior baseline was supplied; all facts were captured from the current ADM session."
+                                               }
+                                           ],
+                   "uncertainties":  [
+                                         "The exact matching semantics of the global Search field were not tested.",
+                                         "Client, driver, hub, and date filter result behavior was not exercised to avoid exposing or recording customer-specific data.",
+                                         "Barcode status actions and bulk workflow buttons were not activated because they can change business data.",
+                                         "Exported CSV and printed document contents were not inspected.",
+                                         "The exact behavioral meaning of Solo mode was not proven.",
+                                         "The unlabeled payment-type value represented by the empty API key was not determined.",
+                                         "The Transit status count was not visibly displayed and no transit counter field appeared in the observed counter response.",
+                                         "Order Details contains additional broad order-management functionality that was not recursively explored because it extends beyond the Copays module."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM Copays is a context-sensitive operational queue backed by POST list and counter requests. It supports payment-method and lifecycle filtering, client/order/driver/hub/date constraints, pagination, CSV export, barcode-driven status controls, selection-dependent bulk actions, and read-only navigation into related order details. No business data was changed."
+               }
+}

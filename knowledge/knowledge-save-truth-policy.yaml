@@ -1,0 +1,32 @@
+version: 1
+topic: knowledge_save_truth
+goal: "User sees whether accumulated Rx2GO QA knowledge is actually persisted in GitHub."
+states:
+  SAVED:
+    label: "ЗНАНИЯ СОХРАНЕНЫ В GITHUB"
+    requires:
+      - managed local changes == 0
+      - GitHub SSH verified
+      - local commits ahead of origin == 0
+  LOCAL_ONLY:
+    label: "ЕСТЬ ЛОКАЛЬНЫЕ ЗНАНИЯ — НЕ ОТПРАВЛЕНЫ"
+  SAVING:
+    label: "СОХРАНЯЮ ЗНАНИЯ В GITHUB"
+  ERROR:
+    label: "СОХРАНЕНИЕ ЗНАНИЙ НЕ ПОДТВЕРЖДЕНО"
+primary_action:
+  label: "СОХРАНИТЬ ЗНАНИЯ В GITHUB"
+  flow:
+    - commit managed local changes if necessary
+    - guarded SSH sync
+    - safe pull --ff-only when needed
+    - push
+    - independent final verification
+rules:
+  - A local commit never means knowledge is saved in GitHub.
+  - A clean local working tree never means knowledge is saved in GitHub.
+  - Green SAVED state is allowed only after remote verification.
+  - Any new managed local knowledge immediately invalidates the green state.
+  - Commit count remains technical information only.
+  - BRANCH Explorer knowledge remains temporary/local according to the environment policy.
+

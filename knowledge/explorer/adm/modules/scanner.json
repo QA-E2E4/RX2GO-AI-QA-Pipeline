@@ -1,0 +1,356 @@
+{
+    "schemaVersion":  2,
+    "sourceClass":  "LIVE_OBSERVATION",
+    "source":  "Playwright MCP / Rx2GO ADM",
+    "environment":  "ADM",
+    "knowledgeLayer":  "ADM_BASELINE",
+    "baselineEnvironment":  "NONE",
+    "primaryBaseline":  true,
+    "temporary":  false,
+    "module":  "Scanner",
+    "moduleSlug":  "scanner",
+    "mode":  "full-project",
+    "workflowTarget":  "",
+    "observedAt":  "2026-09-07T01:17:54.2620345+03:00",
+    "freshnessDays":  14,
+    "requirementAuthority":  false,
+    "warning":  "Observed behavior is context/technical knowledge. Jira remains authoritative for expected behavior.",
+    "deploymentHierarchy":  "BRANCH -\u003e HOT -\u003e ADM",
+    "promotionRule":  "HOT knowledge does not become ADM baseline until re-observed on ADM.",
+    "result":  {
+                   "mcpUsed":  true,
+                   "environment":  "ADM",
+                   "knowledgeLayer":  "ADM_BASELINE",
+                   "baselineEnvironment":  "NONE",
+                   "baselineAvailable":  false,
+                   "temporary":  false,
+                   "module":  "Scanner",
+                   "status":  "COMPLETE",
+                   "startUrl":  "https://adm.rx2go.ai/map",
+                   "endUrl":  "https://adm.rx2go.ai/scanner/order-editor",
+                   "pagePurpose":  "Look up an order by scanning or entering its barcode identifier and open the scanner-based order editor when a matching order is found.",
+                   "routes":  [
+                                  {
+                                      "name":  "Scanner",
+                                      "url":  "https://adm.rx2go.ai/scanner/order-editor",
+                                      "howToOpen":  "Open the Main navigation link named Scanner, whose observed href is /scanner/order-editor.",
+                                      "confidence":  "HIGH"
+                                  }
+                              ],
+                   "controls":  [
+                                    {
+                                        "name":  "Barcode Numbers",
+                                        "type":  "input",
+                                        "purpose":  "Accept a scanned or manually entered order barcode identifier.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027textbox\u0027, { name: \u0027Barcode Numbers...\u0027 })"
+                                                         ],
+                                        "notes":  "The input is focused on the page. After an unsuccessful submitted lookup, it is cleared and focused again."
+                                    },
+                                    {
+                                        "name":  "Auto Submit on Scan",
+                                        "type":  "other",
+                                        "purpose":  "Select whether scanner input is submitted automatically.",
+                                        "locatorHints":  [
+                                                             "text \u0027Auto Submit on Scan\u0027",
+                                                             "text \u0027Off\u0027",
+                                                             "text \u0027On\u0027"
+                                                         ],
+                                        "notes":  "Implemented as radio inputs named auto_submit with Off and On choices. On was selected during observation."
+                                    },
+                                    {
+                                        "name":  "Facility selector",
+                                        "type":  "select",
+                                        "purpose":  "Select the active facility context used by the application.",
+                                        "locatorHints":  [
+                                                             "combobox containing facility options"
+                                                         ],
+                                        "notes":  "The active facility context was Hawaii."
+                                    },
+                                    {
+                                        "name":  "Hub selector",
+                                        "type":  "select",
+                                        "purpose":  "Select the active hub within the facility context.",
+                                        "locatorHints":  [
+                                                             "combobox containing hub options"
+                                                         ],
+                                        "notes":  "The active hub context was Hawaii."
+                                    },
+                                    {
+                                        "name":  "Scanner navigation link",
+                                        "type":  "link",
+                                        "purpose":  "Open the scanner order editor.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027link\u0027, { name: \u0027Scanner\u0027 })"
+                                                         ],
+                                        "notes":  "Observed href: /scanner/order-editor."
+                                    },
+                                    {
+                                        "name":  "Lookup feedback alerts",
+                                        "type":  "other",
+                                        "purpose":  "Report that an entered identifier did not match an order.",
+                                        "locatorHints":  [
+                                                             "getByRole(\u0027alert\u0027)",
+                                                             "getByText(\u0027Order not found.\u0027)",
+                                                             "getByText(\u0027Wrong data! Order not found.\u0027)"
+                                                         ],
+                                        "notes":  "Two visible alerts appeared after a synthetic nonexistent identifier was submitted."
+                                    }
+                                ],
+                   "navigation":  [
+                                      {
+                                          "from":  "ADM Map page",
+                                          "action":  "Use the Main navigation entry Scanner, observed with href /scanner/order-editor.",
+                                          "to":  "Scanner order editor",
+                                          "evidence":  "The navigation snapshot exposed a Scanner link pointing to /scanner/order-editor; the live destination loaded with title Scanner | Rx2Go and URL https://adm.rx2go.ai/scanner/order-editor."
+                                      },
+                                      {
+                                          "from":  "Scanner order editor with an empty barcode input",
+                                          "action":  "Enter a synthetic nonexistent identifier and press Enter.",
+                                          "to":  "Scanner order editor with not-found feedback",
+                                          "evidence":  "The URL remained unchanged, the input was cleared and refocused, and visible alerts reported that the order was not found."
+                                      }
+                                  ],
+                   "apiObservations":  [
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/api/order/get",
+                                               "trigger":  "Submitting a synthetic nonexistent identifier from the Barcode Numbers input.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Look up an order using the entered order or barcode identifier.",
+                                               "importantFields":  [
+                                                                       "orderid",
+                                                                       "searchOpt",
+                                                                       "trySuitRx",
+                                                                       "tryDigitalRx",
+                                                                       "tryEpic",
+                                                                       "status",
+                                                                       "message",
+                                                                       "data"
+                                                                   ],
+                                               "confidence":  "HIGH"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/ajax/PullFacilityHub.php?action=getHubs\u0026facility=1",
+                                               "trigger":  "Loading the Scanner page in the current facility context.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Load hub choices for the selected facility.",
+                                               "importantFields":  [
+                                                                       "action",
+                                                                       "facility"
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "GET",
+                                               "path":  "/v1/common/get-facilities",
+                                               "trigger":  "Loading the Scanner page.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Load available facility contexts.",
+                                               "importantFields":  [
+
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           },
+                                           {
+                                               "method":  "POST",
+                                               "path":  "/ajax/PullCommon.php?action=loadMenu",
+                                               "trigger":  "Loading the Scanner page.",
+                                               "statusCodesObserved":  [
+                                                                           200
+                                                                       ],
+                                               "purpose":  "Load the authenticated application navigation menu.",
+                                               "importantFields":  [
+                                                                       "action"
+                                                                   ],
+                                               "confidence":  "MEDIUM"
+                                           }
+                                       ],
+                   "relationships":  [
+                                         {
+                                             "entities":  [
+                                                              "Barcode identifier",
+                                                              "Order"
+                                                          ],
+                                             "relationship":  "The scanner input supplies an order identifier to the order lookup operation.",
+                                             "evidence":  "Submitting the Barcode Numbers field caused POST /api/order/get with an orderid field; the response returned status, message, and data fields."
+                                         },
+                                         {
+                                             "entities":  [
+                                                              "Facility",
+                                                              "Hub"
+                                                          ],
+                                             "relationship":  "The available hub context is loaded for the active facility.",
+                                             "evidence":  "The page displayed separate facility and hub selectors and requested getHubs with the selected facility identifier."
+                                         }
+                                     ],
+                   "workflows":  [
+                                     {
+                                         "name":  "Unsuccessful barcode lookup",
+                                         "steps":  [
+                                                       "Open the Scanner route.",
+                                                       "Confirm the current facility and hub context.",
+                                                       "Enter a synthetic nonexistent identifier in Barcode Numbers.",
+                                                       "Press Enter.",
+                                                       "Observe the order lookup response and not-found feedback."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "An authenticated ADM session is active.",
+                                                                       "A facility and hub context are selected.",
+                                                                       "A barcode or order identifier is needed to retrieve an order."
+                                                                   ],
+                                         "resultObserved":  "The lookup returned an error result with no order data; the page stayed on the Scanner route, cleared the input, restored focus to it, and displayed not-found alerts.",
+                                         "mutationUsed":  false
+                                     },
+                                     {
+                                         "name":  "Empty submission",
+                                         "steps":  [
+                                                       "Leave the Barcode Numbers input empty.",
+                                                       "Press Enter."
+                                                   ],
+                                         "preconditionsObserved":  [
+                                                                       "The Barcode Numbers input is focused."
+                                                                   ],
+                                         "resultObserved":  "No additional /api/order/get request was observed.",
+                                         "mutationUsed":  false
+                                     }
+                                 ],
+                   "validationRulesObserved":  [
+                                                   {
+                                                       "fieldOrAction":  "Barcode Numbers submission",
+                                                       "observedRule":  "Pressing Enter with an empty input did not initiate an order lookup request.",
+                                                       "evidence":  "The network log continued to contain only the prior /api/order/get request after the empty Enter action."
+                                                   },
+                                                   {
+                                                       "fieldOrAction":  "Barcode Numbers lookup",
+                                                       "observedRule":  "A submitted identifier that does not match an order produces not-found feedback.",
+                                                       "evidence":  "The lookup returned status=error, message=Order not found., and data=null; visible alerts reported Order not found and Wrong data! Order not found."
+                                                   }
+                                               ],
+                   "selectorHints":  [
+                                         {
+                                             "element":  "Barcode Numbers input",
+                                             "preferred":  [
+                                                               "getByRole(\u0027textbox\u0027, { name: \u0027Barcode Numbers...\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "DOM-position selectors",
+                                                           "generated accessibility refs"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Scanner navigation entry",
+                                             "preferred":  [
+                                                               "getByRole(\u0027link\u0027, { name: \u0027Scanner\u0027 })"
+                                                           ],
+                                             "avoid":  [
+                                                           "icon glyph selectors",
+                                                           "generated accessibility refs"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Lookup feedback",
+                                             "preferred":  [
+                                                               "getByRole(\u0027alert\u0027)",
+                                                               "getByText(\u0027Order not found.\u0027)"
+                                                           ],
+                                             "avoid":  [
+                                                           "toast container CSS classes",
+                                                           "generated accessibility refs"
+                                                       ]
+                                         },
+                                         {
+                                             "element":  "Auto-submit choices",
+                                             "preferred":  [
+                                                               "radio name auto_submit with value off",
+                                                               "radio name auto_submit with value on",
+                                                               "visible text \u0027Off\u0027",
+                                                               "visible text \u0027On\u0027"
+                                                           ],
+                                             "avoid":  [
+                                                           "button styling classes",
+                                                           "generated accessibility refs"
+                                                       ]
+                                         }
+                                     ],
+                   "observedFacts":  [
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The ADM Scanner module is reachable at /scanner/order-editor and has the page title Scanner | Rx2Go.",
+                                             "evidence":  "Live URL and page title after navigation.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The page exposes a Barcode Numbers input and an Auto Submit on Scan Off/On control.",
+                                             "evidence":  "Live accessibility snapshot and DOM inspection.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Auto Submit on Scan was set to On during observation.",
+                                             "evidence":  "The auto_submit radio with value on was checked.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "The active facility and hub contexts were both displayed as Hawaii.",
+                                             "evidence":  "Both live context comboboxes showed Hawaii as selected.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "Submitting a synthetic nonexistent identifier caused POST /api/order/get and returned an application-level error inside an HTTP 200 response.",
+                                             "evidence":  "Observed network request and response with status=error, message=Order not found., and data=null.",
+                                             "confidence":  "HIGH"
+                                         },
+                                         {
+                                             "factType":  "OBSERVED_FACT",
+                                             "fact":  "After an unsuccessful lookup, the barcode input was empty and retained focus.",
+                                             "evidence":  "Live DOM state following the submitted lookup.",
+                                             "confidence":  "HIGH"
+                                         }
+                                     ],
+                   "baselineComparison":  [
+                                              {
+                                                  "type":  "UNKNOWN",
+                                                  "area":  "other",
+                                                  "baselineFact":  "N/A; ADM is being recorded as the primary stable baseline.",
+                                                  "currentFact":  "The currently observed ADM Scanner behavior is captured in this result.",
+                                                  "evidence":  "Live ADM exploration only; no HOT or BRANCH comparison was performed."
+                                              }
+                                          ],
+                   "anomalies":  [
+                                     {
+                                         "classification":  "OBSERVED_ANOMALY_NOT_REQUIREMENT",
+                                         "description":  "One unsuccessful lookup displayed two simultaneous not-found alerts with different wording.",
+                                         "evidence":  "The live page showed alerts reading Order not found. and Wrong data! Order not found. after a single synthetic lookup.",
+                                         "impact":  "Automated checks may encounter duplicate feedback, and users may receive redundant error messaging."
+                                     }
+                                 ],
+                   "changesFromPrevious":  [
+                                               {
+                                                   "type":  "NEW",
+                                                   "fact":  "ADM Scanner baseline observations were established for route access, controls, lookup API behavior, empty submission behavior, and unsuccessful lookup feedback.",
+                                                   "evidence":  "No previous baseline was supplied; all facts come from the current live ADM session."
+                                               }
+                                           ],
+                   "uncertainties":  [
+                                         "The successful-order state and editor fields could not be verified without a known QA-safe order identifier.",
+                                         "It was not proven whether submitting a valid scanned identifier has any side effects before the editor is displayed.",
+                                         "The Auto Submit Off behavior was not verified because the visible Off control could not be safely activated through the live semantic locator during this exploration.",
+                                         "Related scanner links such as Get Route Name, Scan | Unlock Vendor, Scan | As Vendor, Scan, and Scan New were not explored because they appear to be separate discovered capabilities rather than child states of this order editor."
+                                     ],
+                   "mutationsCreated":  [
+
+                                        ],
+                   "summary":  "ADM exposes the Scanner order editor at /scanner/order-editor. It accepts an order barcode identifier, defaults Auto Submit on Scan to On, and looks up the identifier through POST /api/order/get. Empty Enter did not issue a lookup. A synthetic nonexistent identifier returned an application error with no data, cleared and refocused the input, and produced two not-found alerts. No business data was mutated."
+               }
+}

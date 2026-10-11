@@ -1,4 +1,4 @@
-﻿param(
+param(
   [ValidateSet('smoke','tickets','all')]
   [string]$Suite = 'smoke',
   [ValidateSet('HOT','ADM','BRANCH')]
@@ -59,3 +59,4 @@ finally {
     [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($appPtr)
   }
 }
+

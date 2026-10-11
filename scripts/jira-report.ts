@@ -62,3 +62,4 @@ const output = path.resolve('reports/jira-report.md');
 fs.writeFileSync(output, lines.join('\n'));
 console.log(lines.join('\n'));
 console.log(`\nSaved: ${output}`);
+

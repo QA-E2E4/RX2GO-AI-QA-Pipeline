@@ -6,3 +6,4 @@ echo Login status:
 codex login status
 echo.
 pause
+

@@ -1,0 +1,17 @@
+version: 1
+topic: powershell51_no_inline_if_arguments
+scope: launcher source
+incident:
+  version: 0.12.31
+  function: Finalize-QueueWorkerItem
+  symptom: "ParseException: missing ')' / missing '}'"
+  cause: "if/else statement passed directly inside a parenthesized named argument"
+forbidden:
+  - "-Parameter ( if (...) { ... } else { ... } )"
+required:
+  - "Assign conditional result to a local variable first."
+  - "Pass the completed variable to the function parameter."
+release_gate:
+  - "Scan all ps1/psm1 files for named arguments ending in '(' followed by an if statement."
+  - "Block packaging if such a pattern is found."
+

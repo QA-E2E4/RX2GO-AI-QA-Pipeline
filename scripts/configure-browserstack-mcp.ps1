@@ -1,4 +1,4 @@
-﻿param()
+param()
 
 $ErrorActionPreference = 'Stop'
 $localDataRoot = Join-Path $env:LOCALAPPDATA 'Rx2GO-AI-QA'
@@ -40,3 +40,4 @@ Write-Host '[OK] BrowserStack MCP configured.'
 Write-Host 'Restart Rx2GO AI QA Launcher to refresh status.'
 Write-Host ''
 Read-Host 'Press Enter to close'
+

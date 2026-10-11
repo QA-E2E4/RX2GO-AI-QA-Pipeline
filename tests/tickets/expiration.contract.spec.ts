@@ -23,3 +23,4 @@ test('RX2GO-TQ-004 Expiration minute accepts and saves configured value', async 
 
   await expect(expiration).toHaveValue('60');
 });
+
