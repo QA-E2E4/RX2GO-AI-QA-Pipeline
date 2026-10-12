@@ -17,8 +17,8 @@ environments:
       application_login_required: true
 
   BRANCH:
-    base_url: https://sergey-tester.rx2go.ai
-    login_url: https://sergey-tester.rx2go.ai/login
+    base_url: "${BRANCH_BASE_URL}"
+    login_url: "${BRANCH_LOGIN_URL}"
     purpose: developer_branch
     default_for_automation: false
     authentication:
@@ -26,5 +26,6 @@ environments:
       application_login_required: true
     notes:
       - Developer branch environment
+      - Set BRANCH_BASE_URL and BRANCH_LOGIN_URL in private runtime configuration; values are placeholders.
       - Uses the same application QA credentials as ADM
       - Daily Telegram gateway password is not used
