@@ -301,7 +301,7 @@ Changes:
 - The real Chrome HTTP Basic Auth dialog is intentionally preserved.
 - The user enters `admin` + today's Telegram code in the browser-native dialog.
 - Playwright waits up to 180 seconds for the first factor to complete.
-- As soon as the Rx2GO application login form appears, `sergeyqa` login is completed automatically.
+- As soon as the Rx2GO application login form appears, `RX2GO_APP_LOGIN` login is completed automatically.
 - Header-based HTTP Basic authentication remains only as a non-interactive/headless fallback.
 - CDP selects the Rx2GO page instead of an incidental blank tab.
 - Actual Playwright validation and execution use local `node_modules\.bin\playwright.cmd`; `npx` is no longer used.
@@ -322,7 +322,7 @@ Changes:
   centralized Quick Run authentication values.
 - Headed ADM runs automatically fill the real native Chrome HTTP Basic Auth
   dialog using Windows UI Automation, with a keyboard fallback.
-- After the first factor, Playwright completes the `sergeyqa` application login
+- After the first factor, Playwright completes the `RX2GO_APP_LOGIN` application login
   and starts the generated test as before.
 
 
@@ -364,7 +364,7 @@ The Jira flow no longer creates one Chrome for Live Page Context and another Chr
 
 New lifecycle:
 
-`Chrome start -> ADM first factor -> Rx2GO sergeyqa login -> Live Page Context -> Agents 2–5 -> same Chrome/CDP -> final Playwright test`
+`Chrome start -> ADM first factor -> Rx2GO RX2GO_APP_LOGIN login -> Live Page Context -> Agents 2–5 -> same Chrome/CDP -> final Playwright test`
 
 Implementation:
 - `run-tests.ps1` can save a browser session descriptor containing CDP endpoint and Chrome PID.
@@ -535,7 +535,7 @@ v0.12.1 fixes both at the Playwright MCP server policy level without disabling t
 ## v0.12.12 — GitHub SSH, no browser authentication
 
 - GitHub browser OAuth is disabled in Launcher.
-- GitHub repository uses SSH origin: `git@github.com:Gamazzz/rx2go-ai-qa.git`.
+- GitHub repository uses SSH origin: `git@github.com:QA-E2E4/RX2GO-AI-QA-Pipeline.git`.
 - Launcher checks `~/.ssh/id_ed25519` and can generate a local ed25519 key.
 - Added `Создать SSH key` and `Скопировать public key` buttons.
 - Launcher can start Windows `ssh-agent` when available and add the private key with `ssh-add`.
