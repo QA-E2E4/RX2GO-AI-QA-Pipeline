@@ -16,7 +16,7 @@
 
 ### Окружения
 
-- **BRANCH** — `https://sergey-tester.rx2go.ai/login`, первого gateway-фактора нет.
+- **BRANCH** — `${BRANCH_BASE_URL}/login`, первого gateway-фактора нет.
 - **HOT** — gateway `admin` + суточный пароль из Telegram, затем вход в Rx2GO.
 - **ADM** — gateway `admin` + суточный пароль из Telegram, затем вход в Rx2GO.
 
@@ -80,7 +80,7 @@ Launcher намеренно **не извлекает cookies браузера, 
 
 В этой сборке уже задан репозиторий:
 
-`https://github.com/Gamazzz/rx2go-ai-qa`
+`https://github.com/QA-E2E4/RX2GO-AI-QA-Pipeline`
 
 Если Git for Windows установлен, Launcher при старте сам инициализирует локальный Git (если нужно) и добавляет `origin`. Вводить URL вручную не требуется. После первых изменений нажми **Commit knowledge**, затем **Synchronize**. Первый push создаст ветку `main`, если удалённая ветка ещё пустая.
 
@@ -93,7 +93,7 @@ Launcher при старте делает `git pull --ff-only` только ес
 
 On every launcher start, Rx2GO AI QA now attempts a safe synchronization with:
 
-`https://github.com/Gamazzz/rx2go-ai-qa.git`
+`https://github.com/QA-E2E4/RX2GO-AI-QA-Pipeline.git`
 
 Behavior:
 - clean working tree -> `git fetch` + `git pull --ff-only`;
@@ -251,13 +251,13 @@ like `page.goto('/login')` could not resolve the Rx2GO environment.
 All critical navigation now uses absolute URLs:
 - HOT: `https://hot.rx2go.ai/login`
 - ADM: `https://adm.rx2go.ai`
-- BRANCH: `https://sergey-tester.rx2go.ai/login`
+- BRANCH: `${BRANCH_BASE_URL}/login`
 - Tickets Queue: `<environment base>/tickets/queue`
 
 The log now prints `[AUTH] Navigating...` and `[NAV] Opening...` lines with the exact URL.
 
 
-## ADM native auth + persistent sergeyqa credential (v0.7.3)
+## ADM native auth + persistent RX2GO_APP_LOGIN credential (v0.7.3)
 
 ADM authentication now matches the real browser flow:
 
@@ -267,9 +267,9 @@ ADM authentication now matches the real browser flow:
    - username is always `admin`;
    - password is the daily Telegram code entered in Launcher.
 3. After Basic Auth succeeds, the normal Rx2GO login form is filled automatically
-   with the stored `sergeyqa` credential.
+   with the stored `RX2GO_APP_LOGIN` credential.
 
-The `sergeyqa` credential is no longer stored inside the unpacked project folder.
+The `RX2GO_APP_LOGIN` credential is no longer stored inside the unpacked project folder.
 It is saved once under `%LOCALAPPDATA%\Rx2GO-AI-QA\secrets` using Windows DPAPI,
 so future Launcher versions reuse it automatically. The Launcher also attempts to
 migrate a saved credential from an older nearby `rx2go-ai-qa-*` folder.
@@ -282,7 +282,7 @@ Playwright adds the HTTP `Authorization: Basic ...` header using the fixed usern
 `admin` and the Telegram daily code from Launcher. This prevents the browser prompt
 from blocking the test.
 
-The second-stage Rx2GO application login always uses fixed username `sergeyqa`; its
+The second-stage Rx2GO application login always uses fixed username `RX2GO_APP_LOGIN`; its
 password is loaded from Windows DPAPI storage under `%LOCALAPPDATA%\Rx2GO-AI-QA\secrets`.
 The log confirms that the credential is loaded, but never prints the password.
 
@@ -292,7 +292,7 @@ The log confirms that the credential is loaded, but never prints the password.
 - Tickets Queue always opens with a full environment URL, never `/tickets/queue`.
 - Staying on `/login` is never considered successful authentication.
 - Launcher waits up to 15 seconds for the visible Rx2GO login/password fields.
-- `sergeyqa` and the saved DPAPI password are filled only after the real form is visible.
+- `RX2GO_APP_LOGIN` and the saved DPAPI password are filled only after the real form is visible.
 - Safe diagnostics show URL and visible input/button counts without printing the password.
 
 
@@ -539,7 +539,7 @@ Changes:
 - The real Chrome HTTP Basic Auth dialog is intentionally preserved.
 - The user enters `admin` + today's Telegram code in the browser-native dialog.
 - Playwright waits up to 180 seconds for the first factor to complete.
-- As soon as the Rx2GO application login form appears, `sergeyqa` login is completed automatically.
+- As soon as the Rx2GO application login form appears, `RX2GO_APP_LOGIN` login is completed automatically.
 - Header-based HTTP Basic authentication remains only as a non-interactive/headless fallback.
 - CDP selects the Rx2GO page instead of an incidental blank tab.
 - Actual Playwright validation and execution use local `node_modules\.bin\playwright.cmd`; `npx` is no longer used.
@@ -560,7 +560,7 @@ Changes:
   centralized Quick Run authentication values.
 - Headed ADM runs automatically fill the real native Chrome HTTP Basic Auth
   dialog using Windows UI Automation, with a keyboard fallback.
-- After the first factor, Playwright completes the `sergeyqa` application login
+- After the first factor, Playwright completes the `RX2GO_APP_LOGIN` application login
   and starts the generated test as before.
 
 
@@ -602,7 +602,7 @@ The Jira flow no longer creates one Chrome for Live Page Context and another Chr
 
 New lifecycle:
 
-`Chrome start -> ADM first factor -> Rx2GO sergeyqa login -> Live Page Context -> Agents 2–5 -> same Chrome/CDP -> final Playwright test`
+`Chrome start -> ADM first factor -> Rx2GO RX2GO_APP_LOGIN login -> Live Page Context -> Agents 2–5 -> same Chrome/CDP -> final Playwright test`
 
 Implementation:
 - `run-tests.ps1` can save a browser session descriptor containing CDP endpoint and Chrome PID.
@@ -773,7 +773,7 @@ v0.12.1 fixes both at the Playwright MCP server policy level without disabling t
 ## v0.12.12 — GitHub SSH, no browser authentication
 
 - GitHub browser OAuth is disabled in Launcher.
-- GitHub repository uses SSH origin: `git@github.com:Gamazzz/rx2go-ai-qa.git`.
+- GitHub repository uses SSH origin: `git@github.com:QA-E2E4/RX2GO-AI-QA-Pipeline.git`.
 - Launcher checks `~/.ssh/id_ed25519` and can generate a local ed25519 key.
 - Added `Создать SSH key` and `Скопировать public key` buttons.
 - Launcher can start Windows `ssh-agent` when available and add the private key with `ssh-add`.
