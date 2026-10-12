@@ -22,6 +22,22 @@ try {
   }
 
   if ([string]::IsNullOrWhiteSpace($env:RX2GO_APP_LOGIN)) {
+    # A previously stored DPAPI credential contains the username: reuse it without
+    # placing the login in the public repository or prompting on every run.
+    $savedCredentialPath = Join-Path (Join-Path $env:LOCALAPPDATA 'Rx2GO-AI-QA') 'secrets\rx2go-app.credential.xml'
+    if (Test-Path -LiteralPath $savedCredentialPath) {
+      try {
+        $savedCredential = Import-Clixml -LiteralPath $savedCredentialPath
+        if ($savedCredential -is [System.Management.Automation.PSCredential]) {
+          $env:RX2GO_APP_LOGIN = $savedCredential.UserName
+        }
+      }
+      catch {
+        Write-Warning 'Saved QA credential unavailable; enter login manually.'
+      }
+    }
+  }
+  if ([string]::IsNullOrWhiteSpace($env:RX2GO_APP_LOGIN)) {
     $env:RX2GO_APP_LOGIN = (Read-Host 'Rx2GO application login').Trim()
   }
   if ([string]::IsNullOrWhiteSpace($env:RX2GO_APP_LOGIN)) { throw 'RX2GO_APP_LOGIN is required' }
