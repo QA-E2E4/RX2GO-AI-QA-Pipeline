@@ -20,12 +20,21 @@ if [[ "$ENVIRONMENT" == "ADM" ]]; then
   export RX2GO_DAILY_PASSWORD
 fi
 
+if [[ -z "${RX2GO_APP_LOGIN:-}" ]]; then
+  read -r -p "Enter Rx2GO application login: " RX2GO_APP_LOGIN
+  echo
+fi
+if [[ -z "${RX2GO_APP_LOGIN:-}" ]]; then
+  echo "RX2GO_APP_LOGIN is required" >&2
+  exit 2
+fi
+
 if [[ -z "${RX2GO_APP_PASSWORD:-}" ]]; then
-  read -r -s -p "Enter Rx2GO application password for sergeyqa: " RX2GO_APP_PASSWORD
+  read -r -s -p "Enter Rx2GO application password: " RX2GO_APP_PASSWORD
   echo
 fi
 
-export RX2GO_APP_LOGIN="${RX2GO_APP_LOGIN:-sergeyqa}"
+export RX2GO_APP_LOGIN
 export RX2GO_APP_PASSWORD
 export TEST_ENV="$ENVIRONMENT"
 export RUN_MUTATING_TESTS="$MUTATING"
