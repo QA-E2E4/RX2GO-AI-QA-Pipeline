@@ -701,7 +701,7 @@ if ($useExternalChrome -and -not $reuseExistingChrome) {
         }
 
         Write-Host '[AUTH] ADM: первый фактор завершён.'
-        Write-Host '[AUTH] Playwright выполнит Rx2GO login sergeyqa один раз в этом же Chrome.'
+        Write-Host '[AUTH] Playwright выполнит Rx2GO application login один раз в этом же Chrome.'
         Write-Host ''
     }
 
