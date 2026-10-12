@@ -12,7 +12,7 @@ test('bootstrap one persistent authenticated Rx2GO browser session', async ({
     environment === 'ADM'
       ? 'adm.rx2go.ai'
       : environment === 'BRANCH'
-        ? 'sergey-tester.rx2go.ai'
+        ? new URL(process.env.BRANCH_BASE_URL || process.env.BRANCH_LOGIN_URL || (() => { throw new Error('BRANCH_BASE_URL or BRANCH_LOGIN_URL must be configured locally'); })()).host
         : 'hot.rx2go.ai';
 
   await page.waitForLoadState('domcontentloaded').catch(() => undefined);
