@@ -26,4 +26,4 @@ If there are uncommitted local changes, synchronization deliberately stops inste
 
 ## Default GitHub repository
 
-This personal pilot build is preconfigured with `https://github.com/Gamazzz/rx2go-ai-qa`. If `origin` is missing, the Launcher adds it automatically. Existing non-empty `origin` values are not overwritten.
+This personal pilot build is preconfigured with `https://github.com/QA-E2E4/RX2GO-AI-QA-Pipeline`. If `origin` is missing, the Launcher adds it automatically. Existing non-empty `origin` values are not overwritten.
