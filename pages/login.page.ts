@@ -110,7 +110,7 @@ export class LoginPage {
       throw new Error(`[AUTH] Login button not found. ${await this.debugVisibleControls()}`);
     }
 
-    console.log(`[AUTH] Filling username field with "${login}"`);
+    console.log('[AUTH] Filling application username field (value hidden)');
     await loginField.fill(login);
 
     console.log('[AUTH] Filling saved password field (value hidden)');
