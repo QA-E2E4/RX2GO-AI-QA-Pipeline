@@ -8,12 +8,17 @@ test('bootstrap one persistent authenticated Rx2GO browser session', async ({
   test.setTimeout(180_000);
 
   const environment = getEnvironment();
-  const expectedHost =
-    environment === 'ADM'
-      ? 'adm.rx2go.ai'
-      : environment === 'BRANCH'
-        ? new URL(process.env.BRANCH_BASE_URL || process.env.BRANCH_LOGIN_URL || (() => { throw new Error('BRANCH_BASE_URL or BRANCH_LOGIN_URL must be configured locally'); })()).host
-        : 'hot.rx2go.ai';
+  const expectedHost = (() => {
+    if (environment === 'ADM') return 'adm.rx2go.ai';
+    if (environment === 'BRANCH') {
+      const branchUrl = process.env.BRANCH_BASE_URL || process.env.BRANCH_LOGIN_URL;
+      if (!branchUrl) {
+        throw new Error('BRANCH_BASE_URL or BRANCH_LOGIN_URL must be configured locally');
+      }
+      return new URL(branchUrl).host;
+    }
+    return 'hot.rx2go.ai';
+  })();
 
   await page.waitForLoadState('domcontentloaded').catch(() => undefined);
 
