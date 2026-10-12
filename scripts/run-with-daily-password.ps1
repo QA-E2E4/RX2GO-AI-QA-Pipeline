@@ -21,15 +21,19 @@ try {
     $env:RX2GO_DAILY_PASSWORD = $dailyPlain
   }
 
+  if ([string]::IsNullOrWhiteSpace($env:RX2GO_APP_LOGIN)) {
+    $env:RX2GO_APP_LOGIN = (Read-Host 'Rx2GO application login').Trim()
+  }
+  if ([string]::IsNullOrWhiteSpace($env:RX2GO_APP_LOGIN)) { throw 'RX2GO_APP_LOGIN is required' }
+
   if (-not $env:RX2GO_APP_PASSWORD) {
-    $appSecure = Read-Host 'Enter Rx2GO application password for sergeyqa' -AsSecureString
+    $appSecure = Read-Host 'Enter Rx2GO application password' -AsSecureString
     $appPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($appSecure)
     $appPlain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($appPtr)
     $env:RX2GO_APP_PASSWORD = $appPlain
     $removeAppPasswordAfterRun = $true
   }
 
-  if (-not $env:RX2GO_APP_LOGIN) { $env:RX2GO_APP_LOGIN = 'sergeyqa' }
   $env:TEST_ENV = $Environment
   $env:RUN_MUTATING_TESTS = if ($Mutating) { 'true' } else { 'false' }
 
